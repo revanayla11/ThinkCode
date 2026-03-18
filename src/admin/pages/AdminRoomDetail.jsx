@@ -186,9 +186,12 @@ export default function AdminRoomDetail() {
   const [members, setMembers] = useState([]);
   const [workspace, setWorkspace] = useState(null);
   const [attempts, setAttempts] = useState([]);
+
+  // TAMBAHAN: jawaban materi
+  const [materiAnswer, setMateriAnswer] = useState(null);
+
   const navigate = useNavigate();
 
-  // State untuk flowchart (read-only)
   const [conditions, setConditions] = useState([]);
   const [elseInstruction, setElseInstruction] = useState("");
 
@@ -198,53 +201,53 @@ export default function AdminRoomDetail() {
 
   const fetchInitialData = async () => {
     try {
-      // Fetch room meta and clue
+
       const jr = await apiGet(`/admin/discussion/room/${roomId}`);
       if (jr.status && jr.data) {
         setRoomMeta(jr.data.room);
         setClueInfo(jr.data.clue || { used: 0, max: 5 });
       }
 
-      // Fetch members
       const jm = await apiGet(`/admin/discussion/room/${roomId}/members`);
       setMembers(jm.data || []);
 
-      // Fetch workspace
-   const jw = await apiGet(`/admin/discussion/workspace/latest/${roomId}`);
+      const jw = await apiGet(`/admin/discussion/workspace/latest/${roomId}`);
       if (jw.status && jw.data) {
         setWorkspace(jw.data);
-        // Parse JSON flowchart dengan check tipe
+
         const flowchartRaw = jw.data.flowchart;
         let flowchartData = { conditions: [], elseInstruction: "" };
-        
+
         if (flowchartRaw) {
           if (typeof flowchartRaw === 'string') {
             try {
               flowchartData = JSON.parse(flowchartRaw);
             } catch (e) {
               console.error("Error parsing flowchart string:", e);
-              flowchartData = { conditions: [], elseInstruction: "" };
             }
           } else if (typeof flowchartRaw === 'object') {
-            flowchartData = flowchartRaw;  // Sudah object, gunakan langsung
+            flowchartData = flowchartRaw;
           }
         }
-        
+
         setConditions(flowchartData.conditions || []);
         setElseInstruction(flowchartData.elseInstruction || "");
       }
 
-      // Fetch attempts
       const ja = await apiGet(`/admin/discussion/workspace/attempts/${roomId}`);
-      console.log("Attempts response:", ja);
       if (ja.status) setAttempts(ja.data || []);
+
+      // TAMBAHAN: ambil jawaban materi
+      const jmtr = await apiGet(`/admin/materi/answer/${roomId}`);
+      if (jmtr.status && jmtr.data) {
+        setMateriAnswer(jmtr.data);
+      }
 
     } catch (e) {
       console.error("initial load error:", e);
     }
   };
 
-  // Fungsi renderFlowchart (read-only, mirip siswa tapi tanpa input editable)
   const renderFlowchart = (conds, elseInst) => {
     if (conds.length === 0 && !elseInst) {
       return <p>Belum ada flowchart.</p>;
@@ -253,176 +256,28 @@ export default function AdminRoomDetail() {
     const height = 160 + conds.length * 180 + (elseInst ? 120 : 0);
 
     return (
-      <svg
-        width="170%"
-        height={height}
-        viewBox={`160 0 640 ${height}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <marker
-            id="arrow"
-            markerWidth="6"
-            markerHeight="6"
-            refX="5"
-            refY="3"
-            orient="auto"
-          >
-            <path d="M0,0 L0,6 L6,3 z" fill="#000" />
-          </marker>
-        </defs>
-
-        {/* START */}
-        <ellipse
-          cx="300"
-          cy="80"
-          rx="70"
-          ry="30"
-          fill="#fff"
-          stroke="#000"
-          strokeWidth="2"
-        />
-        <text x="300" y="85" textAnchor="middle">
-          Mulai
-        </text>
+      <svg width="170%" height={height} viewBox={`160 0 640 ${height}`}>
+        <ellipse cx="300" cy="80" rx="70" ry="30" fill="#fff" stroke="#000" />
+        <text x="300" y="85" textAnchor="middle">Mulai</text>
 
         {conds.map((item, index) => {
           const y = 180 + index * 180;
-
           return (
             <g key={index}>
-              {/* Garis dari atas */}
-              <line
-                x1="300"
-                y1={index === 0 ? 110 : y - 100}
-                x2="300"
-                y2={y - 40}
-                stroke="#000"
-                strokeWidth="2"
-                markerEnd="url(#arrow)"
-              />
-
-              {/* Diamond */}
               <polygon
                 points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
                 fill="#fff"
                 stroke="#000"
-                strokeWidth="2"
               />
-
-              {/* TEXT KONDISI (read-only) */}
-              <text x="300" y={y + 5} textAnchor="middle" fontSize="12" fontWeight="bold">
+              <text x="300" y={y + 5} textAnchor="middle">
                 {item.condition}
               </text>
-
-              {/* YES LABEL */}
-              <text x="395" y={y - 10} fontSize="13">
-                Ya
-              </text>
-
-              {/* Garis ke kanan */}
-              <line
-                x1="380"
-                y1={y}
-                x2="580"
-                y2={y}
-                stroke="#000"
-                strokeWidth="2"
-                markerEnd="url(#arrow)"
-              />
-
-              {/* Process Box */}
-              <rect
-                x="580"
-                y={y - 30}
-                width="200"
-                height="60"
-                fill="#fff"
-                stroke="#000"
-                strokeWidth="2"
-                rx="6"
-              />
-
-              {/* TEXT INSTRUKSI YES (read-only) */}
-              <text x="680" y={y + 5} textAnchor="middle" fontSize="12">
-                {item.yes}
-              </text>
-
-              {/* Garis turun dari process */}
-              <line
-                x1="680"
-                y1={y + 30}
-                x2="680"
-                y2={height - 60}
-                stroke="#000"
-                strokeWidth="2"
-              />
-
-              {/* LABEL NO */}
-              <text x="245" y={y + 60} fontSize="13">
-                Tidak
-              </text>
-
-              {/* Garis ke bawah */}
-              {index < conds.length - 1 && (
-                <line
-                  x1="300"
-                  y1={y + 40}
-                  x2="300"
-                  y2={y + 100}
-                  stroke="#000"
-                  strokeWidth="2"
-                  markerEnd="url(#arrow)"
-                />
-              )}
-
-              {/* ELSE */}
-              {index === conds.length - 1 && elseInst && (
-                <>
-                  <line
-                    x1="300"
-                    y1={y + 40}
-                    x2="300"
-                    y2={y + 100}
-                    stroke="#000"
-                    strokeWidth="2"
-                    markerEnd="url(#arrow)"
-                  />
-
-                  <rect
-                    x="200"
-                    y={y + 100}
-                    width="200"
-                    height="60"
-                    fill="#fff"
-                    stroke="#000"
-                    strokeWidth="2"
-                    rx="6"
-                  />
-
-                  {/* TEXT ELSE (read-only) */}
-                  <text x="300" y={y + 125} textAnchor="middle" fontSize="12">
-                    {elseInst}
-                  </text>
-                </>
-              )}
             </g>
           );
         })}
 
-        {/* END */}
-        <ellipse
-          cx="680"
-          cy={height - 30}
-          rx="70"
-          ry="30"
-          fill="#fff"
-          stroke="#000"
-          strokeWidth="2"
-        />
-        <text x="680" y={height - 25} textAnchor="middle">
-          Selesai
-        </text>
+        <ellipse cx="680" cy={height - 30} rx="70" ry="30" fill="#fff" stroke="#000" />
+        <text x="680" y={height - 25} textAnchor="middle">Selesai</text>
       </svg>
     );
   };
@@ -431,6 +286,7 @@ export default function AdminRoomDetail() {
 
   return (
     <Container>
+
       <Header>
         <div>
           <Title>Observer — Room: {roomMeta.room_name}</Title>
@@ -446,6 +302,7 @@ export default function AdminRoomDetail() {
       </ClueSection>
 
       <MainSection>
+
         <MembersContainer>
           <MembersTitle>Anggota ({members.length})</MembersTitle>
           <MembersList>
@@ -457,10 +314,12 @@ export default function AdminRoomDetail() {
 
         <WorkspaceContainer>
           <WorkspaceTitle>Workspace Terbaru</WorkspaceTitle>
+
           {workspace ? (
             <>
               <h4>Pseudocode:</h4>
               <PseudocodeBox>{workspace.pseudocode || "Belum ada"}</PseudocodeBox>
+
               <h4>Flowchart:</h4>
               <FlowchartBox>
                 {renderFlowchart(conditions, elseInstruction)}
@@ -471,42 +330,54 @@ export default function AdminRoomDetail() {
           )}
         </WorkspaceContainer>
 
+        {/* TAMBAHAN: Jawaban Materi */}
+        <WorkspaceContainer>
+          <WorkspaceTitle>Jawaban Materi (Referensi)</WorkspaceTitle>
+
+          {materiAnswer ? (
+            <>
+              <h4>Pseudocode Benar:</h4>
+              <PseudocodeBox>
+                {materiAnswer.pseudocode || "Belum ada"}
+              </PseudocodeBox>
+
+              <h4>Flowchart Benar:</h4>
+              <FlowchartBox>
+                {renderFlowchart(
+                  materiAnswer.flowchart?.conditions || [],
+                  materiAnswer.flowchart?.elseInstruction || ""
+                )}
+              </FlowchartBox>
+            </>
+          ) : (
+            <p>Belum ada jawaban materi.</p>
+          )}
+        </WorkspaceContainer>
+
         <AttemptsContainer>
           <AttemptsTitle>History Attempts ({attempts.length})</AttemptsTitle>
+
           {attempts.length > 0 ? (
-            attempts.map((att, idx) => {
-              let contentDisplay = att.content || "Tidak ada isi";
-              let flowchartData = null;
+            attempts.map((att, idx) => (
+              <AttemptItem key={idx}>
+                <AttemptType>{att.type} - Attempt {att.attemptNumber}</AttemptType>
+                <AttemptNumber>{new Date(att.createdAt).toLocaleString()}</AttemptNumber>
 
-              if (att.type === 'flowchart' && att.content) {
-                try {
-                  flowchartData = JSON.parse(att.content);
-                } catch (e) {
-                  console.error("Error parsing flowchart JSON:", e);
-                }
-              }
+                <AttemptContent>
+                  <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                    {att.content || "Tidak ada isi"}
+                  </pre>
+                </AttemptContent>
 
-              return (
-                <AttemptItem key={idx}>
-                  <AttemptType>{att.type} - Attempt {att.attemptNumber}</AttemptType>
-                  <AttemptNumber>{new Date(att.createdAt).toLocaleString()}</AttemptNumber>
-                  {flowchartData ? (
-                    <AttemptContent>
-                      {renderFlowchart(flowchartData.conditions || [], flowchartData.elseInstruction || "")}
-                    </AttemptContent>
-                  ) : (
-                    <AttemptContent>
-                      <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{contentDisplay}</pre>
-                    </AttemptContent>
-                  )}
-                </AttemptItem>
-              );
-            })
+              </AttemptItem>
+            ))
           ) : (
             <p>Belum ada attempts.</p>
           )}
         </AttemptsContainer>
+
       </MainSection>
+
     </Container>
   );
 }
