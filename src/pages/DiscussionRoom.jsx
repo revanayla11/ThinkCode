@@ -354,39 +354,205 @@ export default function DiscussionRoom() {
   };
 
   // ================= RENDER FLOWCHART =================
-  const renderFlowchart = () => {
-    const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
-    return (
-      <svg width="100%" height={height} viewBox={`0 0 800 ${height}`}>
-        {/* Simplified flowchart render - sama seperti sebelumnya */}
-        <ellipse cx="400" cy="80" rx="70" ry="30" fill="#fff" stroke="#333" strokeWidth="2"/>
-        <text x="400" y="85" textAnchor="middle" fontSize="14" fontWeight="bold">Mulai</text>
-        
-        {conditions.map((item, index) => {
-          const y = 200 + index * 120;
-          return (
-            <g key={index}>
-              <polygon points={`400,${y-30} 480,${y} 400,${y+30} 320,${y}`} 
-                       fill="#fff" stroke="#333" strokeWidth="2"/>
-              <foreignObject x="340" y={y-15} width="120" height="30">
-                <input value={item.condition} onChange={(e) => updateCondition(index, "condition", e.target.value)}
-                       style={{width:"100%", height:"100%", border:"none", background:"transparent", textAlign:"center", fontSize:"11px"}}/>
-              </foreignObject>
-              <text x="500" y={y+5} fontSize="12">Ya</text>
-              <rect x="500" y={y-20} width="150" height="40" fill="#fff" stroke="#333" strokeWidth="2" rx="5"/>
-              <foreignObject x="520" y={y-10} width="110" height="30">
-                <input value={item.yes} onChange={(e) => updateCondition(index, "yes", e.target.value)}
-                       style={{width:"100%", height:"100%", border:"none", background:"transparent", textAlign:"center", fontSize:"11px"}}/>
-              </foreignObject>
-            </g>
-          );
-        })}
-        
-        <ellipse cx="400" cy={height-50} rx="70" ry="30" fill="#fff" stroke="#333" strokeWidth="2"/>
-        <text x="400" y={height-45} textAnchor="middle" fontSize="14" fontWeight="bold">Selesai</text>
-      </svg>
-    );
-  };
+const renderFlowchart = () => {
+  const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
+
+  return (
+    <svg
+      width="170%"
+      height={height}
+      viewBox={`160 0 640 ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <defs>
+        <marker
+          id="arrow"
+          markerWidth="6"
+          markerHeight="6"
+          refX="5"
+          refY="3"
+          orient="auto"
+        >
+          <path d="M0,0 L0,6 L6,3 z" fill="#000" />
+        </marker>
+      </defs>
+
+      {/* START */}
+      <ellipse
+        cx="300"
+        cy="80"
+        rx="70"
+        ry="30"
+        fill="#fff"
+        stroke="#333"
+        strokeWidth="2"
+      />
+      <text x="300" y="85" textAnchor="middle" fontSize="12" fontWeight="bold">
+        Mulai
+      </text>
+
+      {conditions.map((item, index) => {
+        const y = 180 + index * 180;
+
+        return (
+          <g key={index}>
+            {/* Garis dari atas */}
+            <line
+              x1="300"
+              y1={index === 0 ? 110 : y - 100}
+              x2="300"
+              y2={y - 40}
+              stroke="#333"
+              strokeWidth="2"
+              markerEnd="url(#arrow)"
+            />
+
+            {/* Diamond */}
+            <polygon
+              points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
+              fill="#fff"
+              stroke="#333"
+              strokeWidth="2"
+            />
+
+            {/* KONDISI INPUT */}
+            <foreignObject x="240" y={y - 20} width="120" height="40">
+              <input
+                value={item.condition}
+                onChange={(e) => updateCondition(index, "condition", e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  textAlign: "center",
+                  border: "none",
+                  background: "transparent",
+                  outline: "none",
+                  fontWeight: "bold",
+                  fontSize: "11px",
+                  color: "#333"
+                }}
+              />
+            </foreignObject>
+
+            {/* YES */}
+            <text x="395" y={y - 10} fontSize="12" fill="#333">Ya</text>
+
+            {/* Garis ke kanan */}
+            <line
+              x1="380"
+              y1={y}
+              x2="580"
+              y2={y}
+              stroke="#333"
+              strokeWidth="2"
+              markerEnd="url(#arrow)"
+            />
+
+            {/* Process Box */}
+            <rect
+              x="580"
+              y={y - 30}
+              width="200"
+              height="60"
+              fill="#fff"
+              stroke="#333"
+              strokeWidth="2"
+              rx="6"
+            />
+
+            {/* YES INPUT */}
+            <foreignObject x="600" y={y - 20} width="160" height="40">
+              <input
+                value={item.yes}
+                onChange={(e) => updateCondition(index, "yes", e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  textAlign: "center",
+                  border: "none",
+                  background: "transparent",
+                  outline: "none",
+                  fontSize: "11px"
+                }}
+              />
+            </foreignObject>
+
+            {/* Garis turun dari process */}
+            <line
+              x1="680"
+              y1={y + 30}
+              x2="680"
+              y2={height - 60}
+              stroke="#333"
+              strokeWidth="2"
+            />
+
+            {/* NO */}
+            <text x="245" y={y + 60} fontSize="12" fill="#333">Tidak</text>
+
+            {/* Garis ke bawah */}
+            {index < conditions.length - 1 && (
+              <line
+                x1="300"
+                y1={y + 40}
+                x2="300"
+                y2={y + 100}
+                stroke="#333"
+                strokeWidth="2"
+                markerEnd="url(#arrow)"
+              />
+            )}
+
+            {/* ELSE */}
+            {index === conditions.length - 1 && elseInstruction && (
+              <>
+                <line
+                  x1="300"
+                  y1={y + 40}
+                  x2="300"
+                  y2={y + 100}
+                  stroke="#333"
+                  strokeWidth="2"
+                  markerEnd="url(#arrow)"
+                />
+                <rect x="200" y={y + 100} width="200" height="60" fill="#fff" stroke="#333" strokeWidth="2" rx="6"/>
+                <foreignObject x="220" y={y + 115} width="160" height="40">
+                  <input
+                    value={elseInstruction}
+                    onChange={(e) => setElseInstruction(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      textAlign: "center",
+                      border: "none",
+                      background: "transparent",
+                      outline: "none",
+                      fontSize: "11px"
+                    }}
+                  />
+                </foreignObject>
+              </>
+            )}
+          </g>
+        );
+      })}
+
+      {/* END */}
+      <ellipse
+        cx="680"
+        cy={height - 30}
+        rx="70"
+        ry="30"
+        fill="#fff"
+        stroke="#333"
+        strokeWidth="2"
+      />
+      <text x="680" y={height - 25} textAnchor="middle" fontSize="12" fontWeight="bold">
+        Selesai
+      </text>
+    </svg>
+  );
+};
 
   /* ================= UI RENDER ================= */
   return (

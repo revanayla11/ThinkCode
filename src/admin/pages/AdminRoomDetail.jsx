@@ -184,26 +184,78 @@ export default function AdminRoomDetail() {
     }
   };
 
-  const renderFlowchartPreview = (flowchartData) => {
-    if (!flowchartData?.conditions?.length && !flowchartData?.elseInstruction) {
-      return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Belum ada flowchart</div>;
-    }
+const renderFlowchartPreview = (flowchartData, isEditable = false) => {
+  if (!flowchartData?.conditions?.length && !flowchartData?.elseInstruction) {
+    return <div style={{ color: '#9ca3af', fontStyle: 'italic', padding: '20px', textAlign: 'center' }}>Belum ada flowchart</div>;
+  }
 
-    return (
-      <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
-        {flowchartData.conditions?.map((c, i) => (
-          <div key={i} style={{ marginBottom: 4 }}>
-            <strong>IF</strong> {c.condition} → {c.yes}
-          </div>
-        ))}
-        {flowchartData.elseInstruction && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
-            <strong>ELSE:</strong> {flowchartData.elseInstruction}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const conditions = Array.isArray(flowchartData.conditions) ? flowchartData.conditions : [];
+  const height = 160 + conditions.length * 180 + (flowchartData.elseInstruction ? 120 : 0);
+
+  return (
+    <div style={{ height: '300px', border: '2px solid #e5e7eb', borderRadius: '12px', overflow: 'auto' }}>
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`160 0 640 ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#666" />
+          </marker>
+        </defs>
+
+        {/* START */}
+        <ellipse cx="300" cy="80" rx="70" ry="30" fill="#fff" stroke="#666" strokeWidth="2"/>
+        <text x="300" y="85" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">Mulai</text>
+
+        {conditions.map((item, index) => {
+          const y = 180 + index * 180;
+          return (
+            <g key={index}>
+              <line x1="300" y1={index === 0 ? 110 : y - 100} x2="300" y2={y - 40} stroke="#666" strokeWidth="2" markerEnd="url(#arrow)"/>
+              
+              <polygon points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`} fill="#fff" stroke="#666" strokeWidth="2"/>
+              
+              <text x="300" y={y + 5} textAnchor="middle" fontSize="11" fill="#333" fontWeight="500">
+                {item.condition || 'Kondisi kosong'}
+              </text>
+
+              <text x="395" y={y - 10} fontSize="11" fill="#666">Ya</text>
+              <line x1="380" y1={y} x2="580" y2={y} stroke="#666" strokeWidth="2" markerEnd="url(#arrow)"/>
+              
+              <rect x="580" y={y - 30} width="200" height="60" fill="#f3f4f6" stroke="#666" strokeWidth="2" rx="6"/>
+              <text x="680" y={y + 5} textAnchor="middle" fontSize="11" fill="#333" fontWeight="500">
+                {item.yes || 'Instruksi kosong'}
+              </text>
+
+              <line x1="680" y1={y + 30} x2="680" y2={height - 60} stroke="#666" strokeWidth="2"/>
+              <text x="245" y={y + 60} fontSize="11" fill="#666">Tidak</text>
+
+              {index < conditions.length - 1 && (
+                <line x1="300" y1={y + 40} x2="300" y2={y + 100} stroke="#666" strokeWidth="2" markerEnd="url(#arrow)"/>
+              )}
+
+              {index === conditions.length - 1 && flowchartData.elseInstruction && (
+                <>
+                  <line x1="300" y1={y + 40} x2="300" y2={y + 100} stroke="#666" strokeWidth="2" markerEnd="url(#arrow)"/>
+                  <rect x="200" y={y + 100} width="200" height="60" fill="#fef3c7" stroke="#666" strokeWidth="2" rx="6"/>
+                  <text x="300" y={y + 125} textAnchor="middle" fontSize="11" fill="#92400e" fontWeight="500">
+                    {flowchartData.elseInstruction}
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })}
+
+        <ellipse cx="680" cy={height - 30} rx="70" ry="30" fill="#fff" stroke="#666" strokeWidth="2"/>
+        <text x="680" y={height - 25} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">Selesai</text>
+      </svg>
+    </div>
+  );
+};
 
   if (loading) return <Loading>🔄 Memuat detail room...</Loading>;
   if (!roomMeta) return <Loading>❌ Room tidak ditemukan</Loading>;
@@ -240,43 +292,43 @@ export default function AdminRoomDetail() {
           <Card style={{ marginBottom: 24 }}>
             <CardTitle>⚖️ Perbandingan Workspace</CardTitle>
             
-            <WorkspaceCompare>
-              {/* WORKSPACE SISWA */}
-              <WorkspaceSection>
-                <SectionLabel>📝 Siswa (Terbaru)</SectionLabel>
-                {workspace ? (
-                  <>
-                    <PseudocodeBox>{workspace.pseudocode || 'Belum ada pseudocode'}</PseudocodeBox>
-                    <FlowchartBox>
-                      {renderFlowchartPreview(
-                        typeof workspace.flowchart === 'string' 
-                          ? JSON.parse(workspace.flowchart || '{}')
-                          : workspace.flowchart
-                      )}
-                    </FlowchartBox>
-                  </>
-                ) : (
-                  <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Belum ada workspace</div>
-                )}
-              </WorkspaceSection>
+          <WorkspaceCompare>
+            {/* SISWA */}
+            <WorkspaceSection>
+              <SectionLabel>Siswa (Terbaru)</SectionLabel>
+              {workspace ? (
+                <>
+                  <PseudocodeBox>{workspace.pseudocode || "Belum ada"}</PseudocodeBox>
+                  <FlowchartBox>
+                    {renderFlowchartPreview(
+                      typeof workspace.flowchart === 'string' 
+                        ? JSON.parse(workspace.flowchart)
+                        : workspace.flowchart
+                    )}
+                  </FlowchartBox>
+                </>
+              ) : (
+                <div style={{padding: '40px', textAlign: 'center', color: '#9ca3af'}}>Belum ada workspace</div>
+              )}
+            </WorkspaceSection>
 
-              {/* JAWABAN RESMI ADMIN */}
-              <WorkspaceSection isOfficial>
-                <SectionLabel isOfficial>✅ Jawaban Benar</SectionLabel>
-                {materiAnswer ? (
-                  <>
-                    <PseudocodeBox isOfficial>{materiAnswer.pseudocode || 'Belum diset'}</PseudocodeBox>
-                    <FlowchartBox isOfficial>
-                      {renderFlowchartPreview(materiAnswer.flowchart)}
-                    </FlowchartBox>
-                  </>
-                ) : (
-                  <div style={{ color: '#ef4444', fontWeight: 500 }}>
-                    ⚠️ Admin belum set jawaban
-                  </div>
-                )}
-              </WorkspaceSection>
-            </WorkspaceCompare>
+            {/* ADMIN RESMI */}
+            <WorkspaceSection isOfficial>
+              <SectionLabel isOfficial>✅ Jawaban Resmi Admin</SectionLabel>
+              {materiAnswer ? (
+                <>
+                  <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
+                  <FlowchartBox isOfficial>
+                    {renderFlowchartPreview(materiAnswer.flowchart)}
+                  </FlowchartBox>
+                </>
+              ) : (
+                <div style={{padding: '40px', textAlign: 'center', color: '#ef4444'}}>
+                  ⚠️ Admin belum set jawaban resmi
+                </div>
+              )}
+            </WorkspaceSection>
+          </WorkspaceCompare>
           </Card>
 
           {/* CLUES & ATTEMPTS */}
