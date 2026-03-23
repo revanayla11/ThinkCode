@@ -95,6 +95,7 @@ export default function DiscussionRoom() {
     api.get(`/materi/${materiId}`)
       .then(res => {
         const progress = res.data.data.progress;
+        // ✅ FIXED: Tambah undefined
         if (progress?.xp !== undefined) {
           setUserXp(progress.xp);
         }
