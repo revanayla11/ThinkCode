@@ -443,121 +443,149 @@ return (
     </Card>
 
     {/* ROW 3: ATTEMPTS FULL DETAIL */}
-    <Card>
-      <CardTitle>📊 Riwayat Attempts Lengkap ({attempts.length})</CardTitle>
-      {attempts.length === 0 ? (
-        <div style={{ 
-          padding: '80px 40px', 
-          textAlign: 'center', 
-          color: '#9ca3af',
-          fontSize: '16px',
-          fontStyle: 'italic'
-        }}>
-          📭 Belum ada percobaan coding
-        </div>
-      ) : (
-        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-          {attempts.map((attempt, index) => (
+{/* ROW 3: PSEUDOCODE vs FLOWCHART TABS */}
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+  
+  {/* PSEUDOCODE ATTEMPTS */}
+  <Card>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      marginBottom: '20px'
+    }}>
+      <CardTitle>💻 Pseudocode Attempts</CardTitle>
+      <div style={{ 
+        fontSize: '24px', 
+        fontWeight: '700',
+        color: '#3b82f6'
+      }}>
+        {attempts.filter(a => a.type === 'pseudocode').length}
+      </div>
+    </div>
+    
+    {attempts.filter(a => a.type === 'pseudocode').length === 0 ? (
+      <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+        📭 Belum ada pseudocode attempt
+      </div>
+    ) : (
+      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+        {attempts
+          .filter(a => a.type === 'pseudocode')
+          .map((attempt, index) => (
             <div key={attempt.id} style={{ 
-              marginBottom: '20px', 
               padding: '20px', 
-              background: index % 2 === 0 ? '#f8fafc' : '#ffffff',
+              background: '#eff6ff', 
               borderRadius: '12px',
-              borderLeft: `5px solid ${attempt.type === 'official' ? '#10b981' : '#3b82f6'}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+              marginBottom: '16px',
+              borderLeft: `4px solid #3b82f6`
             }}>
-              {/* HEADER */}
               <div style={{ 
                 display: 'flex', 
-                justifyContent: 'space-between', 
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '16px',
-                paddingBottom: '12px',
-                borderBottom: '1px solid #e5e7eb'
+                marginBottom: '12px'
               }}>
-                <div>
-                  <span style={{ 
-                    fontWeight: '700', 
-                    color: '#1f2937',
-                    fontSize: '16px',
-                    marginRight: '12px'
-                  }}>
-                    #{attempt.attemptNumber}
-                  </span>
-                  <span style={{ 
-                    padding: '4px 12px',
-                    background: attempt.type === 'official' ? '#dcfce7' : '#dbeafe',
-                    color: attempt.type === 'official' ? '#166534' : '#1e40af',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    fontWeight: '600'
-                  }}>
-                    {attempt.type?.toUpperCase()}
-                  </span>
-                </div>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>
+                  Attempt #{attempt.attemptNumber}
+                </span>
                 <span style={{ 
-                  fontSize: '14px', 
-                  padding: '6px 12px',
+                  padding: '4px 12px',
                   borderRadius: '20px',
                   background: attempt.success ? '#dcfce7' : '#fee2e2',
                   color: attempt.success ? '#166534' : '#dc2626',
-                  fontWeight: '700'
+                  fontWeight: '600',
+                  fontSize: '13px'
                 }}>
-                  {attempt.success ? '✅ BERHASIL' : '❌ GAGAL'}
+                  {attempt.success ? '✅' : '❌'}
                 </span>
               </div>
-              
-              {/* PSEUDOCODE */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ 
-                  fontSize: '13px', 
-                  color: '#374151', 
-                  marginBottom: '8px',
-                  fontWeight: '600'
-                }}>
-                  💻 Pseudocode:
-                </div>
-                <PseudocodeBox style={{ 
-                  fontSize: '13px', 
-                  padding: '14px', 
-                  margin: 0,
-                  minHeight: '80px',
-                  background: '#1f2937',
-                  color: '#f9fafb'
-                }}>
-                  {attempt.pseudocode || <span style={{color: '#9ca3af'}}>Tidak ada pseudocode</span>}
-                </PseudocodeBox>
-              </div>
+              <PseudocodeBox style={{ 
+                background: 'white', 
+                color: '#1f2937',
+                fontSize: '14px',
+                padding: '16px',
+                minHeight: '120px'
+              }}>
+                {attempt.pseudocode || attempt.content || 'Kode kosong'}
+              </PseudocodeBox>
+            </div>
+          ))
+        }
+      </div>
+    )}
+  </Card>
 
-              {/* FLOWCHART */}
-              <div>
-                <div style={{ 
-                  fontSize: '13px', 
-                  color: '#374151', 
-                  marginBottom: '8px',
-                  fontWeight: '600'
+  {/* FLOWCHART ATTEMPTS */}
+  <Card>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      marginBottom: '20px'
+    }}>
+      <CardTitle>📈 Flowchart Attempts</CardTitle>
+      <div style={{ 
+        fontSize: '24px', 
+        fontWeight: '700',
+        color: '#f59e0b'
+      }}>
+        {attempts.filter(a => a.type === 'flowchart').length}
+      </div>
+    </div>
+    
+    {attempts.filter(a => a.type === 'flowchart').length === 0 ? (
+      <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+        📭 Belum ada flowchart attempt
+      </div>
+    ) : (
+      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+        {attempts
+          .filter(a => a.type === 'flowchart')
+          .map((attempt, index) => (
+            <div key={attempt.id} style={{ 
+              padding: '20px', 
+              background: '#fffbeb', 
+              borderRadius: '12px',
+              marginBottom: '16px',
+              borderLeft: `4px solid #f59e0b`
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px'
+              }}>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>
+                  Attempt #{attempt.attemptNumber}
+                </span>
+                <span style={{ 
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: attempt.success ? '#dcfce7' : '#fee2e2',
+                  color: attempt.success ? '#166534' : '#dc2626',
+                  fontWeight: '600',
+                  fontSize: '13px'
                 }}>
-                  📈 Flowchart:
-                </div>
-                <div style={{ 
-                  height: '220px', 
-                  border: '2px solid #e5e7eb', 
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  background: '#fafbfc'
-                }}>
-                  {renderFlowchartPreview(
-                    typeof attempt.flowchart === 'string' 
-                      ? JSON.parse(attempt.flowchart || '{}')
-                      : (attempt.flowchart || {})
-                  )}
-                </div>
+                  {attempt.success ? '✅' : '❌'}
+                </span>
+              </div>
+              <div style={{ 
+                height: '280px', 
+                border: '2px solid #f59e0b', 
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: 'white'
+              }}>
+                {renderFlowchartPreview(attempt.flowchart || {})}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </Card>
+          ))
+        }
+      </div>
+    )}
+  </Card>
+</div>
   </Container>
 );
 }
