@@ -169,7 +169,7 @@ export default function TabAnswer({ materiId }) {
         borderBottom: '3px solid #10b981'
       }}>
         <h2 style={{ margin: 0, fontSize: 28, color: '#059669', fontWeight: 700 }}>
-          🎯 Jawaban Resmi Workspace
+          🎯 Jawaban Workspace
         </h2>
         <div style={{ fontSize: 14, color: '#6b7280' }}>
           Materi ID: <strong>{materiId}</strong>
@@ -177,7 +177,7 @@ export default function TabAnswer({ materiId }) {
       </div>
 
       <p style={{ color: '#6b7280', fontSize: 15, marginBottom: 32 }}>
-        Jawaban ini menjadi patokan validasi siswa. Siswa harus buat <strong>persis sama</strong> 
+        Jawaban ini menjadi patokan untuk mengecek jawaban siswa. Siswa harus buat <strong>persis sama</strong> 
         sebelum bisa upload jawaban final.
       </p>
 
@@ -312,7 +312,7 @@ export default function TabAnswer({ materiId }) {
       {/* FLOWCHART PREVIEW */}
       <div style={{ marginBottom: 32 }}>
         <h4 style={{ margin: '0 0 16px 0', color: '#1f2937', fontSize: 20 }}>
-          👀 Preview Flowchart (Yang siswa lihat & harus cocokkan)
+           Preview Flowchart
         </h4>
         {renderFlowchartPreview({ conditions, elseInstruction })}
       </div>
@@ -385,8 +385,8 @@ export default function TabAnswer({ materiId }) {
         borderRadius: 12,
         borderLeft: '5px solid #10b981'
       }}>
-        <h5 style={{ margin: '0 0 8px 0', color: '#059669' }}>ℹ️ Cara Kerja Validasi:</h5>
-        <ul style={{ margin: 0, paddingLeft: '20px', color: '#065f46', lineHeight: 1.6 }}>
+        <h5 style={{ margin: '0 0 8px 0', color: '#059669' }}>ℹ️ Cara Kerja Cek Jawaban:</h5>
+        <ul style={{ margin: 0, paddingLeft: '20px', color: '#059669', lineHeight: 1.6 }}>
           <li>• Siswa <strong>harus buat persis sama</strong> (case-insensitive)</li>
           <li>• Jumlah kondisi flowchart harus sama</li>
           <li>• Siswa klik "Cek Jawaban" → Auto validasi vs jawaban ini</li>

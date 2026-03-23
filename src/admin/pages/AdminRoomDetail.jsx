@@ -1,4 +1,3 @@
-// AdminRoomDetail.jsx - UPDATE LENGKAP
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
@@ -263,7 +262,7 @@ return (
   <Container>
     <Header>
       <div>
-        <Title>👁️ Observer Mode — {roomMeta.room_name}</Title>
+        <Title>{roomMeta.room_name}</Title>
         <Status isclosed={roomMeta.is_closed}>
           {roomMeta.is_closed ? '🔒 Ditutup' : '🟢 Terbuka'}
         </Status>
@@ -348,7 +347,7 @@ return (
                   cursor: 'pointer',
                   '&:hover': { background: '#e0e7ff' }
                 }}
-                onClick={() => console.log('User:', m.user_id)} // Bisa dikembangin
+                onClick={() => console.log('User:', m.user_id)} 
               >
                 <div style={{ 
                   width: '44px', 
@@ -391,7 +390,7 @@ return (
 
     {/* ROW 2: WORKSPACE COMPARISON */}
     <Card style={{ marginBottom: '24px' }}>
-      <CardTitle>⚖️ Perbandingan Workspace Siswa vs Jawaban Resmi</CardTitle>
+      <CardTitle>⚖️ Perbandingan Workspace Siswa vs Kunci Jawaban</CardTitle>
       <WorkspaceCompare>
         {/* SISWA - TERBARU */}
         <WorkspaceSection>
@@ -421,7 +420,7 @@ return (
 
         {/* ADMIN RESMI */}
         <WorkspaceSection isOfficial>
-          <SectionLabel isOfficial>✅ Jawaban Resmi Admin</SectionLabel>
+          <SectionLabel isOfficial>✅ Kunci Jawaban</SectionLabel>
           {materiAnswer ? (
             <>
               <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
@@ -435,7 +434,7 @@ return (
               textAlign: 'center', 
               color: '#ef4444'
             }}>
-              ⚠️ Admin belum set jawaban resmi
+              ⚠️ Guru belum set kunci jawaban
             </div>
           )}
         </WorkspaceSection>
