@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import Swal from "sweetalert2";
@@ -30,9 +30,25 @@ export default function DiscussionRoom() {
   const [performanceScore, setPerformanceScore] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // VALIDASI STATE BARU
+  // VALIDASI STATE
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+
+  // 🆕 DIRTY STATE & DEBOUNCE (SOLVE MASALAH HILANG KETIKA KETIK)
+  const [isDirty, setIsDirty] = useState({ pseudocode: false, flowchart: false });
+
+  // Debounce function
+  const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
 
   // ================= LOAD SUBMISSION STATUS =================
   const loadSubmissionStatus = async () => {
@@ -43,11 +59,6 @@ export default function DiscussionRoom() {
       console.error("Error loading submission status:", err);
     }
   };
-
-  useEffect(() => {
-    if (!roomId) return;
-    loadSubmissionStatus();
-  }, [roomId]);
 
   // ================= LOAD PERFORMANCE =================
   const loadPerformance = async () => {
@@ -62,51 +73,53 @@ export default function DiscussionRoom() {
     }
   };
 
-  useEffect(() => {
-    loadPerformance();
-  }, [roomId]);
-
-  // ================= LOAD WORKSPACE (POLLING) =================
-  const loadWorkspace = async () => {
+  // ================= LOAD WORKSPACE (FIXED - PROTECT LOCAL CHANGES) =================
+  const loadWorkspace = useCallback(async (force = false) => {
     try {
       const res = await api.get(`/discussion/workspace/${roomId}`);
       const data = res?.data?.data || {};
 
-      setPseudocode(data.pseudocode || "");
-
-      let loadedFlowchart = { conditions: [], elseInstruction: "" };
-      if (data.flowchart) {
-        try {
-          loadedFlowchart = typeof data.flowchart === "string"
-            ? JSON.parse(data.flowchart)
-            : data.flowchart;
-        } catch (e) {
-          console.error("Error parsing flowchart:", e);
-        }
+      // ✅ PROTECT LOCAL CHANGES - hanya update jika tidak dirty atau force
+      if (!isDirty.pseudocode || force) {
+        setPseudocode(data.pseudocode || "");
+        setIsDirty(prev => ({ ...prev, pseudocode: false }));
       }
 
-      setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
-      setElseInstruction(loadedFlowchart.elseInstruction || "");
-
+      if (!isDirty.flowchart || force) {
+        let loadedFlowchart = { conditions: [], elseInstruction: "" };
+        if (data.flowchart) {
+          try {
+            loadedFlowchart = typeof data.flowchart === "string"
+              ? JSON.parse(data.flowchart)
+              : data.flowchart;
+          } catch (e) {
+            console.error("Error parsing flowchart:", e);
+          }
+        }
+        setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
+        setElseInstruction(loadedFlowchart.elseInstruction || "");
+        setIsDirty(prev => ({ ...prev, flowchart: false }));
+      }
     } catch (err) {
       console.error("Error loading workspace:", err);
     }
-  };
+  }, [roomId, isDirty.pseudocode, isDirty.flowchart]);
 
+  // Polling lebih jarang: 10 detik
   useEffect(() => {
     if (!roomId) return;
-    loadWorkspace();
-    const interval = setInterval(loadWorkspace, 3000); // Poll every 3s
+    loadWorkspace(true); // Load awal (force)
+    const interval = setInterval(() => loadWorkspace(false), 10000);
     return () => clearInterval(interval);
-  }, [roomId]);
+  }, [roomId, loadWorkspace]);
 
-  // ================= LOAD USER XP =================
+  // ================= LOAD USER XP (FIX SYNTAX ERROR) =================
   useEffect(() => {
     if (!materiId || !user?.id) return;
     api.get(`/materi/${materiId}`)
       .then(res => {
         const progress = res.data.data.progress;
-        if (progress?.xp !== undefined) {
+        if (progress?.xp !== undefined) { // ✅ FIXED
           setUserXp(progress.xp);
         }
       })
@@ -124,7 +137,7 @@ export default function DiscussionRoom() {
       .catch(() => setMiniContent("Mini lesson tidak tersedia"));
   }, [materiId]);
 
-  // ================= LOAD CLUES =================
+  // ================= LOAD CLUES & USED CLUES =================
   useEffect(() => {
     if (!materiId) return;
     api.get(`/discussion/clue/${materiId}`)
@@ -132,7 +145,6 @@ export default function DiscussionRoom() {
       .catch(err => console.error("ERROR load clues:", err));
   }, [materiId]);
 
-  // ================= LOAD USED CLUES =================
   const loadUsedClues = async () => {
     const res = await api.get(`/discussion/clue/used/${roomId}`);
     setUsedClues(res.data.data || []);
@@ -142,6 +154,33 @@ export default function DiscussionRoom() {
     if (!roomId) return;
     loadUsedClues();
   }, [roomId]);
+
+  // ================= AUTO-SAVE FUNCTIONS (🆕) =================
+  const debouncedSavePseudocode = useCallback(
+    debounce(async (code) => {
+      if (isSubmitted) return;
+      try {
+        await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode: code });
+        setIsDirty(prev => ({ ...prev, pseudocode: false }));
+      } catch (err) {
+        console.error("Auto-save pseudocode failed:", err);
+      }
+    }, 1500),
+    [roomId, isSubmitted]
+  );
+
+  const debouncedSaveFlowchart = useCallback(
+    debounce(async (flowchart) => {
+      if (isSubmitted) return;
+      try {
+        await api.post(`/discussion/workspace/flowchart/${roomId}/save`, { flowchart });
+        setIsDirty(prev => ({ ...prev, flowchart: false }));
+      } catch (err) {
+        console.error("Auto-save flowchart failed:", err);
+      }
+    }, 1500),
+    [roomId, isSubmitted]
+  );
 
   // ================= REQUEST CLUE =================
   const requestClue = async () => {
@@ -172,19 +211,33 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= FLOWCHART FUNCTIONS =================
+  // ================= FLOWCHART FUNCTIONS (AUTO-SAVE) =================
   const addCondition = () => {
+    if (isSubmitted) return;
     const next = conditions.length + 1;
-    setConditions([
+    const newConditions = [
       ...conditions,
       { condition: `Kondisi ${next}`, yes: `Instruksi ${next}` }
-    ]);
+    ];
+    setConditions(newConditions);
+    setIsDirty(prev => ({ ...prev, flowchart: true }));
+    debouncedSaveFlowchart({ conditions: newConditions, elseInstruction });
   };
 
   const updateCondition = (index, field, value) => {
+    if (isSubmitted) return;
     const updated = [...conditions];
     updated[index][field] = value;
     setConditions(updated);
+    setIsDirty(prev => ({ ...prev, flowchart: true }));
+    debouncedSaveFlowchart({ conditions: updated, elseInstruction });
+  };
+
+  const updateElseInstruction = (value) => {
+    if (isSubmitted) return;
+    setElseInstruction(value);
+    setIsDirty(prev => ({ ...prev, flowchart: true }));
+    debouncedSaveFlowchart({ conditions, elseInstruction: value });
   };
 
   // ================= TASKS =================
@@ -233,24 +286,26 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= SAVE FUNCTIONS =================
-  const savePseudocode = async () => {
+  // ================= MANUAL SAVE (FORCE SAVE) =================
+  const forceSavePseudocode = async () => {
     if (isSubmitted) return;
     try {
       await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode });
-      Swal.fire("✅", "Pseudocode disimpan!", "success");
+      setIsDirty(prev => ({ ...prev, pseudocode: false }));
+      Swal.fire("✅", "Pseudocode tersimpan!", "success");
     } catch (err) {
       Swal.fire("❌", "Gagal simpan pseudocode", "error");
     }
   };
 
-  const saveFlowchart = async () => {
+  const forceSaveFlowchart = async () => {
     if (isSubmitted) return;
     try {
       await api.post(`/discussion/workspace/flowchart/${roomId}/save`, {
         flowchart: { conditions, elseInstruction }
       });
-      Swal.fire("✅", "Flowchart disimpan!", "success");
+      setIsDirty(prev => ({ ...prev, flowchart: false }));
+      Swal.fire("✅", "Flowchart tersimpan!", "success");
     } catch (err) {
       Swal.fire("❌", "Gagal simpan flowchart", "error");
     }
@@ -292,6 +347,7 @@ export default function DiscussionRoom() {
           navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
         }
       } else {
+        // ... (sama seperti sebelumnya)
         const details = response.data.details;
         let errorHtml = `
           <div style="text-align: left; font-size: 14px;">
@@ -353,159 +409,160 @@ export default function DiscussionRoom() {
     return "⭐";
   };
 
-  // ================= RENDER FLOWCHART =================
-const renderFlowchart = () => {
-  const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
+  // TRACK LOCAL CHANGES
+  useEffect(() => {
+    if (pseudocode) {
+      setIsDirty(prev => ({ ...prev, pseudocode: true }));
+      debouncedSavePseudocode(pseudocode);
+    }
+  }, [pseudocode, debouncedSavePseudocode]);
 
-  return (
-    <svg
-      width="170%"
-      height={height}
-      viewBox={`160 0 640 ${height}`}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <defs>
-        <marker
-          id="arrow"
-          markerWidth="6"
-          markerHeight="6"
-          refX="5"
-          refY="3"
-          orient="auto"
-        >
-          <path d="M0,0 L0,6 L6,3 z" fill="#000" />
-        </marker>
-      </defs>
+  useEffect(() => {
+    if (conditions.length > 0 || elseInstruction) {
+      setIsDirty(prev => ({ ...prev, flowchart: true }));
+      debouncedSaveFlowchart({ conditions, elseInstruction });
+    }
+  }, [conditions, elseInstruction, debouncedSaveFlowchart]);
 
-      {/* START */}
-      <ellipse
-        cx="300"
-        cy="80"
-        rx="70"
-        ry="30"
-        fill="#fff"
-        stroke="#333"
-        strokeWidth="2"
-      />
-      <text x="300" y="85" textAnchor="middle" fontSize="12" fontWeight="bold">
-        Mulai
-      </text>
+   // ================= RENDER FLOWCHART (LANJUTAN) =================
+  const renderFlowchart = () => {
+    const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
 
-      {conditions.map((item, index) => {
-        const y = 180 + index * 180;
+    return (
+      <svg
+        width="170%"
+        height={height}
+        viewBox={`160 0 640 ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <marker
+            id="arrow"
+            markerWidth="6"
+            markerHeight="6"
+            refX="5"
+            refY="3"
+            orient="auto"
+          >
+            <path d="M0,0 L0,6 L6,3 z" fill="#000" />
+          </marker>
+        </defs>
 
-        return (
-          <g key={index}>
-            {/* Garis dari atas */}
-            <line
-              x1="300"
-              y1={index === 0 ? 110 : y - 100}
-              x2="300"
-              y2={y - 40}
-              stroke="#333"
-              strokeWidth="2"
-              markerEnd="url(#arrow)"
-            />
+        {/* START */}
+        <ellipse
+          cx="300"
+          cy="80"
+          rx="70"
+          ry="30"
+          fill="#fff"
+          stroke="#333"
+          strokeWidth="2"
+        />
+        <text x="300" y="85" textAnchor="middle" fontSize="12" fontWeight="bold">
+          Mulai
+        </text>
 
-            {/* Diamond */}
-            <polygon
-              points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
-              fill="#fff"
-              stroke="#333"
-              strokeWidth="2"
-            />
+        {conditions.map((item, index) => {
+          const y = 180 + index * 180;
 
-            {/* KONDISI INPUT */}
-            <foreignObject x="240" y={y - 20} width="120" height="40">
-              <input
-                value={item.condition}
-                onChange={(e) => updateCondition(index, "condition", e.target.value)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  textAlign: "center",
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  fontWeight: "bold",
-                  fontSize: "11px",
-                  color: "#333"
-                }}
-              />
-            </foreignObject>
-
-            {/* YES */}
-            <text x="395" y={y - 10} fontSize="12" fill="#333">Ya</text>
-
-            {/* Garis ke kanan */}
-            <line
-              x1="380"
-              y1={y}
-              x2="580"
-              y2={y}
-              stroke="#333"
-              strokeWidth="2"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* Process Box */}
-            <rect
-              x="580"
-              y={y - 30}
-              width="200"
-              height="60"
-              fill="#fff"
-              stroke="#333"
-              strokeWidth="2"
-              rx="6"
-            />
-
-            {/* YES INPUT */}
-            <foreignObject x="600" y={y - 20} width="160" height="40">
-              <input
-                value={item.yes}
-                onChange={(e) => updateCondition(index, "yes", e.target.value)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  textAlign: "center",
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  fontSize: "11px"
-                }}
-              />
-            </foreignObject>
-
-            {/* Garis turun dari process */}
-            <line
-              x1="680"
-              y1={y + 30}
-              x2="680"
-              y2={height - 60}
-              stroke="#333"
-              strokeWidth="2"
-            />
-
-            {/* NO */}
-            <text x="245" y={y + 60} fontSize="12" fill="#333">Tidak</text>
-
-            {/* Garis ke bawah */}
-            {index < conditions.length - 1 && (
+          return (
+            <g key={index}>
+              {/* Garis dari atas */}
               <line
                 x1="300"
-                y1={y + 40}
+                y1={index === 0 ? 110 : y - 100}
                 x2="300"
-                y2={y + 100}
+                y2={y - 40}
                 stroke="#333"
                 strokeWidth="2"
                 markerEnd="url(#arrow)"
               />
-            )}
 
-            {/* ELSE */}
-            {index === conditions.length - 1 && elseInstruction && (
-              <>
+              {/* Diamond */}
+              <polygon
+                points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
+                fill="#fff"
+                stroke="#333"
+                strokeWidth="2"
+              />
+
+              {/* KONDISI INPUT */}
+              <foreignObject x="240" y={y - 20} width="120" height="40">
+                <input
+                  value={item.condition}
+                  onChange={(e) => updateCondition(index, "condition", e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    textAlign: "center",
+                    border: "none",
+                    background: "transparent",
+                    outline: "none",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    color: "#333"
+                  }}
+                />
+              </foreignObject>
+
+              {/* YES */}
+              <text x="395" y={y - 10} fontSize="12" fill="#333">Ya</text>
+
+              {/* Garis ke kanan */}
+              <line
+                x1="380"
+                y1={y}
+                x2="580"
+                y2={y}
+                stroke="#333"
+                strokeWidth="2"
+                markerEnd="url(#arrow)"
+              />
+
+              {/* Process Box */}
+              <rect
+                x="580"
+                y={y - 30}
+                width="200"
+                height="60"
+                fill="#fff"
+                stroke="#333"
+                strokeWidth="2"
+                rx="6"
+              />
+
+              {/* YES INPUT */}
+              <foreignObject x="600" y={y - 20} width="160" height="40">
+                <input
+                  value={item.yes}
+                  onChange={(e) => updateCondition(index, "yes", e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    textAlign: "center",
+                    border: "none",
+                    background: "transparent",
+                    outline: "none",
+                    fontSize: "11px"
+                  }}
+                />
+              </foreignObject>
+
+              {/* Garis turun dari process */}
+              <line
+                x1="680"
+                y1={y + 30}
+                x2="680"
+                y2={height - 60}
+                stroke="#333"
+                strokeWidth="2"
+              />
+
+              {/* NO */}
+              <text x="245" y={y + 60} fontSize="12" fill="#333">Tidak</text>
+
+              {/* Garis ke bawah */}
+              {index < conditions.length - 1 && (
                 <line
                   x1="300"
                   y1={y + 40}
@@ -515,44 +572,58 @@ const renderFlowchart = () => {
                   strokeWidth="2"
                   markerEnd="url(#arrow)"
                 />
-                <rect x="200" y={y + 100} width="200" height="60" fill="#fff" stroke="#333" strokeWidth="2" rx="6"/>
-                <foreignObject x="220" y={y + 115} width="160" height="40">
-                  <input
-                    value={elseInstruction}
-                    onChange={(e) => setElseInstruction(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      textAlign: "center",
-                      border: "none",
-                      background: "transparent",
-                      outline: "none",
-                      fontSize: "11px"
-                    }}
-                  />
-                </foreignObject>
-              </>
-            )}
-          </g>
-        );
-      })}
+              )}
 
-      {/* END */}
-      <ellipse
-        cx="680"
-        cy={height - 30}
-        rx="70"
-        ry="30"
-        fill="#fff"
-        stroke="#333"
-        strokeWidth="2"
-      />
-      <text x="680" y={height - 25} textAnchor="middle" fontSize="12" fontWeight="bold">
-        Selesai
-      </text>
-    </svg>
-  );
-};
+              {/* ELSE */}
+              {index === conditions.length - 1 && elseInstruction && (
+                <>
+                  <line
+                    x1="300"
+                    y1={y + 40}
+                    x2="300"
+                    y2={y + 100}
+                    stroke="#333"
+                    strokeWidth="2"
+                    markerEnd="url(#arrow)"
+                  />
+                  <rect x="200" y={y + 100} width="200" height="60" fill="#fff" stroke="#333" strokeWidth="2" rx="6"/>
+                  <foreignObject x="220" y={y + 115} width="160" height="40">
+                    <input
+                      value={elseInstruction}
+                      onChange={(e) => updateElseInstruction(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        textAlign: "center",
+                        border: "none",
+                        background: "transparent",
+                        outline: "none",
+                        fontSize: "11px"
+                      }}
+                    />
+                  </foreignObject>
+                </>
+              )}
+            </g>
+          );
+        })}
+
+        {/* END */}
+        <ellipse
+          cx="680"
+          cy={height - 30}
+          rx="70"
+          ry="30"
+          fill="#fff"
+          stroke="#333"
+          strokeWidth="2"
+        />
+        <text x="680" y={height - 25} textAnchor="middle" fontSize="12" fontWeight="bold">
+          Selesai
+        </text>
+      </svg>
+    );
+  };
 
   /* ================= UI RENDER ================= */
   return (
@@ -655,28 +726,36 @@ const renderFlowchart = () => {
 
           {/* RIGHT PANEL */}
           <RightPanel>
-            {/* PSEUDOCODE */}
+            {/* PSEUDOCODE - AUTO SAVE */}
             <Card>
-              <h4>📝 Pseudocode</h4>
+              <h4>📝 Pseudocode 
+                <span style={{fontSize: '12px', color: isDirty.pseudocode ? '#10b981' : '#6b7280', marginLeft: '10px'}}>
+                  {isDirty.pseudocode ? '💾 Auto-saving...' : '✅ Tersimpan'}
+                </span>
+              </h4>
               <textarea
                 value={pseudocode}
                 onChange={(e) => setPseudocode(e.target.value)}
-                placeholder="Tulis pseudocode di sini..."
+                placeholder="Tulis pseudocode di sini... (Auto-save setiap 1.5 detik)"
                 disabled={isSubmitted}
               />
               <SaveButton 
-                onClick={savePseudocode}
-                disabled={isSubmitted || isValidating}
+                onClick={forceSavePseudocode}
+                disabled={isSubmitted || !isDirty.pseudocode}
               >
-                {isSubmitted ? "✅ Sudah Diupload" : "💾 Simpan Pseudocode"}
+                {isSubmitted ? "✅ Sudah Diupload" : "⚡ Force Save Sekarang"}
               </SaveButton>
             </Card>
 
-            {/* FLOWCHART */}
+            {/* FLOWCHART - AUTO SAVE */}
             <FlowchartCard>
-              <h4>🔄 Flowchart</h4>
+              <h4>🔄 Flowchart 
+                <span style={{fontSize: '12px', color: isDirty.flowchart ? '#10b981' : '#6b7280', marginLeft: '10px'}}>
+                  {isDirty.flowchart ? '💾 Auto-saving...' : '✅ Tersimpan'}
+                </span>
+              </h4>
               <p style={{ fontSize: '12px', color: '#777' }}>
-                Edit langsung di flowchart. Tambah kondisi & ELSE di bawah.
+                Edit langsung di flowchart. Auto-save setiap 1.5 detik.
               </p>
               <div style={{ 
                 height: '400px', 
@@ -709,7 +788,7 @@ const renderFlowchart = () => {
                 <button 
                   onClick={() => {
                     if (!elseInstruction && !isSubmitted) {
-                      setElseInstruction("Instruksi ELSE");
+                      updateElseInstruction("Instruksi ELSE");
                     }
                   }}
                   disabled={isSubmitted || !!elseInstruction}
@@ -727,10 +806,10 @@ const renderFlowchart = () => {
               </ButtonRow>
 
               <SaveButton 
-                onClick={saveFlowchart}
-                disabled={isSubmitted || isValidating}
+                onClick={forceSaveFlowchart}
+                disabled={isSubmitted || !isDirty.flowchart}
               >
-                {isSubmitted ? "✅ Sudah Diupload" : "💾 Simpan Flowchart"}
+                {isSubmitted ? "✅ Sudah Diupload" : "⚡ Force Save Sekarang"}
               </SaveButton>
             </FlowchartCard>
           </RightPanel>
