@@ -262,7 +262,7 @@ export default function AdminRoomDetail() {
 
               {/* JAWABAN RESMI ADMIN */}
               <WorkspaceSection isOfficial>
-                <SectionLabel isOfficial>✅ Resmi Admin</SectionLabel>
+                <SectionLabel isOfficial>✅ Jawaban Benar</SectionLabel>
                 {materiAnswer ? (
                   <>
                     <PseudocodeBox isOfficial>{materiAnswer.pseudocode || 'Belum diset'}</PseudocodeBox>
@@ -272,7 +272,7 @@ export default function AdminRoomDetail() {
                   </>
                 ) : (
                   <div style={{ color: '#ef4444', fontWeight: 500 }}>
-                    ⚠️ Admin belum set jawaban resmi
+                    ⚠️ Admin belum set jawaban
                   </div>
                 )}
               </WorkspaceSection>

@@ -70,7 +70,7 @@ export default function TabAnswer({ materiId }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>🎯 Jawaban Resmi Workspace (Referensi Siswa)</h2>
+      <h2>🎯 Jawaban Workspace </h2>
       <p style={{ color: '#666', fontSize: '14px' }}>
         Jawaban ini akan menjadi patokan validasi untuk siswa sebelum upload jawaban
       </p>

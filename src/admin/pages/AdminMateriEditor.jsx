@@ -72,10 +72,10 @@ export default function AdminMateriEditor() {
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "orientasi", label: "Orientasi Masalah" },
-    { key: "sections", label: "Mini Lesson / Sections" },
+    { key: "sections", label: "Mini Lesson" },
     { key: "answer", label: "Jawaban Workspace" },
     { key: "clues", label: "Clues" },
-    { key: "discussion", label: "Diskusi / Room" },
+    { key: "discussion", label: "Room Diskusi" },
   ];
 
   if (loading)
