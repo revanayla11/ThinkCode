@@ -57,37 +57,37 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= LOAD WORKSPACE (LOAD SEKALI SAJA SAAT AWAL) =================
-  const loadWorkspace = useCallback(async () => {
-    try {
-      const res = await api.get(`/discussion/workspace/${roomId}`);
-      const data = res?.data?.data || {};
-
-      // ✅ LOAD SEKALI SAJA - tidak overwrite saat user ngetik
-      setPseudocode(data.pseudocode || "");
-      
-      let loadedFlowchart = { conditions: [], elseInstruction: "" };
-      if (data.flowchart) {
-        try {
-          loadedFlowchart = typeof data.flowchart === "string"
-            ? JSON.parse(data.flowchart)
-            : data.flowchart;
-        } catch (e) {
-          console.error("Error parsing flowchart:", e);
-        }
+  // ================= LOAD WORKSPACE =================
+const loadWorkspace = useCallback(async () => {
+  try {
+    console.log("🔄 Loading workspace for room:", roomId);
+    const res = await api.get(`/discussion/workspace/${roomId}`);
+    const data = res?.data?.data || {};
+    
+    setPseudocode(data.pseudocode || "");
+    
+    let loadedFlowchart = { conditions: [], elseInstruction: "" };
+    if (data.flowchart) {
+      try {
+        loadedFlowchart = typeof data.flowchart === "string"
+          ? JSON.parse(data.flowchart || "{}")
+          : (data.flowchart || { conditions: [], elseInstruction: "" });
+      } catch (e) {
+        console.error("Error parsing flowchart:", e);
       }
-      setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
-      setElseInstruction(loadedFlowchart.elseInstruction || "");
-    } catch (err) {
-      console.error("Error loading workspace:", err);
     }
-  }, [roomId]);
+    setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
+    setElseInstruction(loadedFlowchart.elseInstruction || "");
+  } catch (err) {
+    console.error("Error loading workspace:", err);
+  }
+}, [roomId]);
 
-  // ✅ LOAD SEKALI SAJA - HAPUS POLLING
-  useEffect(() => {
-    if (!roomId) return;
-    loadWorkspace(); // Load sekali saat mount
-  }, [roomId, loadWorkspace]);
+// ✅ LOAD SEKALI SAJA
+useEffect(() => {
+  if (!roomId) return;
+  loadWorkspace();
+}, [roomId, loadWorkspace]);
 
 // ================= LOAD USER XP =================
 useEffect(() => {
@@ -96,19 +96,11 @@ useEffect(() => {
   api.get(`/materi/${materiId}`)
     .then(res => {
       const progress = res.data.data.progress;
-      // ✅ FIXED: undefined bukan kosong
       if (progress && progress.xp !== undefined) {
         setUserXp(progress.xp);
-      } else {
-        // Fallback ke endpoint lain
-        return api.get(`/discussion/user-xp/${materiId}`)
-          .then(res => setUserXp(res.data.xp || 0))
-          .catch(() => setUserXp(0));
       }
     })
-    .catch(err => {
-      console.error("Error load materi progress:", err);
-      // Fallback
+    .catch(() => {
       api.get(`/discussion/user-xp/${materiId}`)
         .then(res => setUserXp(res.data.xp || 0))
         .catch(() => setUserXp(0));
