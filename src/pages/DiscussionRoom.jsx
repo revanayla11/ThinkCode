@@ -307,16 +307,6 @@ useEffect(() => {
             </p>
         `;
 
-        if (!details.pseudocodeMatch) {
-          errorHtml += `
-            <div style="margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 6px; font-size: 12px;">
-              <strong>Perbandingan:</strong><br>
-              <strong>Jawaban Benar:</strong> ${details.pseudocode.official?.substring(0, 50)}...<br>
-              <strong>Anda:</strong> ${details.pseudocode.student?.substring(0, 50)}...
-            </div>
-          `;
-        }
-
         errorHtml += `
             <hr style="margin: 15px 0;">
             <p style="font-weight: 600; color: #059669;">💡 <strong>Tips:</strong></p>
