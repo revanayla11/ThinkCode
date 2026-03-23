@@ -93,18 +93,24 @@ useEffect(() => {
 useEffect(() => {
   if (!materiId || !user?.id) return;
   
-  api.get(`/materi/${materiId}`)
-    .then(res => {
+  const fetchUserXp = async () => {
+    try {
+      const res = await api.get(`/materi/${materiId}`);
       const progress = res.data.data.progress;
-      if (progress && progress.xp !== undefined) {
+      if (progress?.xp != null) {
         setUserXp(progress.xp);
       }
-    })
-    .catch(() => {
-      api.get(`/discussion/user-xp/${materiId}`)
-        .then(res => setUserXp(res.data.xp || 0))
-        .catch(() => setUserXp(0));
-    });
+    } catch (error) {
+      try {
+        const res = await api.get(`/discussion/user-xp/${materiId}`);
+        setUserXp(res.data.xp || 0);
+      } catch (err2) {
+        setUserXp(0);
+      }
+    }
+  };
+
+  fetchUserXp();
 }, [materiId, user?.id]);
 
   // ================= MINI LESSON =================
