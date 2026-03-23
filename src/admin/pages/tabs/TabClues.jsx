@@ -175,7 +175,7 @@ export default function TabClues({ materiId }) {
               disabled={loading || list.length >= 5}
               style={{
                 width: "100%",
-                padding: '18px 24px',
+                padding: '16px 20px',
                 borderRadius: 16,
                 border: "2px solid #d1d5db",
                 fontSize: 16,
@@ -214,7 +214,7 @@ export default function TabClues({ materiId }) {
               disabled={loading || list.length >= 5}
               style={{
                 width: "100%",
-                padding: '18px 20px',
+                padding: '16px 20px',
                 borderRadius: 16,
                 border: "2px solid #d1d5db",
                 fontSize: 18,
@@ -237,7 +237,7 @@ export default function TabClues({ materiId }) {
             onClick={add}
             disabled={loading || !newClue.trim() || list.length >= 5}
             style={{
-              padding: '20px 32px',
+              padding: '18px 20px',
               background: (loading || !newClue.trim() || list.length >= 5) 
                 ? '#9ca3af' 
                 : '#10b981',
@@ -366,7 +366,7 @@ export default function TabClues({ materiId }) {
                   }}
                   style={{
                     width: "100%",
-                    padding: '20px 24px',
+                    padding: '16px 20px',
                     borderRadius: 16,
                     border: "2px solid #d1d5db",
                     fontSize: 16,
@@ -409,7 +409,7 @@ export default function TabClues({ materiId }) {
                     }}
                     style={{
                       width: "100%",
-                      padding: '18px 20px',
+                      padding: '16px 20px',
                       borderRadius: 16,
                       border: "2px solid #d1d5db",
                       fontSize: 18,
@@ -509,7 +509,7 @@ export default function TabClues({ materiId }) {
                   border: '2px solid #e5e7eb',
                   listStyle: 'none'
                 }}>
-                  👀 Preview (Yang siswa lihat)
+                   Preview (Yang siswa lihat)
                 </summary>
                 {renderCluePreview(c)}
               </details>
@@ -536,10 +536,10 @@ export default function TabClues({ materiId }) {
           lineHeight: 1.6,
           fontSize: 14
         }}>
-          <li>• <strong>Clue 1:</strong> Hint umum (5-10 poin)</li>
-          <li>• <strong>Clue 2-3:</strong> Hint spesifik (15-25 poin)</li>
-          <li>• <strong>Clue 4-5:</strong> Jawaban hampir lengkap (30-50 poin)</li>
-          <li>• Jangan berikan <strong>kode lengkap</strong> di clue</li>
+          <li> <strong>Clue 1:</strong> Hint umum (5-10 poin)</li>
+          <li> <strong>Clue 2-3:</strong> Hint spesifik (15-25 poin)</li>
+          <li> <strong>Clue 4-5:</strong> Jawaban hampir lengkap (30-50 poin)</li>
+          <li> Jangan berikan <strong>kode lengkap</strong> di clue</li>
         </ul>
       </div>
     </div>

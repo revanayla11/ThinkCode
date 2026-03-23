@@ -276,7 +276,7 @@ export default function TabOrientasi({ materiId }) {
               <div style={{ 
                 fontSize: 14, 
                 color: '#6b7280', 
-                marginTop: 6 
+                marginTop: 8 
               }}>
                 Contoh: https://youtube.com/watch?v=dQw4w9WgXcQ
               </div>
@@ -285,7 +285,7 @@ export default function TabOrientasi({ materiId }) {
               onClick={handleSaveUrl}
               disabled={saving || !videoUrl.trim()}
               style={{
-                padding: '20px 28px',
+                padding: '22px 28px',
                 background: saving || !videoUrl.trim() ? '#9ca3af' : '#10b981',
                 color: 'white',
                 border: 'none',
@@ -433,10 +433,10 @@ export default function TabOrientasi({ materiId }) {
           lineHeight: 1.6,
           fontSize: 14
         }}>
-          <li>• Durasi <strong>1-3 menit</strong> optimal</li>
-          <li>• Mulai dengan <strong>masalah nyata</strong> yang menarik</li>
-          <li>• Akhiri dengan <strong>tantangan coding</strong></li>
-          <li>• Gunakan <strong>visual & animasi</strong> sederhana</li>
+          <li> Durasi <strong>1-3 menit</strong> optimal</li>
+          <li> Mulai dengan <strong>masalah nyata</strong> yang menarik</li>
+          <li> Akhiri dengan <strong>tantangan coding</strong></li>
+          <li> Gunakan <strong>visual & animasi</strong> sederhana</li>
         </ul>
       </div>
     </div>

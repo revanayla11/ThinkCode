@@ -107,9 +107,8 @@ export default function TabDiscussion({ materi }) {
           ℹ️ Discussion Rooms:
         </h5>
         <ul style={{ margin: 0, paddingLeft: '20px', color: '#065f46', lineHeight: 1.6 }}>
-          <li>• Buat <strong>room terpisah</strong> untuk diskusi siswa</li>
-          <li>• Kapasitas <strong>max 30 siswa per room</strong></li>
-          <li>• Siswa bisa <strong>join otomatis</strong> berdasarkan urutan</li>
+          <li> Buat <strong>room terpisah</strong> untuk diskusi siswa</li>
+          <li> Kapasitas <strong>max 30 siswa per room</strong></li>
         </ul>
       </div>
 
@@ -420,10 +419,9 @@ export default function TabDiscussion({ materi }) {
             lineHeight: 1.6,
             fontSize: 14
           }}>
-            <li>• Buat <strong>3-5 rooms</strong> per materi (20-30 siswa/room)</li>
-            <li>• Nama room <strong>jelas & informatif</strong> (kelas/angkatan)</li>
-            <li>• Siswa akan <strong>otomatis join</strong> room pertama yang kosong</li>
-            <li>• Monitor <strong>aktivitas diskusi</strong> di dashboard</li>
+            <li> Buat <strong>3-5 rooms</strong> per materi (5-6 siswa/room)</li>
+            <li> Nama room <strong>jelas & informatif</strong> (kelas/angkatan)</li>
+            <li> Siswa akan <strong>otomatis join</strong> room pertama yang kosong</li>
           </ul>
         </div>
       )}

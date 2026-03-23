@@ -148,8 +148,8 @@ export default function TabSections({ materiId }) {
           ℹ️ Cara Kerja Mini Lessons:
         </h5>
         <p style={{ margin: 0, color: '#065f46', lineHeight: 1.6, fontSize: 14 }}>
-          Buat pembelajaran bertahap dengan multiple sections. Siswa akan mengerjakan 
-          <strong> satu per satu secara berurutan</strong> sebelum lanjut ke workspace.
+          Buat materi atau penjelasan singkat mengenai pembelajaran. Siswa akan melihat 
+          dan mempelajarinya sebelum lanjut ke workspace.
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export default function TabSections({ materiId }) {
             disabled={loading}
             style={{
               width: "100%",
-              padding: '16px 20px',
+              padding: '14px 18px',
               borderRadius: 12,
               border: "2px solid #d1d5db",
               fontSize: 16,
@@ -449,10 +449,8 @@ export default function TabSections({ materiId }) {
             lineHeight: 1.6,
             fontSize: 14
           }}>
-            <li>• Buat <strong>3-5 sections per materi</strong> untuk pembelajaran bertahap</li>
-            <li>• Gunakan <strong>gambar & list</strong> untuk penjelasan visual</li>
-            <li>• Section terakhir bisa berisi <strong>ringkasan & tips</strong></li>
-            <li>• Siswa harus <strong>selesaikan semua</strong> sebelum workspace</li>
+            <li> Gunakan <strong>gambar & list</strong> untuk penjelasan visual</li>
+            <li> Pembelajaran bisa berisi <strong>ringkasan materi ataupun tips</strong></li>
           </ul>
         </div>
       )}

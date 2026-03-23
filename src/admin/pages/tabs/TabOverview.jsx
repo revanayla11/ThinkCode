@@ -161,93 +161,114 @@ export default function TabOverview({ materiId }) {
         />
       </div>
 
-      {/* ORDER & ACTIVE */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: 24, 
-        marginBottom: 32 
-      }}>
-        {/* ORDER */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: 12, 
-            fontWeight: 600, 
-            color: '#1f2937',
-            fontSize: 16
-          }}>
-            🔢 Urutan Materi
-          </label>
-          <input
-            type="number"
-            value={data.order ?? 0}
-            onChange={(e) => setData({ ...data, order: Number(e.target.value) })}
-            placeholder="0"
-            min="0"
-            style={{
-              width: "100%",
-              padding: '20px 24px',
-              borderRadius: 16,
-              border: "2px solid #d1d5db",
-              fontSize: 18,
-              fontWeight: 500,
-              background: 'white',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              transition: 'all 0.2s',
-              outline: 'none'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#10b981';
-              e.target.style.boxShadow = '0 4px 12px rgba(16,185,129,0.15)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-              e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-            }}
-          />
-        </div>
+      {/* ORDER & ACTIVE - VERSI YANG SUDAH DIPERBAIKI */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: '1fr 1fr', 
+  gap: 24, 
+  marginBottom: 32
+}}>
+  {/* ORDER */}
+  <div>
+    <label style={{ 
+      display: 'block', 
+      marginBottom: 12, 
+      fontWeight: 600, 
+      color: '#1f2937',
+      fontSize: 16
+    }}>
+      🔢 Urutan Materi
+    </label>
+    <input
+      type="number"
+      value={data.order ?? 0}
+      onChange={(e) => setData({ ...data, order: Number(e.target.value) })}
+      placeholder="0"
+      min="0"
+      style={{
+        width: "100%",
+        padding: '20px 24px',
+        borderRadius: 16,
+        border: "2px solid #d1d5db",
+        fontSize: 18,
+        fontWeight: 500,
+        background: 'white',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        transition: 'all 0.2s',
+        outline: 'none'
+      }}
+      onFocus={(e) => {
+        e.target.style.borderColor = '#10b981';
+        e.target.style.boxShadow = '0 4px 12px rgba(16,185,129,0.15)';
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = '#d1d5db';
+        e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+      }}
+    />
+  </div>
 
-        {/* ACTIVE TOGGLE */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 12,
-            fontWeight: 600, 
-            color: '#1f2937',
-            fontSize: 16,
-            cursor: 'pointer'
-          }}>
-            <div style={{
-              width: 52,
-              height: 28,
-              background: data.active ? '#10b981' : '#d1d5db',
-              borderRadius: 14,
-              position: 'relative',
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}>
-              <div style={{
-                width: 24,
-                height: 24,
-                background: 'white',
-                borderRadius: '50%',
-                position: 'absolute',
-                top: 2,
-                left: data.active ? '26px' : '2px',
-                transition: 'all 0.3s',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-              }} />
-            </div>
-            Aktifkan Materi
-          </label>
-          <small style={{ color: '#6b7280', fontSize: 14 }}>
-            {data.active ? '✅ Materi aktif dan bisa diakses siswa' : '❌ Materi tidak aktif'}
-          </small>
-        </div>
+  {/* ACTIVE TOGGLE - DIPERBAIKI */}
+  <div style={{ paddingTop: 40 }}> {/* Padding top biar sejajar dengan input order */}
+    <label 
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 12,
+        fontWeight: 600, 
+        color: '#1f2937',
+        fontSize: 16,
+        cursor: 'pointer',
+        userSelect: 'none' // Biar ga bisa di-select text
+      }}
+      onClick={() => setData({ ...data, active: !data.active })}
+      title="Klik untuk toggle status materi"
+    >
+      <div style={{
+        width: 56, // Sedikit lebih lebar
+        height: 32,
+        background: data.active ? '#10b981' : '#d1d5db',
+        borderRadius: 16,
+        position: 'relative',
+        transition: 'all 0.3s ease',
+        cursor: 'pointer',
+        flexShrink: 0 // Biar ga kepipis
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        setData({ ...data, active: !data.active });
+      }}
+      >
+        <div style={{
+          width: 28,
+          height: 28,
+          background: 'white',
+          borderRadius: '50%',
+          position: 'absolute',
+          top: 2,
+          left: data.active ? '26px' : '2px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          cursor: 'pointer'
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setData({ ...data, active: !data.active });
+        }}
+        />
       </div>
-
+      <span>Aktifkan Materi</span>
+    </label>
+    <small style={{ 
+      color: '#6b7280', 
+      fontSize: 14, 
+      display: 'block',
+      marginTop: 8
+    }}>
+      {data.active ? '✅ Materi aktif dan bisa diakses siswa' : '❌ Materi tidak aktif / tersembunyi'}
+    </small>
+  </div>
+</div>
       {/* PREVIEW CARD */}
       <div style={{ 
         marginBottom: 32, 
@@ -378,10 +399,10 @@ export default function TabOverview({ materiId }) {
           lineHeight: 1.6,
           fontSize: 14
         }}>
-          <li>• Judul harus <strong>jelas dan menarik</strong> untuk siswa</li>
-          <li>• Deskripsi berikan <strong>petunjuk awal</strong> tanpa spoiler jawaban</li>
-          <li>• Urutan menentukan <strong>posisi di daftar materi</strong></li>
-          <li>• Status aktif menentukan <strong>apakah materi bisa diakses</strong></li>
+          <li> Judul harus <strong>jelas dan menarik</strong> untuk siswa</li>
+          <li> Deskripsi berikan <strong>petunjuk awal</strong> tanpa spoiler jawaban</li>
+          <li> Urutan menentukan <strong>posisi di daftar materi</strong></li>
+          <li> Status aktif menentukan <strong>apakah materi bisa diakses</strong></li>
         </ul>
       </div>
 

@@ -387,10 +387,10 @@ export default function TabAnswer({ materiId }) {
       }}>
         <h5 style={{ margin: '0 0 8px 0', color: '#059669' }}>ℹ️ Cara Kerja Cek Jawaban:</h5>
         <ul style={{ margin: 0, paddingLeft: '20px', color: '#059669', lineHeight: 1.6 }}>
-          <li>• Siswa <strong>harus buat persis sama</strong> (case-insensitive)</li>
-          <li>• Jumlah kondisi flowchart harus sama</li>
-          <li>• Siswa klik "Cek Jawaban" → Auto validasi vs jawaban ini</li>
-          <li>• ✅ Cocok → Bisa upload | ❌ → Muncul tips perbaikan</li>
+          <li> Siswa <strong>harus buat persis sama</strong> (case-insensitive)</li>
+          <li> Jumlah kondisi flowchart harus sama</li>
+          <li> Siswa klik "Cek Jawaban" → Auto validasi vs jawaban ini</li>
+          <li> ✅ Cocok → Bisa upload | ❌ → Muncul tips perbaikan</li>
         </ul>
       </div>
     </div>
