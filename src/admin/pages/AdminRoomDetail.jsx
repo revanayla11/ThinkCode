@@ -1,383 +1,302 @@
+// AdminRoomDetail.jsx - UPDATE LENGKAP
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { apiGet } from "../../services/api";
 
 const Container = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  font-family: 'Arial', sans-serif;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  font-family: 'Inter', sans-serif;
 `;
 
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #eee;
 `;
 
 const Title = styled.h2`
-  color: #333;
+  color: #1f2937;
   margin: 0;
+  font-size: 28px;
+  font-weight: 700;
 `;
 
-const Status = styled.p`
-  color: ${props => (props.isclosed ? '#d9534f' : '#5cb85c')};
-  font-weight: bold;
-  margin: 0;
+const Status = styled.span`
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  background: ${props => props.isclosed ? '#fee2e2' : '#d1fae5'};
+  color: ${props => props.isclosed ? '#dc2626' : '#059669'};
 `;
 
 const BackButton = styled.button`
-  background-color: #007bff;
+  background: #3b82f6;
   color: white;
   border: none;
-  padding: 10px 15px;
-  border-radius: 5px;
+  padding: 12px 24px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: #0056b3;
-  }
+  font-weight: 600;
+  transition: all 0.2s;
+  &:hover { background: #2563eb; transform: translateY(-1px); }
 `;
 
-const ClueSection = styled.section`
-  background-color: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
 `;
 
-const ClueTitle = styled.h3`
-  color: #333;
-  margin: 0 0 10px 0;
+const Card = styled.div`
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid #f1f5f9;
 `;
 
-const MainSection = styled.section`
+const CardTitle = styled.h3`
+  margin: 0 0 20px 0;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 600;
   display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const WorkspaceCompare = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
-  flex-wrap: wrap;
 `;
 
-const MembersContainer = styled.div`
-  width: 300px;
-  min-width: 250px;
+const WorkspaceSection = styled.div`
+  background: ${props => props.isOfficial ? '#f0f9ff' : '#fef3c7'};
+  border: 2px solid ${props => props.isOfficial ? '#0ea5e9' : '#f59e0b'};
+  border-radius: 12px;
+  padding: 20px;
 `;
 
-const MembersTitle = styled.h3`
-  color: #333;
-  margin-bottom: 10px;
-`;
-
-const MembersList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-`;
-
-const MemberItem = styled.li`
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const WorkspaceContainer = styled.div`
-  flex: 1;
-  min-width: 300px;
-  background-color: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-`;
-
-const WorkspaceTitle = styled.h3`
-  color: #333;
-  margin-bottom: 10px;
+const SectionLabel = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: ${props => props.isOfficial ? '#0369a1' : '#b45309'};
 `;
 
 const PseudocodeBox = styled.pre`
-  background-color: #f4f4f4;
-  padding: 10px;
-  border-radius: 5px;
-  overflow-x: auto;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  font-family: 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.5;
   white-space: pre-wrap;
-  font-family: monospace;
-  margin-bottom: 15px;
+  border-left: 4px solid ${props => props.isOfficial ? '#0ea5e9' : '#f59e0b'};
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
 `;
 
 const FlowchartBox = styled.div`
-  background-color: #f4f4f4;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 15px;
-  font-family: monospace;
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-`;
-
-const AttemptsContainer = styled.div`
-  flex: 1;
-  min-width: 300px;
-  background-color: #fff;
-  padding: 15px;
+  background: white;
+  padding: 16px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 12px;
+  border-left: 4px solid ${props => props.isOfficial ? '#0ea5e9' : '#f59e0b'};
 `;
 
-const AttemptsTitle = styled.h3`
-  color: #333;
-  margin-bottom: 10px;
+const MembersList = styled.div`
+  max-height: 300px;
+  overflow-y: auto;
 `;
 
-const AttemptItem = styled.div`
-  margin-bottom: 15px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #fafafa;
+const MemberItem = styled.div`
+  padding: 12px;
+  background: #f8fafc;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  font-weight: 500;
+  &:last-child { margin-bottom: 0; }
 `;
 
-const AttemptType = styled.div`
-  font-weight: bold;
-  color: #007bff;
-`;
-
-const AttemptNumber = styled.div`
-  font-size: 14px;
-  color: #666;
-`;
-
-const AttemptContent = styled.div`
-  background-color: #f9f9f9;
-  padding: 8px;
-  border-radius: 3px;
-  overflow-x: auto;
-  font-family: monospace;
-  font-size: 12px;
-  display: flex;
-  justify-content: center;
-`;
-
-const Loading = styled.p`
+const Loading = styled.div`
   text-align: center;
+  padding: 60px;
+  color: #6b7280;
   font-size: 18px;
-  color: #666;
 `;
 
 export default function AdminRoomDetail() {
   const { roomId } = useParams();
-  const [roomMeta, setRoomMeta] = useState(null);
-  const [clueInfo, setClueInfo] = useState({ used: 0, max: 3 });
-  const [members, setMembers] = useState([]);
-  const [workspace, setWorkspace] = useState(null);
-  const [attempts, setAttempts] = useState([]);
-
-  // TAMBAHAN: jawaban materi
-  const [materiAnswer, setMateriAnswer] = useState(null);
-
   const navigate = useNavigate();
 
-  const [conditions, setConditions] = useState([]);
-  const [elseInstruction, setElseInstruction] = useState("");
+  const [roomMeta, setRoomMeta] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [workspace, setWorkspace] = useState(null); // Workspace siswa
+  const [materiAnswer, setMateriAnswer] = useState(null); // Jawaban resmi admin
+  const [attempts, setAttempts] = useState([]);
+  const [clueInfo, setClueInfo] = useState({ used: 0, max: 3 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchInitialData();
+    fetchData();
   }, [roomId]);
 
-  const fetchInitialData = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-
-      const jr = await apiGet(`/admin/discussion/room/${roomId}`);
-      if (jr.status && jr.data) {
-        setRoomMeta(jr.data.room);
-        setClueInfo(jr.data.clue || { used: 0, max: 5 });
+      // Room info + materiAnswer
+      const roomRes = await apiGet(`/admin/discussion/room/${roomId}`);
+      if (roomRes.status && roomRes.data) {
+        setRoomMeta(roomRes.data.room);
+        setClueInfo(roomRes.data.clue || { used: 0, max: 3 });
+        setMateriAnswer(roomRes.data.materiAnswer); // Jawaban resmi
       }
 
-      const jm = await apiGet(`/admin/discussion/room/${roomId}/members`);
-      setMembers(jm.data || []);
+      // Members
+      const membersRes = await apiGet(`/admin/discussion/room/${roomId}/members`);
+      setMembers(membersRes.data || []);
 
-      const jw = await apiGet(`/admin/discussion/workspace/latest/${roomId}`);
-      if (jw.status && jw.data) {
-        setWorkspace(jw.data);
-
-        const flowchartRaw = jw.data.flowchart;
-        let flowchartData = { conditions: [], elseInstruction: "" };
-
-        if (flowchartRaw) {
-          if (typeof flowchartRaw === 'string') {
-            try {
-              flowchartData = JSON.parse(flowchartRaw);
-            } catch (e) {
-              console.error("Error parsing flowchart string:", e);
-            }
-          } else if (typeof flowchartRaw === 'object') {
-            flowchartData = flowchartRaw;
-          }
-        }
-
-        setConditions(flowchartData.conditions || []);
-        setElseInstruction(flowchartData.elseInstruction || "");
+      // Workspace siswa TERBARU
+      const workspaceRes = await apiGet(`/admin/discussion/workspace/latest/${roomId}`);
+      if (workspaceRes.status && workspaceRes.data) {
+        setWorkspace(workspaceRes.data);
       }
 
-      const ja = await apiGet(`/admin/discussion/workspace/attempts/${roomId}`);
-      if (ja.status) setAttempts(ja.data || []);
+      // Attempts
+      const attemptsRes = await apiGet(`/admin/discussion/workspace/attempts/${roomId}`);
+      if (attemptsRes.status) setAttempts(attemptsRes.data || []);
 
-      // TAMBAHAN: ambil jawaban materi
-      const jmtr = await apiGet(`/admin/materi/answer/${roomId}`);
-      if (jmtr.status && jmtr.data) {
-        setMateriAnswer(jmtr.data);
-      }
-
-    } catch (e) {
-      console.error("initial load error:", e);
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderFlowchart = (conds, elseInst) => {
-    if (conds.length === 0 && !elseInst) {
-      return <p>Belum ada flowchart.</p>;
+  const renderFlowchartPreview = (flowchartData) => {
+    if (!flowchartData?.conditions?.length && !flowchartData?.elseInstruction) {
+      return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Belum ada flowchart</div>;
     }
 
-    const height = 160 + conds.length * 180 + (elseInst ? 120 : 0);
-
     return (
-      <svg width="170%" height={height} viewBox={`160 0 640 ${height}`}>
-        <ellipse cx="300" cy="80" rx="70" ry="30" fill="#fff" stroke="#000" />
-        <text x="300" y="85" textAnchor="middle">Mulai</text>
-
-        {conds.map((item, index) => {
-          const y = 180 + index * 180;
-          return (
-            <g key={index}>
-              <polygon
-                points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
-                fill="#fff"
-                stroke="#000"
-              />
-              <text x="300" y={y + 5} textAnchor="middle">
-                {item.condition}
-              </text>
-            </g>
-          );
-        })}
-
-        <ellipse cx="680" cy={height - 30} rx="70" ry="30" fill="#fff" stroke="#000" />
-        <text x="680" y={height - 25} textAnchor="middle">Selesai</text>
-      </svg>
+      <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
+        {flowchartData.conditions?.map((c, i) => (
+          <div key={i} style={{ marginBottom: 4 }}>
+            <strong>IF</strong> {c.condition} → {c.yes}
+          </div>
+        ))}
+        {flowchartData.elseInstruction && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+            <strong>ELSE:</strong> {flowchartData.elseInstruction}
+          </div>
+        )}
+      </div>
     );
   };
 
-  if (!roomMeta) return <Loading>Memuat...</Loading>;
+  if (loading) return <Loading>🔄 Memuat detail room...</Loading>;
+  if (!roomMeta) return <Loading>❌ Room tidak ditemukan</Loading>;
 
   return (
     <Container>
-
       <Header>
         <div>
-          <Title>Observer — Room: {roomMeta.room_name}</Title>
+          <Title>👁️ Observer Mode — {roomMeta.room_name}</Title>
           <Status isclosed={roomMeta.is_closed}>
-            Status: {roomMeta.is_closed ? "Ditutup" : "Terbuka"}
+            {roomMeta.is_closed ? '🔒 Ditutup' : '🟢 Terbuka'}
           </Status>
         </div>
-        <BackButton onClick={() => navigate(-1)}>Kembali</BackButton>
+        <BackButton onClick={() => navigate(-1)}>
+          ← Kembali
+        </BackButton>
       </Header>
 
-      <ClueSection>
-        <ClueTitle>Clue usage: {clueInfo.used} / {clueInfo.max}</ClueTitle>
-      </ClueSection>
-
-      <MainSection>
-
-        <MembersContainer>
-          <MembersTitle>Anggota ({members.length})</MembersTitle>
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
+        {/* MEMBERS */}
+        <Card>
+          <CardTitle>👥 Anggota ({members.length})</CardTitle>
           <MembersList>
-            {members.map(m => (
-              <MemberItem key={m.id}>{m.name || `User ${m.user_id}`}</MemberItem>
+            {members.map((m) => (
+              <MemberItem key={m.id}>
+                {m.name || `User ${m.user_id}`}
+              </MemberItem>
             ))}
           </MembersList>
-        </MembersContainer>
+        </Card>
 
-        <WorkspaceContainer>
-          <WorkspaceTitle>Workspace Terbaru</WorkspaceTitle>
-
-          {workspace ? (
-            <>
-              <h4>Pseudocode:</h4>
-              <PseudocodeBox>{workspace.pseudocode || "Belum ada"}</PseudocodeBox>
-
-              <h4>Flowchart:</h4>
-              <FlowchartBox>
-                {renderFlowchart(conditions, elseInstruction)}
-              </FlowchartBox>
-            </>
-          ) : (
-            <p>Belum ada workspace.</p>
-          )}
-        </WorkspaceContainer>
-
-        {/* TAMBAHAN: Jawaban Materi */}
-        <WorkspaceContainer>
-          <WorkspaceTitle>Jawaban Materi (Referensi)</WorkspaceTitle>
-
-          {materiAnswer ? (
-            <>
-              <h4>Pseudocode Benar:</h4>
-              <PseudocodeBox>
-                {materiAnswer.pseudocode || "Belum ada"}
-              </PseudocodeBox>
-
-              <h4>Flowchart Benar:</h4>
-              <FlowchartBox>
-                {renderFlowchart(
-                  materiAnswer.flowchart?.conditions || [],
-                  materiAnswer.flowchart?.elseInstruction || ""
+        {/* WORKSPACE COMPARISON */}
+        <div>
+          <Card style={{ marginBottom: 24 }}>
+            <CardTitle>⚖️ Perbandingan Workspace</CardTitle>
+            
+            <WorkspaceCompare>
+              {/* WORKSPACE SISWA */}
+              <WorkspaceSection>
+                <SectionLabel>📝 Siswa (Terbaru)</SectionLabel>
+                {workspace ? (
+                  <>
+                    <PseudocodeBox>{workspace.pseudocode || 'Belum ada pseudocode'}</PseudocodeBox>
+                    <FlowchartBox>
+                      {renderFlowchartPreview(
+                        typeof workspace.flowchart === 'string' 
+                          ? JSON.parse(workspace.flowchart || '{}')
+                          : workspace.flowchart
+                      )}
+                    </FlowchartBox>
+                  </>
+                ) : (
+                  <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Belum ada workspace</div>
                 )}
-              </FlowchartBox>
-            </>
-          ) : (
-            <p>Belum ada jawaban materi.</p>
-          )}
-        </WorkspaceContainer>
+              </WorkspaceSection>
 
-        <AttemptsContainer>
-          <AttemptsTitle>History Attempts ({attempts.length})</AttemptsTitle>
+              {/* JAWABAN RESMI ADMIN */}
+              <WorkspaceSection isOfficial>
+                <SectionLabel isOfficial>✅ Resmi Admin</SectionLabel>
+                {materiAnswer ? (
+                  <>
+                    <PseudocodeBox isOfficial>{materiAnswer.pseudocode || 'Belum diset'}</PseudocodeBox>
+                    <FlowchartBox isOfficial>
+                      {renderFlowchartPreview(materiAnswer.flowchart)}
+                    </FlowchartBox>
+                  </>
+                ) : (
+                  <div style={{ color: '#ef4444', fontWeight: 500 }}>
+                    ⚠️ Admin belum set jawaban resmi
+                  </div>
+                )}
+              </WorkspaceSection>
+            </WorkspaceCompare>
+          </Card>
 
-          {attempts.length > 0 ? (
-            attempts.map((att, idx) => (
-              <AttemptItem key={idx}>
-                <AttemptType>{att.type} - Attempt {att.attemptNumber}</AttemptType>
-                <AttemptNumber>{new Date(att.createdAt).toLocaleString()}</AttemptNumber>
+          {/* CLUES & ATTEMPTS */}
+          <Grid>
+            <Card>
+              <CardTitle>🧩 Clue: {clueInfo.used}/{clueInfo.max}</CardTitle>
+              <div style={{ fontSize: '24px', textAlign: 'center', color: clueInfo.used >= clueInfo.max ? '#ef4444' : '#10b981' }}>
+                {clueInfo.used >= clueInfo.max ? 'MAX' : `${clueInfo.used}/${clueInfo.max}`}
+              </div>
+            </Card>
 
-                <AttemptContent>
-                  <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                    {att.content || "Tidak ada isi"}
-                  </pre>
-                </AttemptContent>
-
-              </AttemptItem>
-            ))
-          ) : (
-            <p>Belum ada attempts.</p>
-          )}
-        </AttemptsContainer>
-
-      </MainSection>
-
+            <Card>
+              <CardTitle>📊 Attempts: {attempts.length}</CardTitle>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                {attempts.length ? `${attempts.length} percobaan coding` : 'Belum ada attempts'}
+              </div>
+            </Card>
+          </Grid>
+        </div>
+      </div>
     </Container>
   );
 }

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import Swal from "sweetalert2";
-
 import api from "../api/axiosClient";
 import Layout from "../components/Layout";
 import MiniLessonModal from "../components/MiniLessonModal";
@@ -25,185 +24,115 @@ export default function DiscussionRoom() {
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
-  const [flowchart, setFlowchart] = useState({ conditions: [], elseInstruction: "" });
+  const [conditions, setConditions] = useState([]);
+  const [elseInstruction, setElseInstruction] = useState("");
 
   const [performanceScore, setPerformanceScore] = useState(null);
-  const [isPerformanceExpanded, setIsPerformanceExpanded] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-const [isSubmitted, setIsSubmitted] = useState(false);
+  // VALIDASI STATE BARU
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
 
-const loadSubmissionStatus = async () => {
-  try {
-    const res = await api.get(`/discussion/submission/status/${roomId}`);
-    setIsSubmitted(res.data.submitted); 
-  } catch (err) {
-    console.error("Error loading submission status:", err);
-  }
-};
+  // ================= LOAD SUBMISSION STATUS =================
+  const loadSubmissionStatus = async () => {
+    try {
+      const res = await api.get(`/discussion/submission/status/${roomId}`);
+      setIsSubmitted(res.data.submitted); 
+    } catch (err) {
+      console.error("Error loading submission status:", err);
+    }
+  };
 
-useEffect(() => {
-  if (!roomId) return;
-  loadSubmissionStatus();
-}, [roomId]);
+  useEffect(() => {
+    if (!roomId) return;
+    loadSubmissionStatus();
+  }, [roomId]);
 
-const loadPerformance = async () => {
-  try {
-    const token = localStorage.getItem("token");
+  // ================= LOAD PERFORMANCE =================
+  const loadPerformance = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/discussion/room/${roomId}/performance`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPerformanceScore(res.data.score);
+    } catch (err) {
+      console.error("Error load performance:", err);
+    }
+  };
 
-    const res = await api.get(
-      `/discussion/room/${roomId}/performance`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
+  useEffect(() => {
+    loadPerformance();
+  }, [roomId]);
 
-    setPerformanceScore(res.data.score);
+  // ================= LOAD WORKSPACE (POLLING) =================
+  const loadWorkspace = async () => {
+    try {
+      const res = await api.get(`/discussion/workspace/${roomId}`);
+      const data = res?.data?.data || {};
 
-  } catch (err) {
-    console.error("Error load performance:", err);
-  }
-};
+      setPseudocode(data.pseudocode || "");
 
-useEffect(() => {
-  loadPerformance();
-}, [roomId]);
-
-
-useEffect(() => {
-  if (!tasks.length) return;
-
-  const allDone = tasks.every(task => task.done);
-
-  if (allDone && performanceScore !== null) {
-    Swal.fire({
-      title: `🎉 Room Performance: ${getStars(performanceScore)}`,
-      text: "Kerja tim yang luar biasa!",
-      icon: "success"
-    });
-  }
-}, [tasks]);
-
-
-// ================= LOAD WORKSPACE DENGAN POLLING =================
-const loadWorkspace = async () => {
-  try {
-    console.log("Loading workspace for room:", roomId);
-
-    const res = await api.get(`/discussion/workspace/${roomId}`);
-    const data = res?.data?.data || {};
-
-    console.log("RAW RESPONSE:", data);
-
-    // =========================
-    // 1️⃣ PSEUDOCODE
-    // =========================
-    setPseudocode(data.pseudocode || "");
-
-    // =========================
-    // 2️⃣ FLOWCHART DEFAULT
-    // =========================
-    let loadedFlowchart = {
-      conditions: [],
-      elseInstruction: ""
-    };
-
-    // =========================
-    // 3️⃣ PARSE FLOWCHART
-    // =========================
-    if (data.flowchart) {
-      try {
-        loadedFlowchart =
-          typeof data.flowchart === "string"
+      let loadedFlowchart = { conditions: [], elseInstruction: "" };
+      if (data.flowchart) {
+        try {
+          loadedFlowchart = typeof data.flowchart === "string"
             ? JSON.parse(data.flowchart)
             : data.flowchart;
-
-        console.log("FLOWCHART PARSED:", loadedFlowchart);
-      } catch (parseError) {
-        console.error("❌ Error parsing flowchart:", parseError);
+        } catch (e) {
+          console.error("Error parsing flowchart:", e);
+        }
       }
+
+      setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
+      setElseInstruction(loadedFlowchart.elseInstruction || "");
+
+    } catch (err) {
+      console.error("Error loading workspace:", err);
     }
+  };
 
-    // =========================
-    // 4️⃣ SET STATE
-    // =========================
-    setConditions(Array.isArray(loadedFlowchart.conditions) 
-      ? loadedFlowchart.conditions 
-      : []
-    );
+  useEffect(() => {
+    if (!roomId) return;
+    loadWorkspace();
+    const interval = setInterval(loadWorkspace, 3000); // Poll every 3s
+    return () => clearInterval(interval);
+  }, [roomId]);
 
-    setElseInstruction(loadedFlowchart.elseInstruction || "");
-
-    console.log("Workspace synced successfully ✅");
-
-  } catch (err) {
-    console.error("❌ Error loading workspace:", err);
-  }
-};
-
-useEffect(() => {
-  if (!roomId) return;
-
-  console.log("CALLING loadWorkspace...");
-  loadWorkspace();
-}, [roomId]);
-
-
-  /* ================= LOAD USER XP ================= */
+  // ================= LOAD USER XP =================
   useEffect(() => {
     if (!materiId || !user?.id) return;
-
-    // Coba ambil dari /materi/{materiId} dulu
     api.get(`/materi/${materiId}`)
       .then(res => {
-        console.log("API /materi response:", res.data);
         const progress = res.data.data.progress;
         if (progress?.xp !== undefined) {
           setUserXp(progress.xp);
-          console.log("XP loaded from /materi:", progress.xp);
-        } else {
-          console.warn("XP not found in /materi, trying fallback...");
-          // Fallback ke API baru
-          return api.get(`/discussion/user-xp/${materiId}`);
         }
       })
-      .then(fallbackRes => {
-        if (fallbackRes) {
-          console.log("Fallback API response:", fallbackRes.data);
-          setUserXp(fallbackRes.data.xp || 0);
-          console.log("XP loaded from fallback:", fallbackRes.data.xp);
-        }
-      })
-      .catch(err => {
-        console.error("Error loading XP:", err);
-        setUserXp(0);
-      });
+      .catch(() => api.get(`/discussion/user-xp/${materiId}`)
+        .then(res => setUserXp(res.data.xp || 0))
+        .catch(() => setUserXp(0))
+      );
   }, [materiId, user?.id]);
 
-  /* ================= MINI LESSON ================= */
+  // ================= MINI LESSON =================
   useEffect(() => {
     if (!materiId) return;
-
     api.get(`/discussion/mini/${materiId}`)
-      .then(res => {
-        setMiniContent(res.data?.data?.content || "Mini lesson tidak tersedia");
-      })
+      .then(res => setMiniContent(res.data?.data?.content || "Mini lesson tidak tersedia"))
       .catch(() => setMiniContent("Mini lesson tidak tersedia"));
   }, [materiId]);
 
-  /* ================= LOAD CLUES ================= */
+  // ================= LOAD CLUES =================
   useEffect(() => {
     if (!materiId) return;
-
     api.get(`/discussion/clue/${materiId}`)
-      .then(res => {
-        if (res.data.status) setClues(res.data.data || []);
-      })
+      .then(res => res.data.status && setClues(res.data.data || []))
       .catch(err => console.error("ERROR load clues:", err));
   }, [materiId]);
 
-  /* ================= LOAD USED CLUE ================= */
+  // ================= LOAD USED CLUES =================
   const loadUsedClues = async () => {
     const res = await api.get(`/discussion/clue/used/${roomId}`);
     setUsedClues(res.data.data || []);
@@ -214,7 +143,7 @@ useEffect(() => {
     loadUsedClues();
   }, [roomId]);
 
-  /* ================= REQUEST CLUE ================= */
+  // ================= REQUEST CLUE =================
   const requestClue = async () => {
     if (usedClues.length >= clueMax) return;
 
@@ -222,18 +151,15 @@ useEffect(() => {
     if (!nextClue) return;
 
     const isXpEnough = userXp >= nextClue.cost;
-
     const result = await Swal.fire({
       title: "Ambil Clue?",
       html: `
         <p>XP <b>SEMUA anggota</b> akan berkurang <b>${nextClue.cost}</b></p>
-        ${!isXpEnough ? '<p style="color: red;">⚠️ XP mungkin tidak cukup untuk semua anggota. Jika kurang, clue tidak bisa dibuka.</p>' : ''}
-        <p>Dapatkan XP tambahan di <Link to="/game"> halaman Mini Game</a>.</p>
+        ${!isXpEnough ? '<p style="color: red;">⚠️ XP mungkin tidak cukup!</p>' : ''}
       `,
       icon: isXpEnough ? "warning" : "error",
       showCancelButton: true,
       confirmButtonText: "Ya, Ambil",
-      cancelButtonText: "Batal",
     });
 
     if (!result.isConfirmed) return;
@@ -242,365 +168,227 @@ useEffect(() => {
       await api.post(`/discussion/room/${roomId}/clue/${nextClue.id}/use`);
       loadUsedClues();
     } catch (err) {
-      const errorMsg = err.response?.data?.message || "Gagal membuka clue";
-      Swal.fire({
-        title: "Error",
-        text: `${errorMsg}. Kunjungi halaman Mini Game untuk dapat XP tambahan.`,
-        icon: "error",
-        confirmButtonText: "OK",
-      });
+      Swal.fire("Error", err.response?.data?.message || "Gagal membuka clue", "error");
     }
   };
 
-  /* ================= FLOWCHART ================= */
-const [conditions, setConditions] = useState([]);
-const [elseInstruction, setElseInstruction] = useState("");
+  // ================= FLOWCHART FUNCTIONS =================
+  const addCondition = () => {
+    const next = conditions.length + 1;
+    setConditions([
+      ...conditions,
+      { condition: `Kondisi ${next}`, yes: `Instruksi ${next}` }
+    ]);
+  };
 
+  const updateCondition = (index, field, value) => {
+    const updated = [...conditions];
+    updated[index][field] = value;
+    setConditions(updated);
+  };
 
-const addCondition = () => {
-  const next = conditions.length + 1;
+  // ================= TASKS =================
+  useEffect(() => {
+    if (!roomId) return;
+    const loadTasks = async () => {
+      try {
+        const res = await api.get(`/discussion/task/${roomId}`);
+        const taskMap = res.data.data;
+        const defaultTasks = [
+          { id: 1, text: "Identifikasi masalah dari video", done: false },
+          { id: 2, text: "Tentukan data yang diperlukan", done: false },
+          { id: 3, text: "Susun pseudocode", done: false },
+          { id: 4, text: "Buat flowchart", done: false },
+          { id: 5, text: "Implementasi program C", done: false },
+        ];
+        const updatedTasks = defaultTasks.map(task => ({
+          ...task,
+          done: taskMap[task.id] || false,
+        }));
+        setTasks(updatedTasks);
+      } catch (err) {
+        console.error("Error loading tasks:", err);
+        setTasks([
+          { id: 1, text: "Identifikasi masalah dari video", done: false },
+          { id: 2, text: "Tentukan data yang diperlukan", done: false },
+          { id: 3, text: "Susun pseudocode", done: false },
+          { id: 4, text: "Buat flowchart", done: false },
+          { id: 5, text: "Implementasi program C", done: false },
+        ]);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+    loadTasks();
+  }, [roomId]);
 
-  const newConditions = [
-    ...conditions,
-    { condition: `Kondisi ${next}`, yes: `Instruksi ${next}` }
-  ];
+  const toggleTask = async (taskId, currentDone) => {
+    try {
+      await api.put(`/discussion/task/${roomId}/${taskId}`, { done: !currentDone });
+      setTasks(prev => prev.map(task =>
+        task.id === taskId ? { ...task, done: !currentDone } : task
+      ));
+    } catch {
+      Swal.fire("Error", "Gagal update task", "error");
+    }
+  };
 
-  setConditions(newConditions);
-};
+  // ================= SAVE FUNCTIONS =================
+  const savePseudocode = async () => {
+    if (isSubmitted) return;
+    try {
+      await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode });
+      Swal.fire("✅", "Pseudocode disimpan!", "success");
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan pseudocode", "error");
+    }
+  };
 
+  const saveFlowchart = async () => {
+    if (isSubmitted) return;
+    try {
+      await api.post(`/discussion/workspace/flowchart/${roomId}/save`, {
+        flowchart: { conditions, elseInstruction }
+      });
+      Swal.fire("✅", "Flowchart disimpan!", "success");
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan flowchart", "error");
+    }
+  };
 
-const updateCondition = (index, field, value) => {
-  const updated = [...conditions];
-  updated[index][field] = value;
-  setConditions(updated);
-  setFlowchart(prev => ({ ...prev, conditions: updated }));  // Sinkronkan
-};
+  // ================= VALIDASI SEBELUM UPLOAD =================
+  const validateBeforeUpload = async () => {
+    const allDone = tasks.every(task => task.done);
+    if (!allDone) {
+      Swal.fire({
+        icon: "warning",
+        title: "📋 Task Belum Selesai!",
+        text: "Centang semua task sebelum cek jawaban.",
+      });
+      return;
+    }
 
-const handleAddElse = () => {
-  setElseInstruction("Instruksi ELSE");
-  setFlowchart(prev => ({ ...prev, elseInstruction: "Instruksi ELSE" }));
-  console.log("ELSE ditambahkan:", "Instruksi ELSE");
-  alert("Instruksi ELSE telah ditambahkan! (State diperbarui untuk disimpan)");
-};
+    setIsValidating(true);
+    
+    try {
+      const response = await api.post(`/discussion/workspace/${roomId}/validate`);
+      setValidationResult(response.data);
+      
+      if (response.data.valid) {
+        const result = await Swal.fire({
+          icon: "success",
+          title: "🎉 SELAMAT! Jawaban BENAR!",
+          html: `
+            <div style="text-align: left;">
+              <p><strong>✅ Pseudocode:</strong> Cocok 100%</p>
+              <p><strong>✅ Flowchart:</strong> Struktur & konten cocok</p>
+            </div>
+          `,
+          confirmButtonText: "🚀 Upload Jawaban",
+          confirmButtonColor: "#10b981"
+        });
+        
+        if (result.isConfirmed) {
+          navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
+        }
+      } else {
+        const details = response.data.details;
+        let errorHtml = `
+          <div style="text-align: left; font-size: 14px;">
+            <p><strong>${details.pseudocodeMatch ? '✅' : '❌'} Pseudocode:</strong> 
+              ${details.pseudocodeMatch ? 'Cocok' : 'Belum sesuai'}
+            </p>
+            <p><strong>${details.flowchartMatch ? '✅' : '❌'} Flowchart:</strong> 
+              ${details.flowchartMatch ? 'Cocok' : 'Struktur belum sesuai'}
+            </p>
+        `;
 
+        if (!details.pseudocodeMatch) {
+          errorHtml += `
+            <div style="margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 6px; font-size: 12px;">
+              <strong>Perbandingan:</strong><br>
+              <strong>Resmi:</strong> ${details.pseudocode.official?.substring(0, 50)}...<br>
+              <strong>Anda:</strong> ${details.pseudocode.student?.substring(0, 50)}...
+            </div>
+          `;
+        }
+
+        errorHtml += `
+            <hr style="margin: 15px 0;">
+            <p style="font-weight: 600; color: #059669;">💡 <strong>Tips:</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; color: #374151;">
+              <li>Periksa ejaan & urutan instruksi</li>
+              <li>Pastikan jumlah kondisi sama</li>
+              <li>Simpan ulang setelah perbaiki</li>
+              <li>Klik "Cek Jawaban" lagi</li>
+            </ul>
+          </div>
+        `;
+
+        Swal.fire({
+          icon: "error",
+          title: "⚠️ Jawaban Belum Benar",
+          html: errorHtml,
+          confirmButtonText: "🔄 Perbaiki & Cek Lagi",
+          confirmButtonColor: "#3b82f6"
+        });
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || "Error saat validasi";
+      Swal.fire({
+        icon: "error",
+        title: "❌ Validasi Gagal",
+        text: message,
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const getStars = (score) => {
+    if (score >= 80) return "⭐⭐⭐⭐⭐";
+    if (score >= 60) return "⭐⭐⭐⭐";
+    if (score >= 40) return "⭐⭐⭐";
+    if (score >= 20) return "⭐⭐";
+    return "⭐";
+  };
+
+  // ================= RENDER FLOWCHART =================
   const renderFlowchart = () => {
     const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
-
     return (
-      <svg
-        width="170%"
-        height={height}
-        viewBox={`160 0 640 ${height}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <marker
-            id="arrow"
-            markerWidth="6"
-            markerHeight="6"
-            refX="5"
-            refY="3"
-            orient="auto"
-          >
-            <path d="M0,0 L0,6 L6,3 z" fill="#000" />
-          </marker>
-        </defs>
-
-        {/* START */}
-        <ellipse
-          cx="300"
-          cy="80"
-          rx="70"
-          ry="30"
-          fill="#fff"
-          stroke="#000"
-          strokeWidth="2"
-        />
-        <text x="300" y="85" textAnchor="middle">
-          Mulai
-        </text>
-
+      <svg width="100%" height={height} viewBox={`0 0 800 ${height}`}>
+        {/* Simplified flowchart render - sama seperti sebelumnya */}
+        <ellipse cx="400" cy="80" rx="70" ry="30" fill="#fff" stroke="#333" strokeWidth="2"/>
+        <text x="400" y="85" textAnchor="middle" fontSize="14" fontWeight="bold">Mulai</text>
+        
         {conditions.map((item, index) => {
-          const y = 180 + index * 180;
-
+          const y = 200 + index * 120;
           return (
             <g key={index}>
-              {/* Garis dari atas */}
-              <line
-                x1="300"
-                y1={index === 0 ? 110 : y - 100}
-                x2="300"
-                y2={y - 40}
-                stroke="#000"
-                strokeWidth="2"
-                markerEnd="url(#arrow)"
-              />
-
-              {/* Diamond */}
-              <polygon
-                points={`300,${y - 40} 380,${y} 300,${y + 40} 220,${y}`}
-                fill="#fff"
-                stroke="#000"
-                strokeWidth="2"
-              />
-
-              {/* INPUT KONDISI */}
-              <foreignObject
-                x="240"
-                y={y - 20}
-                width="120"
-                height="40"
-              >
-                <input
-                  value={item.condition}
-                  onChange={(e) =>
-                    updateCondition(index, "condition", e.target.value)
-                  }
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    textAlign: "center",
-                    border: "none",
-                    background: "transparent",
-                    outline: "none",
-                    fontWeight: "bold",
-                  }}
-                />
+              <polygon points={`400,${y-30} 480,${y} 400,${y+30} 320,${y}`} 
+                       fill="#fff" stroke="#333" strokeWidth="2"/>
+              <foreignObject x="340" y={y-15} width="120" height="30">
+                <input value={item.condition} onChange={(e) => updateCondition(index, "condition", e.target.value)}
+                       style={{width:"100%", height:"100%", border:"none", background:"transparent", textAlign:"center", fontSize:"11px"}}/>
               </foreignObject>
-
-              {/* YES LABEL */}
-              <text x="395" y={y - 10} fontSize="13">
-                Ya
-              </text>
-
-              {/* Garis ke kanan */}
-              <line
-                x1="380"
-                y1={y}
-                x2="580"
-                y2={y}
-                stroke="#000"
-                strokeWidth="2"
-                markerEnd="url(#arrow)"
-              />
-
-              {/* Process Box */}
-              <rect
-                x="580"
-                y={y - 30}
-                width="200"
-                height="60"
-                fill="#fff"
-                stroke="#000"
-                strokeWidth="2"
-                rx="6"
-              />
-
-              {/* INPUT INSTRUKSI YES */}
-              <foreignObject
-                x="600"
-                y={y - 20}
-                width="160"
-                height="40"
-              >
-                <input
-                  value={item.yes}
-                  onChange={(e) =>
-                    updateCondition(index, "yes", e.target.value)
-                  }
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    textAlign: "center",
-                    border: "none",
-                    background: "transparent",
-                    outline: "none",
-                  }}
-                />
+              <text x="500" y={y+5} fontSize="12">Ya</text>
+              <rect x="500" y={y-20} width="150" height="40" fill="#fff" stroke="#333" strokeWidth="2" rx="5"/>
+              <foreignObject x="520" y={y-10} width="110" height="30">
+                <input value={item.yes} onChange={(e) => updateCondition(index, "yes", e.target.value)}
+                       style={{width:"100%", height:"100%", border:"none", background:"transparent", textAlign:"center", fontSize:"11px"}}/>
               </foreignObject>
-
-              {/* Garis turun dari process */}
-              <line
-                x1="680"
-                y1={y + 30}
-                x2="680"
-                y2={height - 60}
-                stroke="#000"
-                strokeWidth="2"
-              />
-
-              {/* LABEL NO */}
-              <text x="245" y={y + 60} fontSize="13">
-                Tidak
-              </text>
-
-              {/* Garis ke bawah */}
-              {index < conditions.length - 1 && (
-                <line
-                  x1="300"
-                  y1={y + 40}
-                  x2="300"
-                  y2={y + 100}
-                  stroke="#000"
-                  strokeWidth="2"
-                  markerEnd="url(#arrow)"
-                />
-              )}
-
-              {/* ELSE */}
-              {index === conditions.length - 1 && elseInstruction && (
-                <>
-                  <line
-                    x1="300"
-                    y1={y + 40}
-                    x2="300"
-                    y2={y + 100}
-                    stroke="#000"
-                    strokeWidth="2"
-                    markerEnd="url(#arrow)"
-                  />
-
-                  <rect
-                    x="200"
-                    y={y + 100}
-                    width="200"
-                    height="60"
-                    fill="#fff"
-                    stroke="#000"
-                    strokeWidth="2"
-                    rx="6"
-                  />
-
-                  <foreignObject
-                    x="220"
-                    y={y + 115}
-                    width="160"
-                    height="40"
-                  >
-                    <input
-                      value={elseInstruction}
-                      onChange={(e) =>
-                        setElseInstruction(e.target.value)
-                      }
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        textAlign: "center",
-                        border: "none",
-                        background: "transparent",
-                        outline: "none",
-                      }}
-                    />
-                  </foreignObject>
-                </>
-              )}
             </g>
           );
         })}
-
-        {/* END */}
-        <ellipse
-          cx="680"
-          cy={height - 30}
-          rx="70"
-          ry="30"
-          fill="#fff"
-          stroke="#000"
-          strokeWidth="2"
-        />
-        <text x="680" y={height - 25} textAnchor="middle">
-          Selesai
-        </text>
+        
+        <ellipse cx="400" cy={height-50} rx="70" ry="30" fill="#fff" stroke="#333" strokeWidth="2"/>
+        <text x="400" y={height-45} textAnchor="middle" fontSize="14" fontWeight="bold">Selesai</text>
       </svg>
     );
   };
 
-useEffect(() => {
-  if (!roomId) return;
-  const loadTasks = async () => {
-    try {
-      const res = await api.get(`/discussion/task/${roomId}`);
-      const taskMap = res.data.data; // {1: false, 2: true, ...}
-      const defaultTasks = [
-        { id: 1, text: "Identifikasi masalah dari video", done: false },
-        { id: 2, text: "Tentukan data yang diperlukan", done: false },
-        { id: 3, text: "Susun pseudocode", done: false },
-        { id: 4, text: "Buat flowchart", done: false },
-        { id: 5, text: "Implementasi program C", done: false },
-      ];
-      const updatedTasks = defaultTasks.map(task => ({
-        ...task,
-        done: taskMap[task.id] || false,
-      }));
-      setTasks(updatedTasks);
-    } catch (err) {
-      console.error("Error loading tasks:", err);
-      setTasks(defaultTasks); 
-    } finally {
-      setTasksLoading(false);
-    }
-  };
-  loadTasks();
-}, [roomId]);
-
-const toggleTask = async (taskId, currentDone) => {
-  try {
-    await api.put(`/discussion/task/${roomId}/${taskId}`, {
-      done: !currentDone,  
-    });
-    
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId ? { ...task, done: !currentDone } : task
-      )
-    );
-  } catch {
-    Swal.fire("Error", "Gagal update task", "error");
-  }
-};
-
-  /* ================= SAVE ================= */
-const savePseudocode = async () => {
-  try {
-    await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, {
-      pseudocode
-    });
-
-    Swal.fire("Pseudocode berhasil disimpan!");
-  } catch (err) {
-    console.error("Error saving pseudocode:", err);
-    Swal.fire("Error", "Gagal menyimpan pseudocode", "error");
-  }
-};
-
-
-const saveFlowchart = async () => {
-  try {
-  await api.post(`/discussion/workspace/flowchart/${roomId}/save`, {
-    flowchart: {
-      conditions,
-      elseInstruction
-    }
-  });
-
-
-    Swal.fire("Flowchart berhasil disimpan!");
-  } catch (err) {
-    console.error("Error saving flowchart:", err);
-    Swal.fire("Error", "Gagal menyimpan flowchart", "error");
-  }
-};
-
-const getStars = (score) => {
-  if (score >= 80) return "⭐⭐⭐⭐⭐";
-  if (score >= 60) return "⭐⭐⭐⭐☆";
-  if (score >= 40) return "⭐⭐⭐☆☆";
-  if (score >= 20) return "⭐⭐☆☆☆";
-  return "⭐☆☆☆☆";
-};
-
-
-  /* ================= UI ================= */
+  /* ================= UI RENDER ================= */
   return (
     <Layout>
       <Wrapper>
@@ -612,55 +400,39 @@ const getStars = (score) => {
                 Orientasi Masalah &gt; Ruang Diskusi &gt; Workspace
               </Breadcrumb>
             </HeaderLeft>
-
             <HeaderRight>
               <InfoButton onClick={() => setShowMini(true)}>i</InfoButton>
-              <BackButton onClick={() => window.history.back()}>
-                Kembali
-              </BackButton>
+              <BackButton onClick={() => window.history.back()}>Kembali</BackButton>
             </HeaderRight>
           </HeaderTop>
-          {/* TEAM PERFORMANCE (HANYA MUNCUL SAAT EXPANDED) */}
+          
           {performanceScore !== null && (
             <PerformanceBox>
               <div className="label">🎮 Team Performance</div>
-
-              <div className="stars">
-                {getStars(performanceScore)}
-              </div>
-
+              <div className="stars">{getStars(performanceScore)}</div>
               <ProgressWrapper>
                 <ProgressBar>
-                  <div style={{ width: `${performanceScore || 0}%` }} />
+                  <div style={{ width: `${performanceScore}%` }} />
                 </ProgressBar>
-
-                <span>
-                  {Math.round(performanceScore || 0)}%
-                </span>
+                <span>{Math.round(performanceScore)}%</span>
               </ProgressWrapper>
             </PerformanceBox>
           )}
         </Header>
 
         <Container>
-          {/* ================= LEFT PANEL ================= */}
+          {/* LEFT PANEL */}
           <LeftPanel>
-            {/* ===== CLUE ===== */}
             <Card>
               <ClueHeader>
-                <span>Clue {usedClues.length}/{clueMax}</span>
-                <button
-                  disabled={usedClues.length >= clueMax}
-                  onClick={requestClue}
-                >
+                <span>🧩 Clue {usedClues.length}/{clueMax}</span>
+                <button disabled={usedClues.length >= clueMax} onClick={requestClue}>
                   Ambil Clue
                 </button>
               </ClueHeader>
-
               <ClueList>
                 {Array.from({ length: clueMax }).map((_, index) => {
                   const unlocked = index < usedClues.length;
-
                   return (
                     <ClueItem key={index} unlocked={unlocked}>
                       {unlocked ? (
@@ -677,101 +449,128 @@ const getStars = (score) => {
               </ClueList>
             </Card>
 
-            {/* ===== TASK ===== */}
             <Card>
-              <h4>Task</h4>
-
+              <h4>📋 Task List</h4>
               <TaskList>
                 {tasks.map(task => (
                   <TaskItem key={task.id} done={task.done}>
-                      <input
-                        type="checkbox"
-                        checked={task.done}
-                        onChange={() => toggleTask(task.id, task.done)}
-                      />
+                    <input
+                      type="checkbox"
+                      checked={task.done}
+                      onChange={() => toggleTask(task.id, task.done)}
+                    />
                     <span>{task.text}</span>
                   </TaskItem>
                 ))}
               </TaskList>
             </Card>
 
+            {/* VALIDASI UPLOAD BUTTON */}
             <UploadButton
-              onClick={() => {
-                const allDone = tasks.every(task => task.done);
-
-                if (!allDone) {
-                  Swal.fire({
-                    icon: "warning",
-                    title: "Task Belum Selesai",
-                    text: "Semua task harus dicentang sebelum upload jawaban.",
-                  });
-                  return;
-                }
-
-                navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
+              onClick={validateBeforeUpload}
+              disabled={isValidating || isSubmitted}
+              style={{
+                background: isValidating 
+                  ? '#9ca3af' 
+                  : isSubmitted 
+                  ? '#6b7280' 
+                  : '#10b981',
+                cursor: (isValidating || isSubmitted) ? 'not-allowed' : 'pointer'
               }}
             >
-              Upload Jawaban
+              {isValidating 
+                ? "🔍 Menvalidasi..." 
+                : isSubmitted 
+                ? "✅ Sudah Diupload" 
+                : "✅ Cek Jawaban & Upload"
+              }
             </UploadButton>
           </LeftPanel>
 
-          {/* ================= RIGHT PANEL ================= */}
+          {/* RIGHT PANEL */}
           <RightPanel>
-            {/* ===== PSEUDOCODE ===== */}
+            {/* PSEUDOCODE */}
             <Card>
-              <h4>Pseudocode</h4>
+              <h4>📝 Pseudocode</h4>
               <textarea
                 value={pseudocode}
                 onChange={(e) => setPseudocode(e.target.value)}
                 placeholder="Tulis pseudocode di sini..."
+                disabled={isSubmitted}
               />
               <SaveButton 
                 onClick={savePseudocode}
-                disabled={isSubmitted}
+                disabled={isSubmitted || isValidating}
               >
-                {isSubmitted ? "Sudah Dikirim" : "Simpan Pseudocode"}
+                {isSubmitted ? "✅ Sudah Diupload" : "💾 Simpan Pseudocode"}
               </SaveButton>
             </Card>
 
-            {/* ===== FLOWCHART ===== */}
+            {/* FLOWCHART */}
             <FlowchartCard>
-              <h4>Flowchart</h4>
-              <p style={{ fontSize: '12px', color: '#777' }}>Double-click pada label untuk edit. Klik button tambah kondisi untuk menambahkan kondisi dan buuton else untuk memambahkan else.</p>
-              <div style={{ display: "flex", justifyContent: "center", overflowX: "hidden" }}>
+              <h4>🔄 Flowchart</h4>
+              <p style={{ fontSize: '12px', color: '#777' }}>
+                Edit langsung di flowchart. Tambah kondisi & ELSE di bawah.
+              </p>
+              <div style={{ 
+                height: '400px', 
+                border: '2px solid #e5e7eb', 
+                borderRadius: '12px', 
+                overflow: 'auto',
+                background: '#f9fafb',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
                 {renderFlowchart()}
               </div>
 
               <ButtonRow>
-                <button onClick={addCondition}>
-                  Tambah Kondisi (Else If)
+                <button 
+                  onClick={addCondition}
+                  disabled={isSubmitted}
+                  style={{
+                    padding: '12px 24px',
+                    background: isSubmitted ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: isSubmitted ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  ➕ Tambah Kondisi
                 </button>
-
-                <button onClick={() => {
-                  if (!elseInstruction) {
-                    setElseInstruction("Instruksi ELSE");
-                    alert("Instruksi ELSE ditambahkan!");
-                  } else {
-                    alert("ELSE sudah ada.");
-                  }
-                }}>
-                  Tambah ELSE
+                <button 
+                  onClick={() => {
+                    if (!elseInstruction && !isSubmitted) {
+                      setElseInstruction("Instruksi ELSE");
+                    }
+                  }}
+                  disabled={isSubmitted || !!elseInstruction}
+                  style={{
+                    padding: '12px 24px',
+                    background: isSubmitted || elseInstruction ? '#9ca3af' : '#8b5cf6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: (isSubmitted || !!elseInstruction) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {elseInstruction ? '✅ ELSE Ada' : '➕ Tambah ELSE'}
                 </button>
               </ButtonRow>
+
               <SaveButton 
                 onClick={saveFlowchart}
-                disabled={isSubmitted}
+                disabled={isSubmitted || isValidating}
               >
-                {isSubmitted ? "Sudah Dikirim" : "Simpan Flowchart"}
+                {isSubmitted ? "✅ Sudah Diupload" : "💾 Simpan Flowchart"}
               </SaveButton>
             </FlowchartCard>
-
           </RightPanel>
         </Container>
-        <MiniLessonModal
-          show={showMini}
-          onClose={() => setShowMini(false)}
-          content={miniContent}
-        />
+
+        <MiniLessonModal show={showMini} onClose={() => setShowMini(false)} content={miniContent} />
       </Wrapper>
     </Layout>
   );

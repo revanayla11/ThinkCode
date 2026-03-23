@@ -7,6 +7,7 @@ import { apiGet } from "../../services/api";
 import TabOverview from "../pages/tabs/TabOverview";
 import TabOrientasi from "../pages/tabs/TabOrientasi";
 import TabSections from "../pages/tabs/TabSections";
+import TabAnswer from "../pages/tabs/TabAnswer";
 import TabClues from "../pages/tabs/TabClues";
 import TabDiscussion from "../pages/tabs/TabDiscussion";
 
@@ -72,6 +73,7 @@ export default function AdminMateriEditor() {
     { key: "overview", label: "Overview" },
     { key: "orientasi", label: "Orientasi Masalah" },
     { key: "sections", label: "Mini Lesson / Sections" },
+    { key: "answer", label: "Jawaban Workspace" },
     { key: "clues", label: "Clues" },
     { key: "discussion", label: "Diskusi / Room" },
   ];
@@ -129,6 +131,9 @@ export default function AdminMateriEditor() {
 
         {tab === "sections" && (
           <TabSections materiId={id} materi={materi} />
+        )}
+        {tab === "answer" && (
+          <TabAnswer materiId={id} materi={materi} />
         )}
 
         {tab === "clues" && (
