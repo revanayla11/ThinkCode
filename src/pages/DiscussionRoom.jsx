@@ -89,22 +89,31 @@ export default function DiscussionRoom() {
     loadWorkspace(); // Load sekali saat mount
   }, [roomId, loadWorkspace]);
 
-  // ================= LOAD USER XP =================
-  useEffect(() => {
-    if (!materiId || !user?.id) return;
-    api.get(`/materi/${materiId}`)
-      .then(res => {
-        const progress = res.data.data.progress;
-        // ✅ FIXED: Tambah undefined
-        if (progress?.xp !== undefined) {
-          setUserXp(progress.xp);
-        }
-      })
-      .catch(() => api.get(`/discussion/user-xp/${materiId}`)
+// ================= LOAD USER XP =================
+useEffect(() => {
+  if (!materiId || !user?.id) return;
+  
+  api.get(`/materi/${materiId}`)
+    .then(res => {
+      const progress = res.data.data.progress;
+      // ✅ FIXED: undefined bukan kosong
+      if (progress && progress.xp !== undefined) {
+        setUserXp(progress.xp);
+      } else {
+        // Fallback ke endpoint lain
+        return api.get(`/discussion/user-xp/${materiId}`)
+          .then(res => setUserXp(res.data.xp || 0))
+          .catch(() => setUserXp(0));
+      }
+    })
+    .catch(err => {
+      console.error("Error load materi progress:", err);
+      // Fallback
+      api.get(`/discussion/user-xp/${materiId}`)
         .then(res => setUserXp(res.data.xp || 0))
-        .catch(() => setUserXp(0))
-      );
-  }, [materiId, user?.id]);
+        .catch(() => setUserXp(0));
+    });
+}, [materiId, user?.id]);
 
   // ================= MINI LESSON =================
   useEffect(() => {
