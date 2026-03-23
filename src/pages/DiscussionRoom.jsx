@@ -25,7 +25,7 @@ export default function DiscussionRoom() {
   const [tasksLoading, setTasksLoading] = useState(true);
 
   const [conditions, setConditions] = useState([]);
-  const [elseInstruction, setElseInstruction] = useState("");
+  const [elseInstruction, setElseInstruction] = "";
 
   const [performanceScore, setPerformanceScore] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -33,22 +33,6 @@ export default function DiscussionRoom() {
   // VALIDASI STATE
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
-
-  // 🆕 DIRTY STATE & DEBOUNCE (SOLVE MASALAH HILANG KETIKA KETIK)
-  const [isDirty, setIsDirty] = useState({ pseudocode: false, flowchart: false });
-
-  // Debounce function
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
 
   // ================= LOAD SUBMISSION STATUS =================
   const loadSubmissionStatus = async () => {
@@ -73,53 +57,45 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= LOAD WORKSPACE (FIXED - PROTECT LOCAL CHANGES) =================
-  const loadWorkspace = useCallback(async (force = false) => {
+  // ================= LOAD WORKSPACE (LOAD SEKALI SAJA SAAT AWAL) =================
+  const loadWorkspace = useCallback(async () => {
     try {
       const res = await api.get(`/discussion/workspace/${roomId}`);
       const data = res?.data?.data || {};
 
-      // ✅ PROTECT LOCAL CHANGES - hanya update jika tidak dirty atau force
-      if (!isDirty.pseudocode || force) {
-        setPseudocode(data.pseudocode || "");
-        setIsDirty(prev => ({ ...prev, pseudocode: false }));
-      }
-
-      if (!isDirty.flowchart || force) {
-        let loadedFlowchart = { conditions: [], elseInstruction: "" };
-        if (data.flowchart) {
-          try {
-            loadedFlowchart = typeof data.flowchart === "string"
-              ? JSON.parse(data.flowchart)
-              : data.flowchart;
-          } catch (e) {
-            console.error("Error parsing flowchart:", e);
-          }
+      // ✅ LOAD SEKALI SAJA - tidak overwrite saat user ngetik
+      setPseudocode(data.pseudocode || "");
+      
+      let loadedFlowchart = { conditions: [], elseInstruction: "" };
+      if (data.flowchart) {
+        try {
+          loadedFlowchart = typeof data.flowchart === "string"
+            ? JSON.parse(data.flowchart)
+            : data.flowchart;
+        } catch (e) {
+          console.error("Error parsing flowchart:", e);
         }
-        setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
-        setElseInstruction(loadedFlowchart.elseInstruction || "");
-        setIsDirty(prev => ({ ...prev, flowchart: false }));
       }
+      setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
+      setElseInstruction(loadedFlowchart.elseInstruction || "");
     } catch (err) {
       console.error("Error loading workspace:", err);
     }
-  }, [roomId, isDirty.pseudocode, isDirty.flowchart]);
+  }, [roomId]);
 
-  // Polling lebih jarang: 10 detik
+  // ✅ LOAD SEKALI SAJA - HAPUS POLLING
   useEffect(() => {
     if (!roomId) return;
-    loadWorkspace(true); // Load awal (force)
-    const interval = setInterval(() => loadWorkspace(false), 10000);
-    return () => clearInterval(interval);
+    loadWorkspace(); // Load sekali saat mount
   }, [roomId, loadWorkspace]);
 
-  // ================= LOAD USER XP (FIX SYNTAX ERROR) =================
+  // ================= LOAD USER XP =================
   useEffect(() => {
     if (!materiId || !user?.id) return;
     api.get(`/materi/${materiId}`)
       .then(res => {
         const progress = res.data.data.progress;
-        if (progress?.xp !== undefined) { // ✅ FIXED
+        if (progress?.xp !== undefined) {
           setUserXp(progress.xp);
         }
       })
@@ -155,33 +131,6 @@ export default function DiscussionRoom() {
     loadUsedClues();
   }, [roomId]);
 
-  // ================= AUTO-SAVE FUNCTIONS (🆕) =================
-  const debouncedSavePseudocode = useCallback(
-    debounce(async (code) => {
-      if (isSubmitted) return;
-      try {
-        await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode: code });
-        setIsDirty(prev => ({ ...prev, pseudocode: false }));
-      } catch (err) {
-        console.error("Auto-save pseudocode failed:", err);
-      }
-    }, 1500),
-    [roomId, isSubmitted]
-  );
-
-  const debouncedSaveFlowchart = useCallback(
-    debounce(async (flowchart) => {
-      if (isSubmitted) return;
-      try {
-        await api.post(`/discussion/workspace/flowchart/${roomId}/save`, { flowchart });
-        setIsDirty(prev => ({ ...prev, flowchart: false }));
-      } catch (err) {
-        console.error("Auto-save flowchart failed:", err);
-      }
-    }, 1500),
-    [roomId, isSubmitted]
-  );
-
   // ================= REQUEST CLUE =================
   const requestClue = async () => {
     if (usedClues.length >= clueMax) return;
@@ -211,7 +160,7 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= FLOWCHART FUNCTIONS (AUTO-SAVE) =================
+  // ================= FLOWCHART FUNCTIONS (MANUAL SAVE ONLY) =================
   const addCondition = () => {
     if (isSubmitted) return;
     const next = conditions.length + 1;
@@ -220,8 +169,6 @@ export default function DiscussionRoom() {
       { condition: `Kondisi ${next}`, yes: `Instruksi ${next}` }
     ];
     setConditions(newConditions);
-    setIsDirty(prev => ({ ...prev, flowchart: true }));
-    debouncedSaveFlowchart({ conditions: newConditions, elseInstruction });
   };
 
   const updateCondition = (index, field, value) => {
@@ -229,15 +176,11 @@ export default function DiscussionRoom() {
     const updated = [...conditions];
     updated[index][field] = value;
     setConditions(updated);
-    setIsDirty(prev => ({ ...prev, flowchart: true }));
-    debouncedSaveFlowchart({ conditions: updated, elseInstruction });
   };
 
   const updateElseInstruction = (value) => {
     if (isSubmitted) return;
     setElseInstruction(value);
-    setIsDirty(prev => ({ ...prev, flowchart: true }));
-    debouncedSaveFlowchart({ conditions, elseInstruction: value });
   };
 
   // ================= TASKS =================
@@ -286,12 +229,11 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= MANUAL SAVE (FORCE SAVE) =================
+  // ================= MANUAL SAVE ONLY =================
   const forceSavePseudocode = async () => {
     if (isSubmitted) return;
     try {
       await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode });
-      setIsDirty(prev => ({ ...prev, pseudocode: false }));
       Swal.fire("✅", "Pseudocode tersimpan!", "success");
     } catch (err) {
       Swal.fire("❌", "Gagal simpan pseudocode", "error");
@@ -304,7 +246,6 @@ export default function DiscussionRoom() {
       await api.post(`/discussion/workspace/flowchart/${roomId}/save`, {
         flowchart: { conditions, elseInstruction }
       });
-      setIsDirty(prev => ({ ...prev, flowchart: false }));
       Swal.fire("✅", "Flowchart tersimpan!", "success");
     } catch (err) {
       Swal.fire("❌", "Gagal simpan flowchart", "error");
@@ -347,7 +288,6 @@ export default function DiscussionRoom() {
           navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
         }
       } else {
-        // ... (sama seperti sebelumnya)
         const details = response.data.details;
         let errorHtml = `
           <div style="text-align: left; font-size: 14px;">
@@ -409,22 +349,7 @@ export default function DiscussionRoom() {
     return "⭐";
   };
 
-  // TRACK LOCAL CHANGES
-  useEffect(() => {
-    if (pseudocode) {
-      setIsDirty(prev => ({ ...prev, pseudocode: true }));
-      debouncedSavePseudocode(pseudocode);
-    }
-  }, [pseudocode, debouncedSavePseudocode]);
-
-  useEffect(() => {
-    if (conditions.length > 0 || elseInstruction) {
-      setIsDirty(prev => ({ ...prev, flowchart: true }));
-      debouncedSaveFlowchart({ conditions, elseInstruction });
-    }
-  }, [conditions, elseInstruction, debouncedSaveFlowchart]);
-
-   // ================= RENDER FLOWCHART (LANJUTAN) =================
+  // ================= RENDER FLOWCHART =================
   const renderFlowchart = () => {
     const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
 
@@ -502,6 +427,7 @@ export default function DiscussionRoom() {
                     fontSize: "11px",
                     color: "#333"
                   }}
+                  disabled={isSubmitted}
                 />
               </foreignObject>
 
@@ -545,6 +471,7 @@ export default function DiscussionRoom() {
                     outline: "none",
                     fontSize: "11px"
                   }}
+                  disabled={isSubmitted}
                 />
               </foreignObject>
 
@@ -600,6 +527,7 @@ export default function DiscussionRoom() {
                         outline: "none",
                         fontSize: "11px"
                       }}
+                      disabled={isSubmitted}
                     />
                   </foreignObject>
                 </>
@@ -726,36 +654,36 @@ export default function DiscussionRoom() {
 
           {/* RIGHT PANEL */}
           <RightPanel>
-            {/* PSEUDOCODE - AUTO SAVE */}
+            {/* PSEUDOCODE - MANUAL SAVE ONLY */}
             <Card>
               <h4>📝 Pseudocode 
-                <span style={{fontSize: '12px', color: isDirty.pseudocode ? '#10b981' : '#6b7280', marginLeft: '10px'}}>
-                  {isDirty.pseudocode ? '💾 Auto-saving...' : '✅ Tersimpan'}
+                <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '10px'}}>
+                  💾 Simpan Manual
                 </span>
               </h4>
               <textarea
                 value={pseudocode}
                 onChange={(e) => setPseudocode(e.target.value)}
-                placeholder="Tulis pseudocode di sini... (Auto-save setiap 1.5 detik)"
+                placeholder="Tulis pseudocode di sini... (Klik Save Manual)"
                 disabled={isSubmitted}
               />
               <SaveButton 
                 onClick={forceSavePseudocode}
-                disabled={isSubmitted || !isDirty.pseudocode}
+                disabled={isSubmitted}
               >
-                {isSubmitted ? "✅ Sudah Diupload" : "⚡ Force Save Sekarang"}
+                {isSubmitted ? "✅ Sudah Diupload" : "💾 SIMPAN PSEUDOCODE"}
               </SaveButton>
             </Card>
 
-            {/* FLOWCHART - AUTO SAVE */}
+            {/* FLOWCHART - MANUAL SAVE ONLY */}
             <FlowchartCard>
               <h4>🔄 Flowchart 
-                <span style={{fontSize: '12px', color: isDirty.flowchart ? '#10b981' : '#6b7280', marginLeft: '10px'}}>
-                  {isDirty.flowchart ? '💾 Auto-saving...' : '✅ Tersimpan'}
+                <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '10px'}}>
+                  💾 Simpan Manual
                 </span>
               </h4>
               <p style={{ fontSize: '12px', color: '#777' }}>
-                Edit langsung di flowchart. Auto-save setiap 1.5 detik.
+                Edit langsung di flowchart. Klik Save Manual setelah selesai.
               </p>
               <div style={{ 
                 height: '400px', 
@@ -807,9 +735,9 @@ export default function DiscussionRoom() {
 
               <SaveButton 
                 onClick={forceSaveFlowchart}
-                disabled={isSubmitted || !isDirty.flowchart}
+                disabled={isSubmitted}
               >
-                {isSubmitted ? "✅ Sudah Diupload" : "⚡ Force Save Sekarang"}
+                {isSubmitted ? "✅ Sudah Diupload" : "💾 SIMPAN FLOWCHART"}
               </SaveButton>
             </FlowchartCard>
           </RightPanel>
