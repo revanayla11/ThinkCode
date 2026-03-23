@@ -259,96 +259,305 @@ const renderFlowchartPreview = (flowchartData, isEditable = false) => {
 
   if (loading) return <Loading>🔄 Memuat detail room...</Loading>;
   if (!roomMeta) return <Loading>❌ Room tidak ditemukan</Loading>;
-
-  return (
-    <Container>
-      <Header>
-        <div>
-          <Title>👁️ Observer Mode — {roomMeta.room_name}</Title>
-          <Status isclosed={roomMeta.is_closed}>
-            {roomMeta.is_closed ? '🔒 Ditutup' : '🟢 Terbuka'}
-          </Status>
-        </div>
-        <BackButton onClick={() => navigate(-1)}>
-          ← Kembali
-        </BackButton>
-      </Header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
-        {/* MEMBERS */}
-        <Card>
-          <CardTitle>👥 Anggota ({members.length})</CardTitle>
-          <MembersList>
-            {members.map((m) => (
-              <MemberItem key={m.id}>
-                {m.name || `User ${m.user_id}`}
-              </MemberItem>
-            ))}
-          </MembersList>
-        </Card>
-
-        {/* WORKSPACE COMPARISON */}
-        <div>
-          <Card style={{ marginBottom: 24 }}>
-            <CardTitle>⚖️ Perbandingan Workspace</CardTitle>
-            
-          <WorkspaceCompare>
-            {/* SISWA */}
-            <WorkspaceSection>
-              <SectionLabel>Siswa (Terbaru)</SectionLabel>
-              {workspace ? (
-                <>
-                  <PseudocodeBox>{workspace.pseudocode || "Belum ada"}</PseudocodeBox>
-                  <FlowchartBox>
-                    {renderFlowchartPreview(
-                      typeof workspace.flowchart === 'string' 
-                        ? JSON.parse(workspace.flowchart)
-                        : workspace.flowchart
-                    )}
-                  </FlowchartBox>
-                </>
-              ) : (
-                <div style={{padding: '40px', textAlign: 'center', color: '#9ca3af'}}>Belum ada workspace</div>
-              )}
-            </WorkspaceSection>
-
-            {/* ADMIN RESMI */}
-            <WorkspaceSection isOfficial>
-              <SectionLabel isOfficial>✅ Jawaban Resmi Admin</SectionLabel>
-              {materiAnswer ? (
-                <>
-                  <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
-                  <FlowchartBox isOfficial>
-                    {renderFlowchartPreview(materiAnswer.flowchart)}
-                  </FlowchartBox>
-                </>
-              ) : (
-                <div style={{padding: '40px', textAlign: 'center', color: '#ef4444'}}>
-                  ⚠️ Admin belum set jawaban resmi
-                </div>
-              )}
-            </WorkspaceSection>
-          </WorkspaceCompare>
-          </Card>
-
-          {/* CLUES & ATTEMPTS */}
-          <Grid>
-            <Card>
-              <CardTitle>🧩 Clue: {clueInfo.used}/{clueInfo.max}</CardTitle>
-              <div style={{ fontSize: '24px', textAlign: 'center', color: clueInfo.used >= clueInfo.max ? '#ef4444' : '#10b981' }}>
-                {clueInfo.used >= clueInfo.max ? 'MAX' : `${clueInfo.used}/${clueInfo.max}`}
-              </div>
-            </Card>
-
-            <Card>
-              <CardTitle>📊 Attempts: {attempts.length}</CardTitle>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                {attempts.length ? `${attempts.length} percobaan coding` : 'Belum ada attempts'}
-              </div>
-            </Card>
-          </Grid>
-        </div>
+return (
+  <Container>
+    <Header>
+      <div>
+        <Title>👁️ Observer Mode — {roomMeta.room_name}</Title>
+        <Status isclosed={roomMeta.is_closed}>
+          {roomMeta.is_closed ? '🔒 Ditutup' : '🟢 Terbuka'}
+        </Status>
       </div>
-    </Container>
-  );
+      <BackButton onClick={() => navigate(-1)}>
+        ← Kembali
+      </BackButton>
+    </Header>
+
+    {/* ROW 1: CLUE + MEMBERS */}
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: '1fr 380px', 
+      gap: '24px', 
+      marginBottom: '24px' 
+    }}>
+      
+      {/* CLUE CARD */}
+      <Card>
+        <CardTitle>🧩 Clue Usage</CardTitle>
+        <div style={{ 
+          fontSize: '48px', 
+          textAlign: 'center', 
+          color: clueInfo.used >= clueInfo.max ? '#ef4444' : '#10b981',
+          fontWeight: '800',
+          marginBottom: '16px',
+          lineHeight: '1'
+        }}>
+          {clueInfo.used}/{clueInfo.max}
+        </div>
+        <div style={{ 
+          textAlign: 'center',
+          fontSize: '16px',
+          color: '#6b7280',
+          fontWeight: '500'
+        }}>
+          {clueInfo.used >= clueInfo.max ? 'Clue sudah maksimal' : `${clueInfo.max - clueInfo.used} tersisa`}
+        </div>
+        <div style={{ 
+          width: '100%', 
+          height: '12px', 
+          background: '#e5e7eb', 
+          borderRadius: '6px',
+          marginTop: '20px',
+          overflow: 'hidden'
+        }}>
+          <div style={{ 
+            width: `${(clueInfo.used / clueInfo.max) * 100}%`, 
+            height: '100%', 
+            background: clueInfo.used >= clueInfo.max ? '#ef4444' : '#10b981',
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+      </Card>
+
+      {/* MEMBERS CARD */}
+      <Card>
+        <CardTitle>👥 Anggota ({members.length})</CardTitle>
+        <MembersList style={{ maxHeight: '520px', overflowY: 'auto' }}>
+          {members.length === 0 ? (
+            <div style={{ 
+              padding: '60px 20px', 
+              textAlign: 'center', 
+              color: '#9ca3af',
+              fontStyle: 'italic',
+              fontSize: '15px'
+            }}>
+              📭 Belum ada anggota bergabung
+            </div>
+          ) : (
+            members.map((m) => (
+              <MemberItem 
+                key={m.id} 
+                style={{ 
+                  padding: '16px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '14px',
+                  borderRadius: '10px',
+                  marginBottom: '10px',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
+                  '&:hover': { background: '#e0e7ff' }
+                }}
+                onClick={() => console.log('User:', m.user_id)} // Bisa dikembangin
+              >
+                <div style={{ 
+                  width: '44px', 
+                  height: '44px', 
+                  borderRadius: '50%',
+                  background: `hsl(${m.user_id % 360}, 70%, 55%)`,
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  flexShrink: 0,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}>
+                  {m.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <div style={{ 
+                    fontWeight: '600', 
+                    color: '#1f2937',
+                    fontSize: '15px',
+                    marginBottom: '2px'
+                  }}>
+                    {m.name || `User ${m.user_id}`}
+                  </div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280'
+                  }}>
+                    ID: {m.user_id}
+                  </div>
+                </div>
+              </MemberItem>
+            ))
+          )}
+        </MembersList>
+      </Card>
+    </div>
+
+    {/* ROW 2: WORKSPACE COMPARISON */}
+    <Card style={{ marginBottom: '24px' }}>
+      <CardTitle>⚖️ Perbandingan Workspace Siswa vs Jawaban Resmi</CardTitle>
+      <WorkspaceCompare>
+        {/* SISWA - TERBARU */}
+        <WorkspaceSection>
+          <SectionLabel>Siswa (Workspace Terbaru)</SectionLabel>
+          {workspace ? (
+            <>
+              <PseudocodeBox>{workspace.pseudocode || "Belum ada"}</PseudocodeBox>
+              <FlowchartBox>
+                {renderFlowchartPreview(
+                  typeof workspace.flowchart === 'string' 
+                    ? JSON.parse(workspace.flowchart)
+                    : workspace.flowchart
+                )}
+              </FlowchartBox>
+            </>
+          ) : (
+            <div style={{ 
+              padding: '60px 20px', 
+              textAlign: 'center', 
+              color: '#9ca3af',
+              fontStyle: 'italic'
+            }}>
+              📭 Siswa belum submit workspace
+            </div>
+          )}
+        </WorkspaceSection>
+
+        {/* ADMIN RESMI */}
+        <WorkspaceSection isOfficial>
+          <SectionLabel isOfficial>✅ Jawaban Resmi Admin</SectionLabel>
+          {materiAnswer ? (
+            <>
+              <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
+              <FlowchartBox isOfficial>
+                {renderFlowchartPreview(materiAnswer.flowchart)}
+              </FlowchartBox>
+            </>
+          ) : (
+            <div style={{ 
+              padding: '60px 20px', 
+              textAlign: 'center', 
+              color: '#ef4444'
+            }}>
+              ⚠️ Admin belum set jawaban resmi
+            </div>
+          )}
+        </WorkspaceSection>
+      </WorkspaceCompare>
+    </Card>
+
+    {/* ROW 3: ATTEMPTS FULL DETAIL */}
+    <Card>
+      <CardTitle>📊 Riwayat Attempts Lengkap ({attempts.length})</CardTitle>
+      {attempts.length === 0 ? (
+        <div style={{ 
+          padding: '80px 40px', 
+          textAlign: 'center', 
+          color: '#9ca3af',
+          fontSize: '16px',
+          fontStyle: 'italic'
+        }}>
+          📭 Belum ada percobaan coding
+        </div>
+      ) : (
+        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          {attempts.map((attempt, index) => (
+            <div key={attempt.id} style={{ 
+              marginBottom: '20px', 
+              padding: '20px', 
+              background: index % 2 === 0 ? '#f8fafc' : '#ffffff',
+              borderRadius: '12px',
+              borderLeft: `5px solid ${attempt.type === 'official' ? '#10b981' : '#3b82f6'}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              {/* HEADER */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <div>
+                  <span style={{ 
+                    fontWeight: '700', 
+                    color: '#1f2937',
+                    fontSize: '16px',
+                    marginRight: '12px'
+                  }}>
+                    #{attempt.attemptNumber}
+                  </span>
+                  <span style={{ 
+                    padding: '4px 12px',
+                    background: attempt.type === 'official' ? '#dcfce7' : '#dbeafe',
+                    color: attempt.type === 'official' ? '#166534' : '#1e40af',
+                    borderRadius: '20px',
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}>
+                    {attempt.type?.toUpperCase()}
+                  </span>
+                </div>
+                <span style={{ 
+                  fontSize: '14px', 
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  background: attempt.success ? '#dcfce7' : '#fee2e2',
+                  color: attempt.success ? '#166534' : '#dc2626',
+                  fontWeight: '700'
+                }}>
+                  {attempt.success ? '✅ BERHASIL' : '❌ GAGAL'}
+                </span>
+              </div>
+              
+              {/* PSEUDOCODE */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ 
+                  fontSize: '13px', 
+                  color: '#374151', 
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  💻 Pseudocode:
+                </div>
+                <PseudocodeBox style={{ 
+                  fontSize: '13px', 
+                  padding: '14px', 
+                  margin: 0,
+                  minHeight: '80px',
+                  background: '#1f2937',
+                  color: '#f9fafb'
+                }}>
+                  {attempt.pseudocode || <span style={{color: '#9ca3af'}}>Tidak ada pseudocode</span>}
+                </PseudocodeBox>
+              </div>
+
+              {/* FLOWCHART */}
+              <div>
+                <div style={{ 
+                  fontSize: '13px', 
+                  color: '#374151', 
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  📈 Flowchart:
+                </div>
+                <div style={{ 
+                  height: '220px', 
+                  border: '2px solid #e5e7eb', 
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  background: '#fafbfc'
+                }}>
+                  {renderFlowchartPreview(
+                    typeof attempt.flowchart === 'string' 
+                      ? JSON.parse(attempt.flowchart || '{}')
+                      : (attempt.flowchart || {})
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  </Container>
+);
 }
