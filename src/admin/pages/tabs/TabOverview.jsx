@@ -176,141 +176,147 @@ export default function TabOverview({ materiId }) {
             onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
           />
         </div>
-{/* ORDER & ACTIVE */}
-{/* ORDER & ACTIVE */}
+        
+{/* ORDER & ACTIVE - VERSI FIX */}
 <div style={{ 
-  display: 'grid', 
-  gridTemplateColumns: '1fr 1fr',
-  gap: 24,
-  alignItems: 'start' // Ubah dari 'stretch' ke 'start'
+  display: 'flex', 
+  flexDirection: 'column',
+  gap: 24
 }}>
-  {/* ORDER */}
+  {/* GRID CONTAINER */}
   <div style={{ 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: 12
-    // Hapus minHeight
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: 24,
+    width: '100%'
   }}>
-    <label style={{ 
-      fontWeight: 700, 
-      color: '#1f2937', 
-      fontSize: 17 
-    }}>
-      🔢 Urutan Materi
-    </label>
-    <input
-      type="number"
-      value={data.order ?? 0}
-      onChange={(e) => updateField('order', Number(e.target.value))}
-      min="0"
-      style={{
-        width: '100%',
-        padding: '18px 20px',
-        borderRadius: 16,
-        border: '2px solid #d1d5db',
-        fontSize: 18,
-        fontWeight: 700,
-        textAlign: 'center',
-        background: 'white',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        outline: 'none',
-        transition: 'all 0.2s'
-      }}
-      onFocus={(e) => {
-        e.target.style.borderColor = '#10b981';
-        e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
-      }}
-      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-    />
-  </div>
-
-  {/* ACTIVE */}
-  <div style={{ 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: 12 // Ubah dari 10 ke 12 biar konsisten
-    // Hapus minHeight
-  }}>
-    <span style={{ 
-      fontWeight: 700, 
-      color: '#1f2937', 
-      fontSize: 17 
-    }}>
-      ⚙️ Status Materi
-    </span>
-
-    {/* TOGGLE CONTAINER */}
+    
+    {/* ORDER */}
     <div style={{ 
       display: 'flex', 
-      flexDirection: 'column',
-      gap: 8,
-      padding: '16px 20px',
-      background: 'white',
-      borderRadius: 16,
-      border: '2px solid #d1d5db',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-    }}
-    onClick={toggleActive}
-    onMouseEnter={(e) => {
-      if (!saving) {
-        e.currentTarget.style.borderColor = '#10b981';
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(16,185,129,0.15)';
-      }
-    }}
-    onMouseLeave={(e) => {
-      if (!saving) {
-        e.currentTarget.style.borderColor = '#d1d5db';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-      }
-    }}
-    >
-      {/* TOGGLE SWITCH */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 12
+      flexDirection: 'column', 
+      gap: 12
+    }}>
+      <label style={{ 
+        fontWeight: 700, 
+        color: '#1f2937', 
+        fontSize: 17 
       }}>
-        <div style={{
-          width: 60,
-          height: 32,
-          background: data.active ? '#10b981' : '#d1d5db',
-          borderRadius: 20,
-          position: 'relative',
-          transition: '0.3s',
-          flexShrink: 0
+        🔢 Urutan Materi
+      </label>
+      <input
+        type="number"
+        value={data.order ?? 0}
+        onChange={(e) => updateField('order', Number(e.target.value))}
+        min="0"
+        style={{
+          width: '100%',
+          padding: '18px 20px',
+          borderRadius: 16,
+          border: '2px solid #d1d5db',
+          fontSize: 18,
+          fontWeight: 700,
+          textAlign: 'center',
+          background: 'white',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          outline: 'none',
+          transition: 'all 0.2s'
+        }}
+        onFocus={(e) => {
+          e.target.style.borderColor = '#10b981';
+          e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
+        }}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+      />
+    </div>
+
+    {/* ACTIVE */}
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 12
+    }}>
+      <label style={{ 
+        fontWeight: 700, 
+        color: '#1f2937', 
+        fontSize: 17 
+      }}>
+        ⚙️ Status Materi
+      </label>
+      
+      {/* TOGGLE CARD */}
+      <div 
+        style={{ 
+          padding: '20px 24px',
+          background: 'white',
+          borderRadius: 16,
+          border: '2px solid #d1d5db',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          minHeight: 80,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center'
+        }}
+        onClick={toggleActive}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#10b981';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(16,185,129,0.15)';
+          e.currentTarget.style.background = '#fdf2f8';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#d1d5db';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+          e.currentTarget.style.background = 'white';
+        }}
+      >
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 12,
+          marginBottom: 4
         }}>
           <div style={{
-            width: 28,
-            height: 28,
-            background: 'white',
-            borderRadius: '50%',
-            position: 'absolute',
-            top: 2,
-            left: data.active ? 30 : 2,
-            transition: '0.3s',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-          }} />
+            width: 56,
+            height: 30,
+            background: data.active ? 'linear-gradient(135deg, #10b981, #059669)' : '#e5e7eb',
+            borderRadius: 20,
+            position: 'relative',
+            transition: 'all 0.3s ease',
+            flexShrink: 0
+          }}>
+            <div style={{
+              width: 26,
+              height: 26,
+              background: 'white',
+              borderRadius: '50%',
+              position: 'absolute',
+              top: 2,
+              left: data.active ? 'calc(100% - 28px)' : 2,
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }} />
+          </div>
+          <span style={{ 
+            fontWeight: 600, 
+            fontSize: 16,
+            color: data.active ? '#059669' : '#374151'
+          }}>
+            {data.active ? 'Aktif' : 'Tidak Aktif'}
+          </span>
         </div>
-        <span style={{ 
-          fontWeight: 600, 
-          fontSize: 16 
+        
+        <div style={{ 
+          fontSize: 14,
+          color: data.active ? '#059669' : '#6b7280',
+          fontWeight: 500
         }}>
-          {data.active ? 'Aktif' : 'Tidak Aktif'}
-        </span>
-      </div>
-
-      {/* STATUS TEXT */}
-      <div style={{ 
-        fontSize: 14,
-        color: data.active ? '#059669' : '#6b7280',
-        fontWeight: 500
-      }}>
-        {data.active 
-          ? '✅ Materi dapat diakses siswa' 
-          : '⏸️ Materi belum tersedia'
-        }
+          {data.active 
+            ? '✅ Materi dapat diakses siswa' 
+            : '⏸️ Materi belum tersedia untuk siswa'
+          }
+        </div>
       </div>
     </div>
   </div>
