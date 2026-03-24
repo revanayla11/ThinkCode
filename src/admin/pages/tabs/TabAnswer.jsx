@@ -179,9 +179,9 @@ export default function TabAnswer({ materiId }) {
         alignItems: 'center', 
         marginBottom: 32,
         paddingBottom: 20,
-        borderBottom: '3px solid #10b981'
+        borderBottom: '3px solid #1E1E2F'
       }}>
-        <h2 style={{ margin: 0, fontSize: 28, color: '#059669', fontWeight: 700 }}>
+        <h2 style={{ margin: 0, fontSize: 28, color: '#1E1E2F', fontWeight: 700 }}>
           🎯 Jawaban Workspace
         </h2>
         <div style={{ fontSize: 14, color: '#6b7280' }}>

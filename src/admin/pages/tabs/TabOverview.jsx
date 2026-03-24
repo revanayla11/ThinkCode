@@ -64,13 +64,13 @@ export default function TabOverview({ materiId }) {
         alignItems: 'center', 
         marginBottom: 32,
         paddingBottom: 24,
-        borderBottom: '3px solid #10b981'
+        borderBottom: '3px solid #1E1E2F'
       }}>
         <div>
           <h2 style={{ 
             margin: 0, 
             fontSize: 28, 
-            color: '#059669', 
+            color: '#1E1E2F', 
             fontWeight: 700 
           }}>
             📚 Pengaturan Materi
@@ -170,7 +170,7 @@ export default function TabOverview({ materiId }) {
   display: 'grid', 
   gridTemplateColumns: '1fr 260px',
   gap: 24,
-  alignItems: 'start'
+  alignItems: 'stretch'
 }}>
 
   {/* ORDER */}
@@ -420,7 +420,7 @@ export default function TabOverview({ materiId }) {
           100% { transform: rotate(360deg); }
         }
         @media (max-width: 768px) {
-          div[style*="grid-template-columns: 1fr 280px"] {
+          div[style*="grid-template-columns: 1fr 260px"] {
             grid-template-columns: 1fr !important;
             gap: 24px !important;
           }

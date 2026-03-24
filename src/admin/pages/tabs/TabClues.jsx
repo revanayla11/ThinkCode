@@ -155,7 +155,7 @@ export default function TabClues({ materiId }) {
     }}>
       {/* HEADER */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #10b981, #059669)',
+        background: 'linear-gradient(135deg, #636391, #1E1E2F)',
         color: 'white',
         padding: '24px 32px',
         borderRadius: 20,

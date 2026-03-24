@@ -144,13 +144,13 @@ export default function TabOrientasi({ materiId }) {
         alignItems: 'center', 
         marginBottom: 32,
         paddingBottom: 24,
-        borderBottom: '3px solid #10b981'
+        borderBottom: '3px solid #1E1E2F'
       }}>
         <div>
           <h2 style={{ 
             margin: 0, 
             fontSize: 28, 
-            color: '#059669', 
+            color: '#1E1E2F', 
             fontWeight: 700 
           }}>
             🎥 Orientasi Masalah
@@ -291,7 +291,7 @@ export default function TabOrientasi({ materiId }) {
           <div style={{ 
             display: 'flex', 
             gap: 12, 
-            alignItems: 'center' // 🔥 ini yang bikin rapi
+            alignItems: 'center' 
           }}>
             <div style={{ flex: 1 }}>
               <input

@@ -142,15 +142,15 @@ export default function TabSections({ materiId }) {
         alignItems: 'center', 
         marginBottom: 32,
         paddingBottom: 20,
-        borderBottom: '3px solid #10b981'
+        borderBottom: '3px solid #1E1E2F'
       }}>
         <h2 style={{ 
           margin: 0, 
           fontSize: 28, 
-          color: '#059669', 
+          color: '#1E1E2F', 
           fontWeight: 700 
         }}>
-          📖 Mini Lessons / Sections
+          📖 Mini Lessons
         </h2>
         <div style={{ fontSize: 14, color: '#6b7280' }}>
           Materi ID: <strong>{materiId}</strong> • Total: <strong>{totalSections}</strong>
