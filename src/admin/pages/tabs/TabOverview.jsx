@@ -66,6 +66,8 @@ export default function TabOverview({ materiId }) {
         paddingBottom: 24,
         borderBottom: '3px solid #1E1E2F'
       }}>
+
+        {/* KIRI */}
         <div>
           <h2 style={{ 
             margin: 0, 
@@ -82,6 +84,15 @@ export default function TabOverview({ materiId }) {
           }}>
             Materi ID: <strong>{materiId}</strong>
           </p>
+        </div>
+
+        {/* KANAN (STATUS) */}
+        <div style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: data.active ? '#059669' : '#ef4444'
+        }}>
+          {data.active ? '✅ Materi aktif' : '❌ Materi tidak aktif'}
         </div>
       </div>
 
@@ -168,7 +179,7 @@ export default function TabOverview({ materiId }) {
 {/* ORDER & ACTIVE */}
 <div style={{ 
   display: 'grid', 
-  gridTemplateColumns: '1fr 260px',
+  gridTemplateColumns: '2fr 1fr',
   gap: 24,
   alignItems: 'stretch'
 }}>
@@ -420,7 +431,7 @@ export default function TabOverview({ materiId }) {
           100% { transform: rotate(360deg); }
         }
         @media (max-width: 768px) {
-          div[style*="grid-template-columns: 1fr 260px"] {
+          div[style*="grid-template-columns: 2fr 1fr"] {
             grid-template-columns: 1fr !important;
             gap: 24px !important;
           }
