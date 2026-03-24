@@ -175,123 +175,120 @@ export default function TabOverview({ materiId }) {
         </div>
       </div>
 
-      {/* ORDER & ACTIVE - FIXED LAYOUT */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 300px',
-        gap: 24,
-        margin: '32px 0 40px 0',
-        alignItems: 'start'
+ {/* GANTI BAGIAN ORDER & ACTIVE dengan ini aja: */}
+
+<div style={{ 
+  display: 'flex', 
+  flexDirection: 'column', 
+  gap: 20,
+  margin: '32px 0 40px 0'
+}}>
+  {/* ORDER */}
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <label style={{ 
+      fontWeight: 700, 
+      color: '#1f2937', 
+      fontSize: 17 
+    }}>
+      🔢 Urutan Materi
+    </label>
+    <input
+      type="number"
+      value={data.order ?? 0}
+      onChange={(e) => updateField('order', Number(e.target.value))}
+      min="0"
+      style={{
+        width: '100%',
+        padding: '20px 24px',
+        borderRadius: 20,
+        border: '2px solid #d1d5db',
+        fontSize: 18,
+        fontWeight: 600,
+        textAlign: 'center',
+        background: 'white',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        outline: 'none',
+        transition: 'all 0.2s'
+      }}
+      onFocus={(e) => {
+        e.target.style.borderColor = '#10b981';
+        e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
+      }}
+      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+    />
+  </div>
+
+  {/* TOGGLE - RENAMED TO BUTTON */}
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <label style={{ 
+      fontWeight: 700, 
+      color: '#1f2937', 
+      fontSize: 17 
+    }}>
+      ⚙️ Status Materi
+    </label>
+    <div 
+      onClick={toggleActive}
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        gap: 16,
+        cursor: 'pointer',
+        padding: '20px 32px',
+        borderRadius: 20,
+        background: data.active ? '#ecfdf5' : 'white',
+        border: `2px solid ${data.active ? '#10b981' : '#d1d5db'}`,
+        height: 76,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        transition: 'all 0.2s',
+        fontWeight: 600,
+        fontSize: 16
+      }}
+      onMouseEnter={(e) => {
+        if (!data.active) {
+          e.currentTarget.style.borderColor = '#10b981';
+          e.currentTarget.style.background = '#f0fdf4';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!data.active) {
+          e.currentTarget.style.borderColor = '#d1d5db';
+          e.currentTarget.style.background = 'white';
+        }
+      }}
+    >
+      <div style={{
+        width: 24,
+        height: 24,
+        background: data.active ? '#10b981' : '#d1d5db',
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: 14,
+        fontWeight: 700
       }}>
-        {/* ORDER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ 
-            fontWeight: 700, 
-            color: '#1f2937', 
-            fontSize: 17 
-          }}>
-            🔢 Urutan Materi
-          </label>
-          <input
-            type="number"
-            value={data.order ?? 0}
-            onChange={(e) => updateField('order', Number(e.target.value))}
-            min="0"
-            style={{
-              width: '100%',
-              padding: '20px 24px',
-              borderRadius: 20,
-              border: '2px solid #d1d5db',
-              fontSize: 18,
-              fontWeight: 600,
-              textAlign: 'center',
-              background: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              outline: 'none',
-              transition: 'all 0.2s'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#10b981';
-              e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
-            }}
-            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-          />
-        </div>
-
-        {/* ACTIVE TOGGLE */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ 
-            fontWeight: 700, 
-            color: '#1f2937', 
-            fontSize: 17 
-          }}>
-            ⚙️ Status Materi
-          </label>
-          <div 
-            onClick={toggleActive}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 16,
-              cursor: 'pointer',
-              padding: '20px 24px',
-              borderRadius: 20,
-              background: 'white',
-              border: '2px solid #e5e7eb',
-              height: 76,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#10b981';
-              e.currentTarget.style.background = '#f0fdf4';
-              e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-            }}
-          >
-            <div style={{
-              width: 52,
-              height: 28,
-              background: data.active ? '#10b981' : '#f3f4f6',
-              borderRadius: 16,
-              position: 'relative',
-              transition: '0.3s'
-            }}>
-              <div style={{
-                width: 24,
-                height: 24,
-                background: 'white',
-                borderRadius: '50%',
-                position: 'absolute',
-                top: 2,
-                left: data.active ? 26 : 2,
-                transition: '0.3s',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-              }} />
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <div style={{ 
-                fontWeight: 600, 
-                fontSize: 16,
-                color: data.active ? '#059669' : '#374151',
-                marginBottom: 2
-              }}>
-                {data.active ? 'Aktif' : 'Nonaktif'}
-              </div>
-              <div style={{ 
-                fontSize: 14,
-                color: data.active ? '#059669' : '#9ca3af'
-              }}>
-                {data.active ? '✅ Bisa diakses siswa' : '⏸️ Tersembunyi'}
-              </div>
-            </div>
-          </div>
-        </div>
+        {data.active ? '✅' : '⏸️'}
+      </div>
+      
+      <span style={{ 
+        color: data.active ? '#059669' : '#374151',
+        fontWeight: 600
+      }}>
+        {data.active ? 'Materi Aktif' : 'Aktifkan Materi'}
+      </span>
+      
+      <span style={{ 
+        fontSize: 14,
+        color: data.active ? '#059669' : '#9ca3af',
+        marginLeft: 'auto'
+      }}>
+        {data.active ? 'Bisa diakses siswa' : 'Klik untuk aktifkan'}
+      </span>
+    </div>
+  </div>
       </div>
 
       {/* PREVIEW */}
