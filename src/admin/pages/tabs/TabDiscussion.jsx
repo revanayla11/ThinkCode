@@ -272,14 +272,14 @@ export default function TabDiscussion({ materi }) {
               }}
             >
               {/* HEADER */}
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                marginBottom: 24,
-                paddingBottom: 20,
-                borderBottom: '2px solid #f3f4f6'
-              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 16, // 🔥 TAMBAH INI
+                  marginBottom: 24,
+                  paddingBottom: 20,
+                  borderBottom: '2px solid #f3f4f6'
+                }}>
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <input
                     value={room.title}
@@ -308,7 +308,8 @@ export default function TabDiscussion({ materi }) {
                   padding: '12px 20px',
                   background: '#ecfdf5',
                   borderRadius: 16,
-                  border: '1px solid #bbf7d0'
+                  border: '1px solid #bbf7d0',
+                  marginLeft: 'auto'
                 }}>
                   <span style={{ fontSize: 20 }}>👥</span>
                   <span style={{ fontWeight: 700, color: '#059669' }}>

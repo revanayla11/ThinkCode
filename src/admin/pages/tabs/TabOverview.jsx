@@ -165,98 +165,115 @@ export default function TabOverview({ materiId }) {
             onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
           />
         </div>
+{/* ORDER & ACTIVE */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: '1fr 260px',
+  gap: 24,
+  alignItems: 'start'
+}}>
 
-        {/* ORDER & ACTIVE - Grid Layout */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 280px', 
-          gap: 32, 
-          alignItems: 'end' 
-        }}>
-          {/* ORDER */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <label style={{ 
-              fontWeight: 700, 
-              color: '#1f2937', 
-              fontSize: 17 
-            }}>
-              🔢 Urutan Materi
-            </label>
-            <input
-              type="number"
-              value={data.order ?? 0}
-              onChange={(e) => updateField('order', Number(e.target.value))}
-              min="0"
-              style={{
-                width: '100%',
-                padding: '20px 24px',
-                borderRadius: 20,
-                border: '2px solid #d1d5db',
-                fontSize: 20,
-                fontWeight: 700,
-                textAlign: 'center',
-                background: 'white',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                outline: 'none',
-                transition: 'all 0.2s'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#3b82f6';
-                e.target.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.1)';
-              }}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-            />
-          </div>
+  {/* ORDER */}
+  <div style={{ 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: 12,
+    minHeight: 110
+  }}>
+    <label style={{ 
+      fontWeight: 700, 
+      color: '#1f2937', 
+      fontSize: 17 
+    }}>
+      🔢 Urutan Materi
+    </label>
 
-          {/* ACTIVE TOGGLE */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 16, 
-              fontWeight: 700, 
-              color: '#1f2937', 
-              fontSize: 17,
-              cursor: 'pointer',
-              userSelect: 'none'
-            }} onClick={toggleActive}>
-              <div style={{
-                width: 64,
-                height: 36,
-                background: data.active ? '#10b981' : '#d1d5db',
-                borderRadius: 20,
-                position: 'relative',
-                transition: 'all 0.3s',
-                cursor: 'pointer'
-              }}>
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  background: 'white',
-                  borderRadius: '50%',
-                  position: 'absolute',
-                  top: 2,
-                  left: data.active ? 30 : 2,
-                  transition: 'all 0.3s',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                  cursor: 'pointer'
-                }} />
-              </div>
-              <span>Aktifkan Materi</span>
-            </label>
-            <div style={{ 
-              color: '#6b7280', 
-              fontSize: 14, 
-              lineHeight: 1.4 
-            }}>
-              {data.active 
-                ? '✅ Materi aktif dan bisa diakses siswa' 
-                : '❌ Materi tidak aktif / tersembunyi'
-              }
-            </div>
-          </div>
-        </div>
+    <input
+      type="number"
+      value={data.order ?? 0}
+      onChange={(e) => updateField('order', Number(e.target.value))}
+      min="0"
+      style={{
+        width: '100%',
+        padding: '18px 20px',
+        borderRadius: 16,
+        border: '2px solid #d1d5db',
+        fontSize: 18,
+        fontWeight: 700,
+        textAlign: 'center',
+        background: 'white',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        outline: 'none'
+      }}
+    />
+  </div>
+
+  {/* ACTIVE */}
+  <div style={{ 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: 10,
+    minHeight: 110
+  }}>
+
+    <span style={{ 
+      fontWeight: 700, 
+      color: '#1f2937', 
+      fontSize: 17 
+    }}>
+      ⚙️ Status Materi
+    </span>
+
+    {/* TOGGLE */}
+    <div 
+      onClick={toggleActive}
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 12,
+        cursor: 'pointer'
+      }}
+    >
+      <div style={{
+        width: 60,
+        height: 32,
+        background: data.active ? '#10b981' : '#d1d5db',
+        borderRadius: 20,
+        position: 'relative',
+        transition: '0.3s'
+      }}>
+        <div style={{
+          width: 28,
+          height: 28,
+          background: 'white',
+          borderRadius: '50%',
+          position: 'absolute',
+          top: 2,
+          left: data.active ? 30 : 2,
+          transition: '0.3s',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+        }} />
       </div>
+
+      <span style={{ fontWeight: 600 }}>
+        Aktifkan
+      </span>
+    </div>
+
+    {/* STATUS TEXT */}
+    <div style={{ 
+      marginTop: 6,
+      fontSize: 14,
+      color: data.active ? '#059669' : '#6b7280'
+    }}>
+      {data.active 
+        ? '✅ Materi aktif' 
+        : '❌ Materi tidak aktif'
+      }
+    </div>
+    </div>
+  </div>
+</div>
 
       {/* PREVIEW */}
       <div style={{ 
@@ -272,7 +289,7 @@ export default function TabOverview({ materiId }) {
           fontSize: 20, 
           fontWeight: 700 
         }}>
-          👁️ Preview Tampilan Siswa
+          Preview Tampilan Siswa
         </h4>
         <div style={{
           padding: 32,

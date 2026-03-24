@@ -281,14 +281,18 @@ export default function TabOrientasi({ materiId }) {
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
         }}>
           <h4 style={{ 
-            margin: '0 0 24px 0', 
+            margin: '0 0 20px 0', 
             color: '#1f2937', 
-            fontSize: 22, 
+            fontSize: 20, 
             fontWeight: 700 
           }}>
             🔗 YouTube URL
           </h4>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'end' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: 12, 
+            alignItems: 'center' // 🔥 ini yang bikin rapi
+          }}>
             <div style={{ flex: 1 }}>
               <input
                 value={videoUrl}
@@ -296,40 +300,35 @@ export default function TabOrientasi({ materiId }) {
                 placeholder="https://www.youtube.com/watch?v=..."
                 style={{
                   ...inputStyle,
-                  fontSize: 17
+                  flex: 1,
+                  padding: '14px 18px',
+                  borderRadius: 14,
+                  fontSize: 15
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
                 }}
               />
               <div style={{ 
-                fontSize: 14, 
+                fontSize: 13, 
                 color: '#9ca3af', 
-                marginTop: 8 
+                marginTop: 10 
               }}>
                 Contoh: https://youtube.com/watch?v=dQw4w9WgXcQ
               </div>
             </div>
             <button
-              onClick={handleSaveUrl}
-              disabled={saving || !videoUrl.trim()}
-              style={buttonStyle('primary', saving || !videoUrl.trim())}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = '#059669';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = '#10b981';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }
-              }}
-            >
-              {saving ? '💾 Menyimpan...' : '💾 Simpan URL'}
-            </button>
+                onClick={handleSaveUrl}
+                disabled={saving || !videoUrl.trim()}
+                style={buttonStyle('primary', saving || !videoUrl.trim())}
+              >
+                {saving ? '⏳' : '💾 Simpan'}
+              </button>
           </div>
         </div>
 

@@ -179,55 +179,70 @@ export default function TabSections({ materiId }) {
         padding: 24, 
         border: '2px dashed #d1d5db', 
         borderRadius: 20, 
-        background: '#f9fafb',
-        display: 'flex',
-        gap: 16,
-        alignItems: 'end'
+        background: '#f9fafb'
       }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: 8, 
-            fontWeight: 600, 
-            color: '#1f2937',
-            fontSize: 16
-          }}>
-            ➕ Judul Mini Lesson Baru
-          </label>
+        
+        <label style={{ 
+          display: 'block', 
+          marginBottom: 10, 
+          fontWeight: 600, 
+          color: '#1f2937',
+          fontSize: 16
+        }}>
+          ➕ Judul Mini Lesson Baru
+        </label>
+
+        {/* INPUT + BUTTON */}
+        <div style={{ 
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center' // 🔥 biar sejajar
+        }}>
+          
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Contoh: 'Pengenalan Variabel'"
             disabled={loading}
             style={{
-              width: '100%',
-              padding: '16px 20px',
-              borderRadius: 16,
+              flex: 1,
+              padding: '14px 18px', // 🔥 lebih kecil biar proporsional
+              borderRadius: 14,
               border: '2px solid #d1d5db',
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: 500,
-              background: loading ? '#f9fafb' : 'white'
+              background: loading ? '#f9fafb' : 'white',
+              outline: 'none'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#10b981';
+              e.target.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#d1d5db';
+              e.target.style.boxShadow = 'none';
             }}
           />
+
+          <button
+            onClick={addSection}
+            disabled={loading || !newTitle.trim()}
+            style={{
+              padding: '14px 20px', // 🔥 disamain tinggi sama input
+              background: (loading || !newTitle.trim()) ? '#9ca3af' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: 14,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 15,
+              fontWeight: 600,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {loading ? '⏳' : '➕ Tambah'}
+          </button>
+
         </div>
-        <button
-          onClick={addSection}
-          disabled={loading || !newTitle.trim()}
-          style={{
-            padding: '20px 32px',
-            background: (loading || !newTitle.trim()) ? '#9ca3af' : '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: 16,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: 16,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            minWidth: 180
-          }}
-        >
-          {loading ? '⏳ Menambah...' : '➕ Tambah Section'}
-        </button>
       </div>
 
       {/* SECTIONS LIST */}

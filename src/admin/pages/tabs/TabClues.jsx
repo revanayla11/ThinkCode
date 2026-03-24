@@ -299,7 +299,7 @@ export default function TabClues({ materiId }) {
               color: '#1f2937', 
               fontSize: 16 
             }}>
-              💰 Biaya (poin)
+              💰 Cost (poin)
             </label>
             <input
               type="number"
@@ -473,7 +473,7 @@ export default function TabClues({ materiId }) {
                     color: '#1f2937', 
                     fontSize: 16 
                   }}>
-                    💰 Biaya (poin)
+                    💰 Cost (poin)
                   </label>
                   <input
                     type="number"
