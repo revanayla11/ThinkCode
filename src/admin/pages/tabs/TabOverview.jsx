@@ -176,20 +176,22 @@ export default function TabOverview({ materiId }) {
             onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
           />
         </div>
-{/* ORDER & ACTIVE - VERSI FINAL SUPER RAPI */}
+{/* ORDER & ACTIVE - SUPER CLEAN FIX */}
 <div style={{ 
-  display: 'grid', 
-  gridTemplateColumns: '1fr auto',
-  gap: 32,
+  display: 'flex', 
+  gap: 24, 
   alignItems: 'flex-start',
+  flexWrap: 'wrap',
   marginBottom: 40
 }}>
 
-  {/* ORDER */}
+  {/* ORDER - LEBAR TERBATAS */}
   <div style={{ 
+    flex: '1 1 300px', // Maks 300px, fleksibel
     display: 'flex', 
     flexDirection: 'column', 
-    gap: 12
+    gap: 12,
+    minWidth: 250
   }}>
     <label style={{ 
       fontWeight: 700, 
@@ -218,13 +220,12 @@ export default function TabOverview({ materiId }) {
     />
   </div>
 
-  {/* ACTIVE - TOGGLE SIMPEL */}
+  {/* ACTIVE - LEBAR FIX */}
   <div style={{ 
+    flex: '0 0 220px', // Fix 220px, tidak stretch
     display: 'flex', 
     flexDirection: 'column', 
-    gap: 8,
-    padding: '20px 0', // Padding vertikal aja
-    minWidth: 180 // Fix lebar biar ga numpuk
+    gap: 8
   }}>
     <span style={{ 
       fontWeight: 700, 
@@ -234,7 +235,6 @@ export default function TabOverview({ materiId }) {
       ⚙️ Status Materi
     </span>
 
-    {/* TOGGLE SIMPEL */}
     <div 
       onClick={toggleActive}
       style={{ 
@@ -242,57 +242,59 @@ export default function TabOverview({ materiId }) {
         alignItems: 'center', 
         gap: 12,
         cursor: 'pointer',
-        padding: '12px 16px',
+        padding: '16px 20px',
         borderRadius: 12,
         background: 'white',
         border: '2px solid #e5e7eb',
-        transition: 'all 0.2s'
+        transition: 'all 0.2s',
+        height: 72 // Tinggi sama persis kayak input
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = '#10b981';
         e.currentTarget.style.background = '#f0fdf4';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.15)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = '#e5e7eb';
         e.currentTarget.style.background = 'white';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
       }}
     >
-      {/* SWITCH */}
       <div style={{
-        width: 52,
-        height: 28,
-        background: data.active ? '#10b981' : '#e5e7eb',
-        borderRadius: 16,
+        width: 48,
+        height: 26,
+        background: data.active ? '#10b981' : '#f3f4f6',
+        borderRadius: 15,
         position: 'relative',
         transition: '0.3s'
       }}>
         <div style={{
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
           background: 'white',
           borderRadius: '50%',
           position: 'absolute',
           top: 2,
-          left: data.active ? 26 : 2,
+          left: data.active ? 24 : 2,
           transition: '0.3s',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
         }} />
       </div>
 
-      <div>
+      <div style={{ flex: 1 }}>
         <div style={{ 
           fontWeight: 600, 
           fontSize: 15,
-          color: data.active ? '#059669' : '#374151'
+          color: data.active ? '#059669' : '#374151',
+          marginBottom: 2
         }}>
-          {data.active ? 'Aktif' : 'Off'}
+          {data.active ? 'Aktif' : 'Nonaktif'}
         </div>
         <div style={{ 
           fontSize: 13,
-          color: data.active ? '#059669' : '#9ca3af',
-          marginTop: 2
+          color: data.active ? '#059669' : '#9ca3af'
         }}>
-          {data.active ? '✅ Dapat diakses' : '⏸️ Tersembunyi'}
+          {data.active ? '✅ Bisa diakses siswa' : '⏸️ Tersembunyi'}
         </div>
       </div>
     </div>
