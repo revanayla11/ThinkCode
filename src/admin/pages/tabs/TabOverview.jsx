@@ -177,19 +177,19 @@ export default function TabOverview({ materiId }) {
           />
         </div>
 {/* ORDER & ACTIVE */}
+{/* ORDER & ACTIVE */}
 <div style={{ 
   display: 'grid', 
-  gridTemplateColumns: '2fr 1fr',
+  gridTemplateColumns: '1fr 1fr',
   gap: 24,
-  alignItems: 'stretch'
+  alignItems: 'start' // Ubah dari 'stretch' ke 'start'
 }}>
-
   {/* ORDER */}
   <div style={{ 
     display: 'flex', 
     flexDirection: 'column', 
-    gap: 12,
-    minHeight: 110
+    gap: 12
+    // Hapus minHeight
   }}>
     <label style={{ 
       fontWeight: 700, 
@@ -198,7 +198,6 @@ export default function TabOverview({ materiId }) {
     }}>
       🔢 Urutan Materi
     </label>
-
     <input
       type="number"
       value={data.order ?? 0}
@@ -214,8 +213,14 @@ export default function TabOverview({ materiId }) {
         textAlign: 'center',
         background: 'white',
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        outline: 'none'
+        outline: 'none',
+        transition: 'all 0.2s'
       }}
+      onFocus={(e) => {
+        e.target.style.borderColor = '#10b981';
+        e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)';
+      }}
+      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
     />
   </div>
 
@@ -223,10 +228,9 @@ export default function TabOverview({ materiId }) {
   <div style={{ 
     display: 'flex', 
     flexDirection: 'column', 
-    gap: 10,
-    minHeight: 110
+    gap: 12 // Ubah dari 10 ke 12 biar konsisten
+    // Hapus minHeight
   }}>
-
     <span style={{ 
       fontWeight: 700, 
       color: '#1f2937', 
@@ -235,55 +239,82 @@ export default function TabOverview({ materiId }) {
       ⚙️ Status Materi
     </span>
 
-    {/* TOGGLE */}
-    <div 
-      onClick={toggleActive}
-      style={{ 
+    {/* TOGGLE CONTAINER */}
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      gap: 8,
+      padding: '16px 20px',
+      background: 'white',
+      borderRadius: 16,
+      border: '2px solid #d1d5db',
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+    }}
+    onClick={toggleActive}
+    onMouseEnter={(e) => {
+      if (!saving) {
+        e.currentTarget.style.borderColor = '#10b981';
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(16,185,129,0.15)';
+      }
+    }}
+    onMouseLeave={(e) => {
+      if (!saving) {
+        e.currentTarget.style.borderColor = '#d1d5db';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+      }
+    }}
+    >
+      {/* TOGGLE SWITCH */}
+      <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 12,
-        cursor: 'pointer'
-      }}
-    >
-      <div style={{
-        width: 60,
-        height: 32,
-        background: data.active ? '#10b981' : '#d1d5db',
-        borderRadius: 20,
-        position: 'relative',
-        transition: '0.3s'
+        gap: 12
       }}>
         <div style={{
-          width: 28,
-          height: 28,
-          background: 'white',
-          borderRadius: '50%',
-          position: 'absolute',
-          top: 2,
-          left: data.active ? 30 : 2,
+          width: 60,
+          height: 32,
+          background: data.active ? '#10b981' : '#d1d5db',
+          borderRadius: 20,
+          position: 'relative',
           transition: '0.3s',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-        }} />
+          flexShrink: 0
+        }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            background: 'white',
+            borderRadius: '50%',
+            position: 'absolute',
+            top: 2,
+            left: data.active ? 30 : 2,
+            transition: '0.3s',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+          }} />
+        </div>
+        <span style={{ 
+          fontWeight: 600, 
+          fontSize: 16 
+        }}>
+          {data.active ? 'Aktif' : 'Tidak Aktif'}
+        </span>
       </div>
 
-      <span style={{ fontWeight: 600 }}>
-        Aktifkan
-      </span>
-    </div>
-
-    {/* STATUS TEXT */}
-    <div style={{ 
-      marginTop: 6,
-      fontSize: 14,
-      color: data.active ? '#059669' : '#6b7280'
-    }}>
-      {data.active 
-        ? '✅ Materi aktif' 
-        : '❌ Materi tidak aktif'
-      }
-    </div>
+      {/* STATUS TEXT */}
+      <div style={{ 
+        fontSize: 14,
+        color: data.active ? '#059669' : '#6b7280',
+        fontWeight: 500
+      }}>
+        {data.active 
+          ? '✅ Materi dapat diakses siswa' 
+          : '⏸️ Materi belum tersedia'
+        }
+      </div>
     </div>
   </div>
+</div>
 </div>
 
       {/* PREVIEW */}
