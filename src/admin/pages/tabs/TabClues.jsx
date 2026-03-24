@@ -57,7 +57,7 @@ export default function TabClues({ materiId }) {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("🗑️ Hapus clue ini?\n\nSiswa tidak akan bisa membelinya lagi.")) return;
+    if (!window.confirm("🗑️ Hapus clue ini?")) return;
     try {
       await apiDelete(`/admin/materi/${materiId}/clues/${id}`);
       load();
@@ -94,7 +94,7 @@ export default function TabClues({ materiId }) {
         color: '#b45309',
         display: 'inline-block'
       }}>
-        💰 Biaya: {clue.cost} poin
+        💰 cost: {clue.cost} poin
       </div>
     </div>
   );
@@ -213,13 +213,13 @@ export default function TabClues({ materiId }) {
             fontSize: 18, 
             fontWeight: 700 
           }}>
-            ℹ️ Sistem Petunjuk
+            ℹ️ Sistem Petunjuk (Clues)
           </h3>
           <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.6 }}>
-            <li>Siswa beli clue dengan <strong>poin mereka</strong></li>
+            <li>Siswa menggunakan clue dengan <strong>menukar poin mereka</strong></li>
             <li><strong>Max 5 clues</strong> per materi</li>
-            <li>Buat clue <strong>bertambah sulit & mahal</strong></li>
-            <li>Clue 1st: <strong>5-10 poin</strong> | Terakhir: <strong>30-50 poin</strong></li>
+            <li>Buat clue <strong>bertambah sulit & dengan cost yang sesuai</strong></li>
+            <li>Misalnya Clue 1st: <strong>5-10 poin</strong> | Terakhir: <strong>30-50 poin</strong></li>
           </ul>
         </div>
 
@@ -275,7 +275,7 @@ export default function TabClues({ materiId }) {
               color: '#1f2937', 
               fontSize: 16 
             }}>
-              🧩 Teks Petunjuk
+              🧩 Teks Petunjuk (Clues)
             </label>
             <textarea
               value={newClue}
@@ -447,7 +447,7 @@ export default function TabClues({ materiId }) {
                     color: '#1f2937', 
                     fontSize: 16 
                   }}>
-                    📝 Teks Petunjuk
+                    📝 Teks Petunjuk (Clues)
                   </label>
                   <textarea
                     value={c.clueText}
@@ -541,7 +541,7 @@ export default function TabClues({ materiId }) {
                     }
                   }}
                 >
-                  {saving[c.id] === 'cost' ? '💰 Menyimpan...' : '💰 Simpan Harga'}
+                  {saving[c.id] === 'cost' ? '💰 Menyimpan...' : '💰 Simpan Cost'}
                 </button>
 
                 <button
@@ -573,7 +573,7 @@ export default function TabClues({ materiId }) {
                   listStyle: 'none',
                   ':hover': { background: '#f1f5f9' }
                 }}>
-                  👁️ Preview (Yang siswa lihat)
+                   Preview (Yang siswa lihat)
                 </summary>
                 {renderCluePreview(c)}
               </details>

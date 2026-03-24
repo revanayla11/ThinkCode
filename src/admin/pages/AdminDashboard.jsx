@@ -162,21 +162,6 @@ export default function AdminDashboard() {
         </SectionCard>
       </ContentGrid>
 
-      {/* QUICK ACTIONS */}
-      <QuickActions>
-        <ActionButton color="#10b981">
-          ➕ Buat Materi Baru
-        </ActionButton>
-        <ActionButton color="#3b82f6">
-          📊 Lihat Analitik
-        </ActionButton>
-        <ActionButton color="#f59e0b">
-          👥 Kelola Siswa
-        </ActionButton>
-        <ActionButton color="#ef4444">
-          ⚠️ Review Submission
-        </ActionButton>
-      </QuickActions>
     </DashboardContainer>
   );
 }
@@ -449,50 +434,4 @@ const ActivityTime = styled.div`
   font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
-`;
-
-const QuickActions = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-top: 40px;
-`;
-
-const ActionButton = styled.button`
-  padding: 20px 24px;
-  border: none;
-  border-radius: 16px;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-  color: white;
-  position: relative;
-  overflow: hidden;
-
-  ${({ color }) => `
-    background: linear-gradient(135deg, ${color}22 0%, ${color}44 100%);
-    border: 2px solid ${color}55;
-  `}
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    transition: left 0.5s;
-  }
-
-  &:hover::before {
-    left: 100%;
-  }
 `;

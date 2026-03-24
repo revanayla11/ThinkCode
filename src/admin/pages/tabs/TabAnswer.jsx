@@ -40,7 +40,7 @@ export default function TabAnswer({ materiId }) {
         }
       });
 
-      alert("✅ Jawaban resmi berhasil disimpan!");
+      alert("✅ Kunci Jawaban berhasil disimpan!");
       load(); // Reload untuk preview update
     } catch (err) {
       console.error(err);
@@ -68,13 +68,21 @@ export default function TabAnswer({ materiId }) {
     setConditions(conditions.filter((_, index) => index !== i));
   };
 
-  // ================= FLOWCHART PREVIEW (SAMA PERSIS DENGAN SISWA/ROOMDETAIL) =================
+  // ================= FLOWCHART PREVIEW =================
   const renderFlowchartPreview = (flowchartData) => {
     const conditionsPreview = Array.isArray(flowchartData.conditions) ? flowchartData.conditions : [];
     const height = 160 + conditionsPreview.length * 180 + (flowchartData.elseInstruction ? 120 : 0);
 
     return (
-      <div style={{ height: '350px', border: '2px solid #10b981', borderRadius: '12px', overflow: 'auto', background: '#f9fafb' }}>
+      <div style={{ 
+        height: '350px', 
+        border: '2px solid #10b981', 
+        borderRadius: '12px', 
+        overflow: 'auto', 
+        background: '#f9fafb',
+        maxWidth: '100%',
+        boxSizing: 'border-box'
+      }}>
         <svg
           width="100%"
           height={height}
@@ -159,7 +167,12 @@ export default function TabAnswer({ materiId }) {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: '1200px' }}>
+    <div style={{ 
+      padding: 24, 
+      maxWidth: '1200px',
+      margin: '0 auto',
+      boxSizing: 'border-box'
+    }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -182,31 +195,51 @@ export default function TabAnswer({ materiId }) {
       </p>
 
       {/* PSEUDOCODE */}
-      <div style={{ marginBottom: 32, padding: '24px', border: '2px solid #e0e0e0', borderRadius: 16, background: '#f9fafb' }}>
+      <div style={{ 
+        marginBottom: 32, 
+        padding: '24px', 
+        border: '2px solid #e0e0e0', 
+        borderRadius: 16, 
+        background: '#f9fafb',
+        boxSizing: 'border-box'
+      }}>
         <h4 style={{ margin: '0 0 16px 0', color: '#1f2937', fontSize: 20 }}>📝 Pseudocode Resmi</h4>
-        <textarea
-          value={pseudocode}
-          onChange={(e) => setPseudocode(e.target.value)}
-          placeholder="Tulis pseudocode jawaban BENAR yang harus dibuat siswa..."
-          style={{
-            width: "100%",
-            height: 220,
-            padding: 16,
-            borderRadius: 12,
-            border: "2px solid #d1d5db",
-            fontFamily: "'Monaco', 'Menlo', monospace",
-            fontSize: 15,
-            lineHeight: 1.6,
-            resize: 'vertical',
-            transition: 'border-color 0.2s'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#10b981'}
-          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-        />
+        <div style={{ width: '100%', boxSizing: 'border-box' }}>
+          <textarea
+            value={pseudocode}
+            onChange={(e) => setPseudocode(e.target.value)}
+            placeholder="Tulis pseudocode jawaban BENAR yang harus dibuat siswa..."
+            style={{
+              width: "100%",
+              maxWidth: "100%",
+              height: 220,
+              padding: 16,
+              borderRadius: 12,
+              border: "2px solid #d1d5db",
+              fontFamily: "'Monaco', 'Menlo', 'Consolas', monospace",
+              fontSize: 15,
+              lineHeight: 1.6,
+              resize: 'vertical',
+              transition: 'border-color 0.2s',
+              boxSizing: 'border-box',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#10b981'}
+            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          />
+        </div>
       </div>
 
       {/* FLOWCHART INPUTS */}
-      <div style={{ marginBottom: 32, padding: '24px', border: '2px solid #e0e0e0', borderRadius: 16, background: '#f9fafb' }}>
+      <div style={{ 
+        marginBottom: 32, 
+        padding: '24px', 
+        border: '2px solid #e0e0e0', 
+        borderRadius: 16, 
+        background: '#f9fafb',
+        boxSizing: 'border-box'
+      }}>
         <h4 style={{ margin: '0 0 16px 0', color: '#1f2937', fontSize: 20 }}>🔄 Flowchart Resmi</h4>
         
         <div style={{ marginBottom: 24 }}>
@@ -219,7 +252,8 @@ export default function TabAnswer({ materiId }) {
               background: 'white',
               borderRadius: 12,
               border: '2px solid #f3f4f6',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              boxSizing: 'border-box'
             }}>
               <input
                 value={c.condition}
@@ -230,7 +264,8 @@ export default function TabAnswer({ materiId }) {
                   padding: '12px 16px', 
                   border: '2px solid #d1d5db', 
                   borderRadius: 8,
-                  fontSize: 14
+                  fontSize: 14,
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#10b981'}
               />
@@ -244,7 +279,8 @@ export default function TabAnswer({ materiId }) {
                   padding: '12px 16px', 
                   border: '2px solid #d1d5db', 
                   borderRadius: 8,
-                  fontSize: 14
+                  fontSize: 14,
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#10b981'}
               />
@@ -259,7 +295,8 @@ export default function TabAnswer({ materiId }) {
                   borderRadius: 8,
                   cursor: 'pointer',
                   fontWeight: 600,
-                  minWidth: 50
+                  minWidth: 50,
+                  boxSizing: 'border-box'
                 }}
                 title="Hapus kondisi"
               >
@@ -270,11 +307,12 @@ export default function TabAnswer({ materiId }) {
         </div>
 
         {/* Tambah kondisi & ELSE */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
           <button 
             onClick={addCondition}
             style={{
               flex: 1,
+              minWidth: '200px',
               padding: '14px 20px',
               background: '#10b981',
               color: 'white',
@@ -282,13 +320,14 @@ export default function TabAnswer({ materiId }) {
               borderRadius: 12,
               cursor: 'pointer',
               fontWeight: 600,
-              fontSize: 15
+              fontSize: 15,
+              boxSizing: 'border-box'
             }}
           >
             ➕ Tambah Kondisi (Else-If)
           </button>
           
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: '250px' }}>
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#374151' }}>
               ELSE Instruction:
             </label>
@@ -301,7 +340,8 @@ export default function TabAnswer({ materiId }) {
                 padding: '12px 16px', 
                 border: '2px solid #d1d5db', 
                 borderRadius: 8,
-                fontSize: 14
+                fontSize: 14,
+                boxSizing: 'border-box'
               }}
               onFocus={(e) => e.target.style.borderColor = '#f59e0b'}
             />
@@ -312,7 +352,7 @@ export default function TabAnswer({ materiId }) {
       {/* FLOWCHART PREVIEW */}
       <div style={{ marginBottom: 32 }}>
         <h4 style={{ margin: '0 0 16px 0', color: '#1f2937', fontSize: 20 }}>
-           Preview Flowchart
+            Preview Flowchart
         </h4>
         {renderFlowchartPreview({ conditions, elseInstruction })}
       </div>
@@ -328,10 +368,14 @@ export default function TabAnswer({ materiId }) {
             padding: '24px', 
             borderRadius: 16, 
             borderLeft: '5px solid #10b981',
-            fontFamily: "'Monaco', monospace",
+            fontFamily: "'Monaco', 'Menlo', 'Consolas', monospace",
             fontSize: 15,
             lineHeight: 1.6,
-            whiteSpace: 'pre-wrap'
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}>
             {pseudocode}
           </div>
@@ -357,7 +401,8 @@ export default function TabAnswer({ materiId }) {
           fontSize: 18,
           fontWeight: 700,
           transition: 'all 0.3s',
-          boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)'
+          boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)',
+          boxSizing: 'border-box'
         }}
         onMouseEnter={(e) => {
           if (!e.currentTarget.disabled) {
