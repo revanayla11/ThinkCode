@@ -11,52 +11,62 @@ export default function TabSections({ materiId }) {
 
   // ================= QUILL MODULES - FIXED =================
   const quillModules = useCallback(() => ({
-    toolbar: {
-      container: [
-        [{ header: [1, 2, false] }],
-        ["bold", "italic", "underline"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["image"],
-        ["clean"],
-      ],
-      handlers: {
-        image: function () {
-          const input = document.createElement("input");
-          input.setAttribute("type", "file");
-          input.setAttribute("accept", "image/*");
-          input.click();
+  toolbar: {
+    container: [
+      [{ header: [1, 2, false] }],
+      ["bold", "italic", "underline"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["image"],
+      ["clean"],
+    ],
+    handlers: {
+      image: function () {
+        const input = document.createElement("input");
+        input.setAttribute("type", "file");
+        input.setAttribute("accept", "image/*");
+        input.click();
 
-          input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
+        input.onchange = async () => {
+          const file = input.files[0];
+          if (!file) return;
 
-            try {
-              const formData = new FormData();
-              formData.append("image", file);
-              
-              const res = await apiUpload(
-                `/admin/materi/${materiId}/sections/upload`,
-                formData
-              );
-              
-              const quill = this.quill;
-              const range = quill.getSelection(true);
-              // Fix URL - pastikan full URL
-              const imageUrl = res.url?.startsWith('http') 
-                ? res.url 
-                : `https://your-backend-domain.com${res.url}`;
-              
-              quill.insertEmbed(range.index, "image", imageUrl);
-              quill.setSelection(range.index + 1);
-            } catch (err) {
-              console.error("Upload error:", err);
-              alert("❌ Upload gambar gagal. Coba lagi.");
+          try {
+            const formData = new FormData();
+            formData.append("image", file);
+            
+            const res = await apiUpload(
+              `/admin/materi/${materiId}/sections/upload`,
+              formData
+            );
+            
+            const quill = this.quill;
+            
+            // 🔥 FIX 1: Dapatkan range BARU yang valid
+            let range = quill.getSelection();
+            
+            // 🔥 FIX 2: Jika tidak ada selection, insert di akhir
+            if (!range) {
+              range = { index: quill.getLength() };
             }
-          };
-        },
+            
+            // 🔥 FIX 3: Pastikan URL full
+            const imageUrl = res.url?.startsWith('http') 
+              ? res.url 
+              : `https://thinkcode-backend11-production.up.railway.app${res.url}`;
+            
+            // 🔥 FIX 4: Insert dengan range yang valid
+            quill.insertEmbed(range.index, "image", imageUrl);
+            quill.setSelection(range.index + 1, 0);
+            
+          } catch (err) {
+            console.error("Upload error:", err);
+            alert("❌ Upload gambar gagal. Coba lagi.");
+          }
+        };
       },
     },
-  }), [materiId]);
+  },
+}), [materiId]);
 
   // Load sections
   const loadSections = async () => {
