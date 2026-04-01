@@ -10,74 +10,15 @@ export default function TabSections({ materiId }) {
   const [saving, setSaving] = useState({});
   const quillRefs = useRef({});
 
-  // 🔥 DEBOUNCE HELPER
-  const debounce = (func, wait) => {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  };
-
-  // ================= QUILL MODULES =================
+  // ================= SIMPLE MODULES - NO FUNCTION =================
   const modules = {
-    toolbar: {
-      container: [
-        [{ header: [1, 2, false] }],
-        ["bold", "italic", "underline"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["image"],
-        ["clean"],
-      ],
-      handlers: {
-        image: () => {
-          // Trigger image upload via ref
-          const activeQuill = Object.values(quillRefs.current).find(q => 
-            document.activeElement.closest('.ql-container')
-          );
-          if (activeQuill) {
-            uploadImage(activeQuill);
-          }
-        }
-      }
-    },
-  };
-
-  // 🔥 IMAGE UPLOAD FUNCTION
-  const uploadImage = async (quill) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.click();
-
-    input.onchange = async () => {
-      const file = input.files[0];
-      if (!file) return;
-
-      try {
-        const formData = new FormData();
-        formData.append("image", file);
-        
-        const res = await apiUpload(
-          `/admin/materi/${materiId}/sections/upload`,
-          formData
-        );
-        
-        let range = quill.getSelection();
-        if (!range) range = { index: quill.getLength() };
-        
-        const imageUrl = res.url?.startsWith('http') 
-          ? res.url 
-          : `https://thinkcode-backend11-production.up.railway.app${res.url}`;
-        
-        quill.insertEmbed(range.index, "image", imageUrl);
-        quill.setSelection(range.index + 1, 0);
-        
-      } catch (err) {
-        console.error("Upload error:", err);
-        alert("❌ Upload gambar gagal. Coba lagi.");
-      }
-    };
+    toolbar: [
+      [{ header: [1, 2, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['image'],
+      ['clean']
+    ]
   };
 
   // Load sections
@@ -94,25 +35,7 @@ export default function TabSections({ materiId }) {
     if (materiId) loadSections();
   }, [materiId]);
 
-  // Debounced update
-  const debouncedUpdate = useCallback(
-    debounce((id, field, value) => {
-      updateSection(id, field, value);
-    }, 800),
-    [materiId]
-  );
-
-  const updateSection = async (id, field, value) => {
-    try {
-      setSaving(prev => ({ ...prev, [id]: true }));
-      await apiPut(`/admin/materi/${materiId}/sections/${id}`, { [field]: value });
-    } catch (err) {
-      console.error("Update error:", err);
-    } finally {
-      setSaving(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
+  // Add section
   const addSection = async () => {
     if (!newTitle.trim()) return alert("❌ Judul wajib diisi!");
     try {
@@ -132,8 +55,24 @@ export default function TabSections({ materiId }) {
     }
   };
 
+  // Manual save - NO AUTO SAVE LOOP
+  const saveContent = async (id, content) => {
+    try {
+      setSaving(prev => ({ ...prev, [id]: true }));
+      await apiPut(`/admin/materi/${materiId}/sections/${id}`, { content });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const updateTitle = async (id, title) => {
+    await apiPut(`/admin/materi/${materiId}/sections/${id}`, { title });
+  };
+
   const deleteSection = async (id) => {
-    if (!window.confirm("🗑️ Hapus Mini Lesson ini?\n\nSemua konten akan hilang permanen.")) return;
+    if (!window.confirm("🗑️ Hapus Mini Lesson ini?")) return;
     try {
       await apiDelete(`/admin/materi/${materiId}/sections/${id}`);
       loadSections();
@@ -143,8 +82,41 @@ export default function TabSections({ materiId }) {
     }
   };
 
+  // 🔥 IMAGE UPLOAD - Custom button
+  const handleImageClick = (sectionId) => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        
+        // 🔥 CORRECT UPLOAD ENDPOINT
+        const res = await apiUpload(`/admin/materi/${materiId}/sections/upload`, formData);
+        
+        const quill = quillRefs.current[sectionId];
+        if (!quill) return;
+        
+        const range = quill.getSelection(true) || { index: quill.getLength() };
+        const imageUrl = res.url;
+        
+        quill.insertEmbed(range.index, "image", imageUrl);
+        quill.setSelection(range.index + 1, 0);
+        
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("❌ Upload gagal");
+      }
+    };
+  };
+
   const miniSections = sections.filter(s => s.type === "mini");
-  const totalSections = miniSections.length;
 
   return (
     <div style={{ 
@@ -166,27 +138,11 @@ export default function TabSections({ materiId }) {
           📖 Mini Lessons
         </h2>
         <div style={{ fontSize: 14, color: '#6b7280' }}>
-          Materi ID: <strong>{materiId}</strong> • Total: <strong>{totalSections}</strong>
+          Materi ID: <strong>{materiId}</strong> • Total: <strong>{miniSections.length}</strong>
         </div>
       </div>
 
-      {/* INFO */}
-      <div style={{
-        padding: '24px',
-        background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-        borderRadius: 16,
-        borderLeft: '5px solid #10b981',
-        marginBottom: 32
-      }}>
-        <h5 style={{ margin: '0 0 12px 0', color: '#059669', fontWeight: 700 }}>
-          ℹ️ Cara Kerja Mini Lessons
-        </h5>
-        <p style={{ margin: 0, color: '#065f46', lineHeight: 1.6 }}>
-          Buat materi penjelasan singkat. Siswa akan mempelajarinya sebelum workspace.
-        </p>
-      </div>
-
-      {/* ADD NEW SECTION */}
+      {/* ADD NEW */}
       <div style={{ 
         marginBottom: 32, 
         padding: 24, 
@@ -194,13 +150,7 @@ export default function TabSections({ materiId }) {
         borderRadius: 20, 
         background: '#f9fafb'
       }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: 10, 
-          fontWeight: 600, 
-          color: '#1f2937',
-          fontSize: 16
-        }}>
+        <label style={{ display: 'block', marginBottom: 10, fontWeight: 600, color: '#1f2937', fontSize: 16 }}>
           ➕ Judul Mini Lesson Baru
         </label>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -210,37 +160,16 @@ export default function TabSections({ materiId }) {
             placeholder="Contoh: 'Pengenalan Variabel'"
             disabled={loading}
             style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderRadius: 14,
-              border: '2px solid #d1d5db',
-              fontSize: 15,
-              fontWeight: 500,
-              background: loading ? '#f9fafb' : 'white',
-              outline: 'none'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#10b981';
-              e.target.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.1)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-              e.target.style.boxShadow = 'none';
+              flex: 1, padding: '14px 18px', borderRadius: 14, border: '2px solid #d1d5db',
+              fontSize: 15, fontWeight: 500, background: loading ? '#f9fafb' : 'white'
             }}
           />
           <button
             onClick={addSection}
             disabled={loading || !newTitle.trim()}
             style={{
-              padding: '14px 20px',
-              background: (loading || !newTitle.trim()) ? '#9ca3af' : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: 14,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: 15,
-              fontWeight: 600,
-              whiteSpace: 'nowrap'
+              padding: '14px 20px', background: (loading || !newTitle.trim()) ? '#9ca3af' : '#10b981',
+              color: 'white', border: 'none', borderRadius: 14, fontSize: 15, fontWeight: 600
             }}
           >
             {loading ? '⏳' : '➕ Tambah'}
@@ -248,132 +177,84 @@ export default function TabSections({ materiId }) {
         </div>
       </div>
 
-      {/* SECTIONS LIST */}
+      {/* SECTIONS */}
       {miniSections.length === 0 ? (
         <div style={{
-          padding: '80px 40px',
-          textAlign: 'center',
+          padding: '80px 40px', textAlign: 'center',
           background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-          border: '2px dashed #d1d5db',
-          borderRadius: 20
+          border: '2px dashed #d1d5db', borderRadius: 20
         }}>
           <div style={{ fontSize: 64, marginBottom: 24, opacity: 0.5 }}>📚</div>
-          <h3 style={{ color: '#6b7280', fontSize: 24, margin: '0 0 12px 0' }}>
-            Belum ada Mini Lessons
-          </h3>
-          <p style={{ color: '#9ca3af', fontSize: 16, marginBottom: 32 }}>
-            Tambahkan section pertama untuk memulai pembelajaran bertahap
-          </p>
+          <h3 style={{ color: '#6b7280', fontSize: 24, margin: '0 0 12px 0' }}>Belum ada Mini Lessons</h3>
+          <p style={{ color: '#9ca3af', fontSize: 16 }}>Tambahkan section pertama!</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {miniSections.map((section, index) => (
-            <div
-              key={section.id}
-              style={{
-                padding: 32,
-                border: '2px solid #e5e7eb',
-                borderRadius: 20,
-                background: 'white',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
-              }}
-            >
+          {miniSections.map((section) => (
+            <div key={section.id} style={{
+              padding: 32, border: '2px solid #e5e7eb', borderRadius: 20,
+              background: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+            }}>
               {/* HEADER */}
               <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                marginBottom: 24,
-                paddingBottom: 20,
-                borderBottom: '2px solid #f3f4f6'
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 24, paddingBottom: 20, borderBottom: '2px solid #f3f4f6'
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <input
-                    value={section.title}
-                    onChange={(e) => updateSection(section.id, "title", e.target.value)}
-                    style={{
-                      width: 400,
-                      padding: '16px 20px',
-                      borderRadius: 16,
-                      border: '2px solid #d1d5db',
-                      fontSize: 20,
-                      fontWeight: 700,
-                      outline: 'none'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#10b981';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.1)';
-                    }}
-                  />
-                  <div style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
-                    Section {index + 1} • ID: {section.id}
-                  </div>
-                </div>
-                <button
-                  onClick={() => deleteSection(section.id)}
+                <input
+                  value={section.title}
+                  onChange={(e) => updateTitle(section.id, e.target.value)}
                   style={{
-                    padding: '14px 24px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer'
+                    width: 400, padding: '16px 20px', borderRadius: 16,
+                    border: '2px solid #d1d5db', fontSize: 20, fontWeight: 700
                   }}
-                >
-                  🗑️ Hapus
-                </button>
+                />
+                <div>
+                  <button
+                    onClick={() => handleImageClick(section.id)}
+                    style={{
+                      padding: '12px 20px', marginRight: 8,
+                      background: '#3b82f6', color: 'white', border: 'none',
+                      borderRadius: 12, fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    🖼️ Gambar
+                  </button>
+                  <button
+                    onClick={() => deleteSection(section.id)}
+                    style={{
+                      padding: '12px 20px', background: '#ef4444', color: 'white',
+                      border: 'none', borderRadius: 12, fontWeight: 600
+                    }}
+                  >
+                    🗑️ Hapus
+                  </button>
+                </div>
               </div>
 
-              {/* EDITOR - 🔥 FULL CSS INLINE */}
+              {/* EDITOR */}
               <label style={{ 
-                display: 'block', 
-                marginBottom: 16, 
-                fontWeight: 600, 
-                color: '#1f2937',
-                fontSize: 16
+                display: 'block', marginBottom: 16, fontWeight: 600, color: '#1f2937', fontSize: 16
               }}>
                 📝 Konten Mini Lesson
               </label>
-              <div 
-                style={{ 
-                  borderRadius: 16, 
-                  overflow: 'hidden', 
-                  border: '2px solid #e5e7eb',
-                  background: 'white'
-                }}
-              >
+              <div style={{ borderRadius: 16, overflow: 'hidden', border: '2px solid #e5e7eb' }}>
                 <ReactQuill
-                  ref={(el) => {
-                    if (el) quillRefs.current[section.id] = el.getEditor();
-                  }}
+                  ref={(el) => el && (quillRefs.current[section.id] = el.getEditor())}
                   theme="snow"
                   value={section.content || ""}
                   modules={modules}
-                  onChange={(val) => debouncedUpdate(section.id, "content", val)}
-                  style={{ 
-                    height: 320,
-                    width: '100%',
-                    fontFamily: 'system-ui, -apple-system, sans-serif'
-                  }}
-                  className="custom-quill"
-                  placeholder="Mulai mengetik konten mini lesson di sini..."
+                  onChange={(val) => saveContent(section.id, val)}
+                  style={{ height: 320 }}
+                  placeholder="Ketik konten di sini..."
                 />
               </div>
 
               {saving[section.id] && (
                 <div style={{
-                  marginTop: 16,
-                  padding: '12px 16px',
-                  background: '#ecfdf5',
-                  borderRadius: 12,
-                  fontSize: 14,
-                  color: '#059669',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8
+                  marginTop: 16, padding: '12px 16px', background: '#ecfdf5',
+                  borderRadius: 12, fontSize: 14, color: '#059669', textAlign: 'center'
                 }}>
-                  💾 Menyimpan...
+                  💾 Auto-saving...
                 </div>
               )}
             </div>
@@ -381,75 +262,25 @@ export default function TabSections({ materiId }) {
         </div>
       )}
 
-      {/* TIPS */}
-      {totalSections > 0 && (
-        <div style={{
-          padding: 24,
-          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-          borderRadius: 16,
-          borderLeft: '5px solid #f59e0b',
-          marginTop: 40
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontWeight: 700 }}>
-            💡 Tips Konten Mini Lesson
-          </h5>
-          <ul style={{ 
-            margin: 0, 
-            paddingLeft: 20, 
-            color: '#92400e', 
-            lineHeight: 1.6,
-            fontSize: 14 
-          }}>
-            <li>Gunakan <strong>gambar & list</strong> untuk penjelasan visual</li>
-            <li>Pembelajaran bisa berisi <strong>ringkasan materi ataupun tips</strong></li>
-          </ul>
-        </div>
-      )}
-
-      {/* 🔥 QUILL CSS OVERRIDE - SEMUA INLINE */}
+      {/* QUILL CSS FIX - INLINE */}
       <style jsx>{`
-        .custom-quill .ql-container {
-          font-size: 15px !important;
-          line-height: 1.6 !important;
-          font-family: system-ui, -apple-system, sans-serif !important;
+        .ql-container { 
+          font-size: 15px !important; 
+          font-family: system-ui, sans-serif !important; 
         }
-        .custom-quill .ql-editor {
-          min-height: 280px !important;
-          padding: 20px !important;
-          background: white !important;
-          color: #1f2937 !important;
-          border: none !important;
+        .ql-editor { 
+          padding: 20px !important; 
+          color: #1f2937 !important; 
+          min-height: 280px !important; 
         }
-        .custom-quill .ql-editor.ql-blank::before {
-          color: #9ca3af !important;
-          font-style: italic !important;
-          font-weight: 400 !important;
+        .ql-editor.ql-blank::before { 
+          color: #9ca3af !important; 
+          font-style: italic !important; 
         }
-        .custom-quill .ql-toolbar {
-          border: none !important;
-          border-bottom: 1px solid #e5e7eb !important;
-          border-top-left-radius: 14px !important;
-          border-top-right-radius: 14px !important;
-          background: white !important;
-          padding: 8px 12px !important;
-        }
-        .custom-quill .ql-toolbar .ql-formats {
-          margin-right: 12px !important;
-        }
-        .custom-quill .ql-picker.ql-image .ql-picker-label {
-          border: 1px solid #d1d5db !important;
-          border-radius: 8px !important;
-          padding: 6px 12px !important;
-        }
-        .custom-quill .ql-picker.ql-image:hover .ql-picker-label {
-          border-color: #10b981 !important;
-          background: #f0fdf4 !important;
-        }
-        .custom-quill .ql-editor img {
-          max-width: 100% !important;
-          height: auto !important;
-          border-radius: 8px !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        .ql-toolbar { 
+          border-top-left-radius: 14px !important; 
+          border-top-right-radius: 14px !important; 
+          background: white !important; 
         }
       `}</style>
     </div>
