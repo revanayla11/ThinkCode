@@ -48,7 +48,7 @@ export default function TabOrientasi({ materiId }) {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('video', file);
+      formData.append('file', file);
       await apiUpload(`/admin/materi/${materiId}/orientasi/upload`, formData);
       await loadData();
       alert("✅ Upload video berhasil!");
