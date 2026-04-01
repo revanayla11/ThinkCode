@@ -41,35 +41,38 @@ export default function TabOrientasi({ materiId }) {
   };
 
 // Tambahkan di handleUpload
+// GANTI handleUpload INI
 const handleUpload = async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  // Validasi client-side
+  console.log("🎥 Selected file:", file.name, `${(file.size/1024/1024).toFixed(1)}MB`);
+
+  // Client validation
   if (!file.type.startsWith('video/')) {
-    return alert("❌ Hanya file video (MP4, MOV, AVI) yang diizinkan!");
+    e.target.value = '';
+    return alert("❌ Hanya video (MP4, MOV, AVI)!");
   }
-  
   if (file.size > 100 * 1024 * 1024) {
-    return alert("❌ Ukuran file maksimal 100MB!");
+    e.target.value = '';
+    return alert("❌ Maksimal 100MB!");
   }
 
   setUploading(true);
+  
   try {
-    const formData = new FormData();
-    formData.append('file', file);
+    // ✅ PANGGIL api.upload(path, file) - BUKAN formData
+    await api.upload(`/admin/materi/${materiId}/orientasi/upload`, file);
     
-    await apiUpload(`/admin/materi/${materiId}/orientasi/upload`, formData);
     await loadData();
-    alert("✅ Upload video berhasil!");
-    
-    // Reset input
-    e.target.value = '';
+    alert("✅ Video berhasil diupload!");
+    e.target.value = ''; // Reset input
   } catch (err) {
-    console.error("Upload Error:", err);
-    alert(`❌ Upload gagal: ${err.message}`);
+    console.error("💥 Upload failed:", err.message);
+    alert(`❌ Gagal upload: ${err.message}`);
+  } finally {
+    setUploading(false);
   }
-  setUploading(false);
 };
 
   // Delete

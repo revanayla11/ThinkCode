@@ -53,18 +53,36 @@ export async function apiDelete(path) {
 }
 
 export async function apiUpload(path, file) {
+  console.log("🔄 apiUpload called:", path);
+  
   const formData = new FormData();
   formData.append("file", file);
+  
+  console.log("📦 FormData created:", {
+    name: file.name,
+    size: file.size,
+    type: file.type
+  });
 
   const token = localStorage.getItem("token");
 
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      Authorization: `Bearer ${token}`  // ✅ HANYA Authorization
+      // ❌ TIDAK ADA Content-Type! Browser auto-set multipart/form-data
+    },
     body: formData,
   });
 
-  if (!res.ok) throw new Error(await res.text());
+  console.log("📡 Response status:", res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("❌ Upload error:", errorText);
+    throw new Error(errorText);
+  }
+  
   return res.json();
 }
 
