@@ -40,24 +40,37 @@ export default function TabOrientasi({ materiId }) {
     setSaving(false);
   };
 
-  // Upload file
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+// Tambahkan di handleUpload
+const handleUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      await apiUpload(`/admin/materi/${materiId}/orientasi/upload`, formData);
-      await loadData();
-      alert("✅ Upload video berhasil!");
-    } catch (err) {
-      console.error(err);
-      alert("❌ Upload video gagal");
-    }
-    setUploading(false);
-  };
+  // Validasi client-side
+  if (!file.type.startsWith('video/')) {
+    return alert("❌ Hanya file video (MP4, MOV, AVI) yang diizinkan!");
+  }
+  
+  if (file.size > 100 * 1024 * 1024) {
+    return alert("❌ Ukuran file maksimal 100MB!");
+  }
+
+  setUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    await apiUpload(`/admin/materi/${materiId}/orientasi/upload`, formData);
+    await loadData();
+    alert("✅ Upload video berhasil!");
+    
+    // Reset input
+    e.target.value = '';
+  } catch (err) {
+    console.error("Upload Error:", err);
+    alert(`❌ Upload gagal: ${err.message}`);
+  }
+  setUploading(false);
+};
 
   // Delete
   const handleDelete = async () => {
