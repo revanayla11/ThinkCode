@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "../../../services/api";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -8,65 +8,77 @@ export default function TabSections({ materiId }) {
   const [newTitle, setNewTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState({});
+  const quillRefs = useRef({});
 
-  // ================= QUILL MODULES - FIXED =================
-  const quillModules = useCallback(() => ({
-  toolbar: {
-    container: [
-      [{ header: [1, 2, false] }],
-      ["bold", "italic", "underline"],
-      [{ list: "ordered" }, { list: "bullet" }],
-      ["image"],
-      ["clean"],
-    ],
-    handlers: {
-      image: function () {
-        const input = document.createElement("input");
-        input.setAttribute("type", "file");
-        input.setAttribute("accept", "image/*");
-        input.click();
+  // 🔥 DEBOUNCE HELPER
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
 
-        input.onchange = async () => {
-          const file = input.files[0];
-          if (!file) return;
-
-          try {
-            const formData = new FormData();
-            formData.append("image", file);
-            
-            const res = await apiUpload(
-              `/admin/materi/${materiId}/sections/upload`,
-              formData
-            );
-            
-            const quill = this.quill;
-            
-            // 🔥 FIX 1: Dapatkan range BARU yang valid
-            let range = quill.getSelection();
-            
-            // 🔥 FIX 2: Jika tidak ada selection, insert di akhir
-            if (!range) {
-              range = { index: quill.getLength() };
-            }
-            
-            // 🔥 FIX 3: Pastikan URL full
-            const imageUrl = res.url?.startsWith('http') 
-              ? res.url 
-              : `https://thinkcode-backend11-production.up.railway.app${res.url}`;
-            
-            // 🔥 FIX 4: Insert dengan range yang valid
-            quill.insertEmbed(range.index, "image", imageUrl);
-            quill.setSelection(range.index + 1, 0);
-            
-          } catch (err) {
-            console.error("Upload error:", err);
-            alert("❌ Upload gambar gagal. Coba lagi.");
+  // ================= QUILL MODULES =================
+  const modules = {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, false] }],
+        ["bold", "italic", "underline"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["image"],
+        ["clean"],
+      ],
+      handlers: {
+        image: () => {
+          // Trigger image upload via ref
+          const activeQuill = Object.values(quillRefs.current).find(q => 
+            document.activeElement.closest('.ql-container')
+          );
+          if (activeQuill) {
+            uploadImage(activeQuill);
           }
-        };
-      },
+        }
+      }
     },
-  },
-}), [materiId]);
+  };
+
+  // 🔥 IMAGE UPLOAD FUNCTION
+  const uploadImage = async (quill) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        
+        const res = await apiUpload(
+          `/admin/materi/${materiId}/sections/upload`,
+          formData
+        );
+        
+        let range = quill.getSelection();
+        if (!range) range = { index: quill.getLength() };
+        
+        const imageUrl = res.url?.startsWith('http') 
+          ? res.url 
+          : `https://thinkcode-backend11-production.up.railway.app${res.url}`;
+        
+        quill.insertEmbed(range.index, "image", imageUrl);
+        quill.setSelection(range.index + 1, 0);
+        
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("❌ Upload gambar gagal. Coba lagi.");
+      }
+    };
+  };
 
   // Load sections
   const loadSections = async () => {
@@ -79,15 +91,30 @@ export default function TabSections({ materiId }) {
   };
 
   useEffect(() => {
-    if (materiId) {
-      loadSections();
-    }
+    if (materiId) loadSections();
   }, [materiId]);
 
-  // Add section
+  // Debounced update
+  const debouncedUpdate = useCallback(
+    debounce((id, field, value) => {
+      updateSection(id, field, value);
+    }, 800),
+    [materiId]
+  );
+
+  const updateSection = async (id, field, value) => {
+    try {
+      setSaving(prev => ({ ...prev, [id]: true }));
+      await apiPut(`/admin/materi/${materiId}/sections/${id}`, { [field]: value });
+    } catch (err) {
+      console.error("Update error:", err);
+    } finally {
+      setSaving(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
   const addSection = async () => {
     if (!newTitle.trim()) return alert("❌ Judul wajib diisi!");
-    
     try {
       setLoading(true);
       await apiPost(`/admin/materi/${materiId}/sections`, {
@@ -99,38 +126,19 @@ export default function TabSections({ materiId }) {
       loadSections();
       alert("✅ Section berhasil ditambahkan!");
     } catch (err) {
-      console.error(err);
       alert("❌ Gagal menambah section");
     } finally {
       setLoading(false);
     }
   };
 
-  // Update section
-  const updateSection = async (id, field, value) => {
-    try {
-      setSaving(prev => ({ ...prev, [id]: true }));
-      await apiPut(`/admin/materi/${materiId}/sections/${id}`, { 
-        [field]: value 
-      });
-    } catch (err) {
-      console.error("Update error:", err);
-      alert("❌ Gagal update section");
-    } finally {
-      setSaving(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  // Delete section
   const deleteSection = async (id) => {
     if (!window.confirm("🗑️ Hapus Mini Lesson ini?\n\nSemua konten akan hilang permanen.")) return;
-    
     try {
       await apiDelete(`/admin/materi/${materiId}/sections/${id}`);
       loadSections();
       alert("✅ Section berhasil dihapus!");
     } catch (err) {
-      console.error(err);
       alert("❌ Gagal menghapus section");
     }
   };
@@ -154,12 +162,7 @@ export default function TabSections({ materiId }) {
         paddingBottom: 20,
         borderBottom: '3px solid #1E1E2F'
       }}>
-        <h2 style={{ 
-          margin: 0, 
-          fontSize: 28, 
-          color: '#1E1E2F', 
-          fontWeight: 700 
-        }}>
+        <h2 style={{ margin: 0, fontSize: 28, color: '#1E1E2F', fontWeight: 700 }}>
           📖 Mini Lessons
         </h2>
         <div style={{ fontSize: 14, color: '#6b7280' }}>
@@ -191,7 +194,6 @@ export default function TabSections({ materiId }) {
         borderRadius: 20, 
         background: '#f9fafb'
       }}>
-        
         <label style={{ 
           display: 'block', 
           marginBottom: 10, 
@@ -201,14 +203,7 @@ export default function TabSections({ materiId }) {
         }}>
           ➕ Judul Mini Lesson Baru
         </label>
-
-        {/* INPUT + BUTTON */}
-        <div style={{ 
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center' // 🔥 biar sejajar
-        }}>
-          
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -216,7 +211,7 @@ export default function TabSections({ materiId }) {
             disabled={loading}
             style={{
               flex: 1,
-              padding: '14px 18px', // 🔥 lebih kecil biar proporsional
+              padding: '14px 18px',
               borderRadius: 14,
               border: '2px solid #d1d5db',
               fontSize: 15,
@@ -233,12 +228,11 @@ export default function TabSections({ materiId }) {
               e.target.style.boxShadow = 'none';
             }}
           />
-
           <button
             onClick={addSection}
             disabled={loading || !newTitle.trim()}
             style={{
-              padding: '14px 20px', // 🔥 disamain tinggi sama input
+              padding: '14px 20px',
               background: (loading || !newTitle.trim()) ? '#9ca3af' : '#10b981',
               color: 'white',
               border: 'none',
@@ -251,7 +245,6 @@ export default function TabSections({ materiId }) {
           >
             {loading ? '⏳' : '➕ Tambah'}
           </button>
-
         </div>
       </div>
 
@@ -316,7 +309,6 @@ export default function TabSections({ materiId }) {
                     Section {index + 1} • ID: {section.id}
                   </div>
                 </div>
-                
                 <button
                   onClick={() => deleteSection(section.id)}
                   style={{
@@ -333,7 +325,7 @@ export default function TabSections({ materiId }) {
                 </button>
               </div>
 
-              {/* EDITOR */}
+              {/* EDITOR - 🔥 FULL CSS INLINE */}
               <label style={{ 
                 display: 'block', 
                 marginBottom: 16, 
@@ -343,13 +335,29 @@ export default function TabSections({ materiId }) {
               }}>
                 📝 Konten Mini Lesson
               </label>
-              <div style={{ borderRadius: 16, overflow: 'hidden', border: '2px solid #e5e7eb' }}>
+              <div 
+                style={{ 
+                  borderRadius: 16, 
+                  overflow: 'hidden', 
+                  border: '2px solid #e5e7eb',
+                  background: 'white'
+                }}
+              >
                 <ReactQuill
+                  ref={(el) => {
+                    if (el) quillRefs.current[section.id] = el.getEditor();
+                  }}
                   theme="snow"
                   value={section.content || ""}
-                  modules={quillModules()}  // ✅ Sekarang aman
-                  onChange={(val) => updateSection(section.id, "content", val)}
-                  style={{ height: 320 }}
+                  modules={modules}
+                  onChange={(val) => debouncedUpdate(section.id, "content", val)}
+                  style={{ 
+                    height: 320,
+                    width: '100%',
+                    fontFamily: 'system-ui, -apple-system, sans-serif'
+                  }}
+                  className="custom-quill"
+                  placeholder="Mulai mengetik konten mini lesson di sini..."
                 />
               </div>
 
@@ -397,6 +405,53 @@ export default function TabSections({ materiId }) {
           </ul>
         </div>
       )}
+
+      {/* 🔥 QUILL CSS OVERRIDE - SEMUA INLINE */}
+      <style jsx>{`
+        .custom-quill .ql-container {
+          font-size: 15px !important;
+          line-height: 1.6 !important;
+          font-family: system-ui, -apple-system, sans-serif !important;
+        }
+        .custom-quill .ql-editor {
+          min-height: 280px !important;
+          padding: 20px !important;
+          background: white !important;
+          color: #1f2937 !important;
+          border: none !important;
+        }
+        .custom-quill .ql-editor.ql-blank::before {
+          color: #9ca3af !important;
+          font-style: italic !important;
+          font-weight: 400 !important;
+        }
+        .custom-quill .ql-toolbar {
+          border: none !important;
+          border-bottom: 1px solid #e5e7eb !important;
+          border-top-left-radius: 14px !important;
+          border-top-right-radius: 14px !important;
+          background: white !important;
+          padding: 8px 12px !important;
+        }
+        .custom-quill .ql-toolbar .ql-formats {
+          margin-right: 12px !important;
+        }
+        .custom-quill .ql-picker.ql-image .ql-picker-label {
+          border: 1px solid #d1d5db !important;
+          border-radius: 8px !important;
+          padding: 6px 12px !important;
+        }
+        .custom-quill .ql-picker.ql-image:hover .ql-picker-label {
+          border-color: #10b981 !important;
+          background: #f0fdf4 !important;
+        }
+        .custom-quill .ql-editor img {
+          max-width: 100% !important;
+          height: auto !important;
+          border-radius: 8px !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        }
+      `}</style>
     </div>
   );
 }
