@@ -40,41 +40,37 @@ export default function TabOrientasi({ materiId }) {
     setSaving(false);
   };
 
-// Tambahkan di handleUpload
-// GANTI handleUpload INI
-const handleUpload = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  console.log("🎥 Selected file:", file.name, `${(file.size/1024/1024).toFixed(1)}MB`);
+    console.log("🎥 File:", file.name, `${(file.size/1024/1024).toFixed(1)}MB`);
 
-  // Client validation
-  if (!file.type.startsWith('video/')) {
-    e.target.value = '';
-    return alert("❌ Hanya video (MP4, MOV, AVI)!");
-  }
-  if (file.size > 100 * 1024 * 1024) {
-    e.target.value = '';
-    return alert("❌ Maksimal 100MB!");
-  }
+    // Validasi
+    if (!file.type.startsWith('video/')) {
+      e.target.value = '';
+      return alert("❌ Hanya video MP4/MOV/AVI!");
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      e.target.value = '';
+      return alert("❌ Maksimal 100MB!");
+    }
 
-  setUploading(true);
-  
-  try {
-    // ✅ PANGGIL api.upload(path, file) - BUKAN formData
-    await api.upload(`/admin/materi/${materiId}/orientasi/upload`, file);
-    
-    await loadData();
-    alert("✅ Video berhasil diupload!");
-    e.target.value = ''; // Reset input
-  } catch (err) {
-    console.error("💥 Upload failed:", err.message);
-    alert(`❌ Gagal upload: ${err.message}`);
-  } finally {
-    setUploading(false);
-  }
-};
-
+    setUploading(true);
+    try {
+      // ✅ apiUpload expect FILE, bukan FormData!
+      await apiUpload(`/admin/materi/${materiId}/orientasi/upload`, file);
+      
+      await loadData();
+      alert("✅ Upload berhasil!");
+      e.target.value = ''; // Reset input
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert(`❌ Gagal: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
   // Delete
   const handleDelete = async () => {
     if (!window.confirm("🗑️ Hapus orientasi video ini?\n\nSemua siswa tidak akan melihat video lagi.")) return;
