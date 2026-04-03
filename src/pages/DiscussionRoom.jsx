@@ -953,6 +953,44 @@ const UploadButton = styled.button`
   }
 `;
 
+const TaskItem = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== "done"
+})`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: ${({ done }) => 
+    done 
+      ? "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" 
+      : "rgba(255, 255, 255, 0.7)"
+  };
+  border-radius: 12px;
+  border: 2px solid ${({ done }) => done ? "#10b981" : "#e5e7eb"};
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #10b981;
+    cursor: pointer;
+  }
+
+  span {
+    flex: 1;
+    font-weight: 500;
+    color: ${({ done }) => done ? "#059669" : "#374151"};
+    text-decoration: ${({ done }) => done ? "line-through" : "none"};
+    font-size: 14px;
+  }
+`;
+
 const PerformanceBox = styled.div`
   width: 97%;
   padding: 8px 16px;
