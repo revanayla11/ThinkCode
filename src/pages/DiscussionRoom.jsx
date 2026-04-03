@@ -44,74 +44,107 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ================= LOAD PERFORMANCE =================
+  // ================= LOAD PERFORMANCE - FIXED =================
   const loadPerformance = async () => {
     try {
       const token = localStorage.getItem("token");
+      if (!token || !roomId) {
+        console.warn("No token or roomId for performance");
+        return;
+      }
+      
+      console.log("🔄 Loading performance for room:", roomId);
       const res = await api.get(`/discussion/room/${roomId}/performance`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPerformanceScore(res.data.score);
+      
+      console.log("✅ Performance loaded:", res.data);
+      setPerformanceScore(res.data.score || 0);
     } catch (err) {
-      console.error("Error load performance:", err);
+      console.error("❌ Error load performance:", err.response?.data || err.message);
+      setPerformanceScore(0);
     }
   };
 
   // ================= LOAD WORKSPACE =================
-const loadWorkspace = useCallback(async () => {
-  try {
-    console.log("🔄 Loading workspace for room:", roomId);
-    const res = await api.get(`/discussion/workspace/${roomId}`);
-    const data = res?.data?.data || {};
-    
-    setPseudocode(data.pseudocode || "");
-    
-    let loadedFlowchart = { conditions: [], elseInstruction: "" };
-    if (data.flowchart) {
-      try {
-        loadedFlowchart = typeof data.flowchart === "string"
-          ? JSON.parse(data.flowchart || "{}")
-          : (data.flowchart || { conditions: [], elseInstruction: "" });
-      } catch (e) {
-        console.error("Error parsing flowchart:", e);
-      }
-    }
-    setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
-    setElseInstruction(loadedFlowchart.elseInstruction || "");
-  } catch (err) {
-    console.error("Error loading workspace:", err);
-  }
-}, [roomId]);
-
-// ✅ LOAD SEKALI SAJA
-useEffect(() => {
-  if (!roomId) return;
-  loadWorkspace();
-}, [roomId, loadWorkspace]);
-
-// ================= LOAD USER XP =================
-useEffect(() => {
-  if (!materiId || !user?.id) return;
-  
-  const fetchUserXp = async () => {
+  const loadWorkspace = useCallback(async () => {
     try {
-      const res = await api.get(`/materi/${materiId}`);
-      const progress = res.data.data.progress;
-      if (progress?.xp != null) {
-        setUserXp(progress.xp);
+      console.log("🔄 Loading workspace for room:", roomId);
+      const res = await api.get(`/discussion/workspace/${roomId}`);
+      const data = res?.data?.data || {};
+      
+      setPseudocode(data.pseudocode || "");
+      
+      let loadedFlowchart = { conditions: [], elseInstruction: "" };
+      if (data.flowchart) {
+        try {
+          loadedFlowchart = typeof data.flowchart === "string"
+            ? JSON.parse(data.flowchart || "{}")
+            : (data.flowchart || { conditions: [], elseInstruction: "" });
+        } catch (e) {
+          console.error("Error parsing flowchart:", e);
+        }
       }
-    } catch (error) {
-      try {
-        const res = await api.get(`/discussion/user-xp/${materiId}`);
-        setUserXp(res.data.xp || 0);
-      } catch (err2) {
-        setUserXp(0);
-      }
+      setConditions(Array.isArray(loadedFlowchart.conditions) ? loadedFlowchart.conditions : []);
+      setElseInstruction(loadedFlowchart.elseInstruction || "");
+    } catch (err) {
+      console.error("Error loading workspace:", err);
     }
-  };
+  }, [roomId]);
 
-  fetchUserXp();
-}, [materiId, user?.id]);
+  // ✅ LOAD SEKALI SAJA - FIXED dengan Promise.all
+  useEffect(() => {
+    if (!roomId) return;
+    
+    const loadAllData = async () => {
+      console.log("🚀 Initial load semua data...");
+      await Promise.all([
+        loadSubmissionStatus(),
+        loadPerformance(),
+        loadWorkspace(),
+        loadUsedClues()
+      ]);
+      console.log("✅ Initial load selesai");
+    };
+    
+    loadAllData();
+  }, [roomId, loadWorkspace]);
+
+  // ✅ AUTO REFRESH PERFORMANCE setiap 10 detik
+  useEffect(() => {
+    if (!roomId) return;
+    
+    const interval = setInterval(() => {
+      console.log("🔄 Auto refresh performance...");
+      loadPerformance();
+    }, 10000); // 10 detik
+    
+    return () => clearInterval(interval);
+  }, [roomId]);
+
+  // ================= LOAD USER XP =================
+  useEffect(() => {
+    if (!materiId || !user?.id) return;
+    
+    const fetchUserXp = async () => {
+      try {
+        const res = await api.get(`/materi/${materiId}`);
+        const progress = res.data.data.progress;
+        if (progress?.xp != null) {
+          setUserXp(progress.xp);
+        }
+      } catch (error) {
+        try {
+          const res = await api.get(`/discussion/user-xp/${materiId}`);
+          setUserXp(res.data.xp || 0);
+        } catch (err2) {
+          setUserXp(0);
+        }
+      }
+    };
+
+    fetchUserXp();
+  }, [materiId, user?.id]);
 
   // ================= MINI LESSON =================
   useEffect(() => {
@@ -130,14 +163,13 @@ useEffect(() => {
   }, [materiId]);
 
   const loadUsedClues = async () => {
-    const res = await api.get(`/discussion/clue/used/${roomId}`);
-    setUsedClues(res.data.data || []);
+    try {
+      const res = await api.get(`/discussion/clue/used/${roomId}`);
+      setUsedClues(res.data.data || []);
+    } catch (err) {
+      console.error("Error loading used clues:", err);
+    }
   };
-
-  useEffect(() => {
-    if (!roomId) return;
-    loadUsedClues();
-  }, [roomId]);
 
   // ================= REQUEST CLUE =================
   const requestClue = async () => {
@@ -163,12 +195,14 @@ useEffect(() => {
     try {
       await api.post(`/discussion/room/${roomId}/clue/${nextClue.id}/use`);
       loadUsedClues();
+      // Refresh performance setelah ambil clue
+      setTimeout(() => loadPerformance(), 1000);
     } catch (err) {
       Swal.fire("Error", err.response?.data?.message || "Gagal membuka clue", "error");
     }
   };
 
-  // ================= FLOWCHART FUNCTIONS (MANUAL SAVE ONLY) =================
+  // ================= FLOWCHART FUNCTIONS =================
   const addCondition = () => {
     if (isSubmitted) return;
     const next = conditions.length + 1;
@@ -232,17 +266,21 @@ useEffect(() => {
       setTasks(prev => prev.map(task =>
         task.id === taskId ? { ...task, done: !currentDone } : task
       ));
+      // Refresh performance setelah update task
+      setTimeout(() => loadPerformance(), 500);
     } catch {
       Swal.fire("Error", "Gagal update task", "error");
     }
   };
 
-  // ================= MANUAL SAVE ONLY =================
+  // ================= MANUAL SAVE - AUTO REFRESH PERFORMANCE =================
   const forceSavePseudocode = async () => {
     if (isSubmitted) return;
     try {
       await api.post(`/discussion/workspace/pseudocode/${roomId}/save`, { pseudocode });
       Swal.fire("✅", "Pseudocode tersimpan!", "success");
+      // Refresh performance setelah save
+      setTimeout(() => loadPerformance(), 500);
     } catch (err) {
       Swal.fire("❌", "Gagal simpan pseudocode", "error");
     }
@@ -255,6 +293,8 @@ useEffect(() => {
         flowchart: { conditions, elseInstruction }
       });
       Swal.fire("✅", "Flowchart tersimpan!", "success");
+      // Refresh performance setelah save
+      setTimeout(() => loadPerformance(), 500);
     } catch (err) {
       Swal.fire("❌", "Gagal simpan flowchart", "error");
     }
@@ -345,6 +385,12 @@ useEffect(() => {
     if (score >= 40) return "⭐⭐⭐";
     if (score >= 20) return "⭐⭐";
     return "⭐";
+  };
+
+  // ================= DEBUG BUTTON - HAPUS DI PRODUCTION =================
+  const debugRefreshPerformance = () => {
+    console.log("🔧 Manual refresh performance");
+    loadPerformance();
   };
 
   // ================= RENDER FLOWCHART =================
@@ -472,7 +518,6 @@ useEffect(() => {
                   disabled={isSubmitted}
                 />
               </foreignObject>
-
               {/* Garis turun dari process */}
               <line
                 x1="680"
@@ -565,17 +610,38 @@ useEffect(() => {
             </HeaderLeft>
             <HeaderRight>
               <InfoButton onClick={() => setShowMini(true)}>i</InfoButton>
+              
+              {/* 🔧 DEBUG BUTTON - HAPUS DI PRODUCTION */}
+              {process.env.NODE_ENV === 'development' && (
+                <button 
+                  onClick={debugRefreshPerformance}
+                  style={{ 
+                    padding: '8px 12px', 
+                    fontSize: '12px', 
+                    background: '#ef4444', 
+                    color: 'white', 
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  title="Manual Refresh Performance"
+                >
+                  🔄 Perf
+                </button>
+              )}
+              
               <BackButton onClick={() => window.history.back()}>Kembali</BackButton>
             </HeaderRight>
           </HeaderTop>
           
-          {performanceScore !== null && (
+          {/* ✅ PERFORMANCE BAR - FIXED */}
+          {performanceScore !== null && performanceScore !== undefined && (
             <PerformanceBox>
               <div className="label">🎮 Team Performance</div>
               <div className="stars">{getStars(performanceScore)}</div>
               <ProgressWrapper>
                 <ProgressBar>
-                  <div style={{ width: `${performanceScore}%` }} />
+                  <div style={{ width: `${Math.max(0, performanceScore)}%` }} />
                 </ProgressBar>
                 <span>{Math.round(performanceScore)}%</span>
               </ProgressWrapper>
@@ -652,7 +718,7 @@ useEffect(() => {
 
           {/* RIGHT PANEL */}
           <RightPanel>
-            {/* PSEUDOCODE - MANUAL SAVE ONLY */}
+            {/* PSEUDOCODE */}
             <Card>
               <h4>📝 Pseudocode 
                 <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '10px'}}>
@@ -673,7 +739,7 @@ useEffect(() => {
               </SaveButton>
             </Card>
 
-            {/* FLOWCHART - MANUAL SAVE ONLY */}
+            {/* FLOWCHART */}
             <FlowchartCard>
               <h4>🔄 Flowchart 
                 <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '10px'}}>
@@ -747,7 +813,7 @@ useEffect(() => {
   );
 }
 
-// Styled Components
+// ================= STYLED COMPONENTS =================
 const Wrapper = styled.div`
   padding: 20px 40px;
   font-family: 'Roboto', sans-serif;
@@ -798,7 +864,6 @@ const BackButton = styled.button`
   font-weight: 600;
   font-size: 16px;
   transition: all 0.3s ease;
-
 
   &:hover {
     background: #2a4a9c;
@@ -861,18 +926,17 @@ const RightPanel = styled.div`
   flex-direction: column;
   gap: 25px;
 `;
+
 const PerformanceBox = styled.div`
   width: 97%;
   padding: 8px 16px;
   border-radius: 12px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-
   display: flex;
   align-items: center;
   gap: 20px;
   justify-content: space-between;
-
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   font-size: 13px;
 
@@ -887,56 +951,24 @@ const PerformanceBox = styled.div`
     white-space: nowrap;
   }
 `;
+
 const ProgressWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
   width: 220px;
 
-span {
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255,255,255,0.2);
-  padding: 3px 8px;
-  border-radius: 20px;
-  min-width: 40px;
-  text-align: center;
-}
-`;
-
-
-const PerformanceHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-
-  h4 {
-    margin: 0;
-    font-size: 14px;
-    opacity: 0.9;
+  span {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.2);
+    padding: 3px 8px;
+    border-radius: 20px;
+    min-width: 40px;
+    text-align: center;
   }
 `;
 
-const ToggleSection = styled.div`
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-`;
-const ToggleButton = styled.button`
-  background: none;
-  border: none;
-  color: #5f6fb841;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.3s ease;
-
-  &:hover {
-    color: #5a67d8;
-  }
-`;
 const ProgressBar = styled.div`
   flex: 1;
   height: 6px;
@@ -951,6 +983,7 @@ const ProgressBar = styled.div`
     transition: width 0.4s ease;
   }
 `;
+
 const Card = styled.div`
   background: rgba(255, 255, 255, 0.95);
   padding: 25px;
@@ -985,25 +1018,8 @@ const Card = styled.div`
   }
 `;
 
-const FlowchartCard = styled.div`
-  padding: 10px;
-  border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-
-  h4 {
-    margin: 0 0 10px 0;
-    color: #2c3e50;
-    font-weight: 600;
-    font-size: 20px;
-  }
-
-  p {
-    margin: 0 0 20px 0;
-    font-size: 13px;
-    color: #7f8c8d;
-  }
+const FlowchartCard = styled(Card)`
+  padding: 25px;
 `;
 
 const ClueHeader = styled.div`
@@ -1080,23 +1096,6 @@ const ButtonRow = styled.div`
   display: flex;
   gap: 20px;
   justify-content: center;
-
-  button {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 12px;
-    background: #2a8b46;
-    color: white;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.3s ease;
-
-    &:hover {
-      background: #255031;
-      transform: translateY(-2px);
-    }
-  }
 `;
 
 const SaveButton = styled.button`
@@ -1112,69 +1111,15 @@ const SaveButton = styled.button`
   transition: all 0.3s ease;
   margin-top: 20px;
 
-  &:hover {
-    ${({ disabled }) =>
-      !disabled &&
-      `
-        background: #2a4a9c;
-        transform: translateY(-2px);
-      `}
+  &:hover:not(:disabled) {
+    background: #2a4a9c;
+    transform: translateY(-2px);
   }
 `;
-
 
 const TaskList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 15px;
   margin-top: 15px;
-`;
-
-const TaskItem = styled.label.withConfig({
-  shouldForwardProp: (prop) => prop !== "done"  
-})`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 15px;
-  cursor: pointer;
-  padding: 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateX(5px);
-  }
-
-  span {
-    text-decoration: ${({ done }) => (done ? "line-through" : "none")};
-    opacity: ${({ done }) => (done ? 0.6 : 1)};
-    color: #2c3e50;
-  }
-
-  input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #667eea;
-  }
-`;
-
-const UploadButton = styled.button`
-  padding: 14px 20px;
-  background: #3759c7;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-  font-size: 15px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: #2a4a9c;
-    transform: translateY(-2px);
-  }
 `;
