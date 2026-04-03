@@ -927,6 +927,32 @@ const RightPanel = styled.div`
   gap: 25px;
 `;
 
+const UploadButton = styled.button`
+  width: 100%;
+  padding: 16px 20px;
+  background: ${({ disabled }) => disabled ? "#6b7280" : "#10b981"};
+  border: none;
+  border-radius: 15px;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+  cursor: ${({ disabled }) => disabled ? "not-allowed" : "pointer"};
+  transition: all 0.3s ease;
+  margin-top: 20px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+
+  &:hover:not(:disabled) {
+    background: #059669 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  }
+
+  &:disabled {
+    box-shadow: none;
+    opacity: 0.7;
+  }
+`;
+
 const PerformanceBox = styled.div`
   width: 97%;
   padding: 8px 16px;
