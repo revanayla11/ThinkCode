@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import styled from "styled-components";
 import Swal from "sweetalert2";
@@ -15,21 +15,82 @@ export default function MateriDetail() {
   const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isQuestMinimized, setIsQuestMinimized] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // 🆕
 
-  useEffect(() => {
-    api.get(`/materi/${id}`)
-      .then(res => setData(res.data?.data || null))
-      .catch(err => console.error(err));
+  // 🆕 REFETCH DATA ON MOUNT & FOCUS
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get(`/materi/${id}`);
+      const materiData = res.data?.data;
+      setData(materiData);
+      
+      // 🆕 STRICT VALIDATION
+      if (materiData?.progress) {
+        const steps = materiData.progress.completedSections || [];
+        // Pastikan array string exact match
+        const validatedSteps = steps
+          .map(step => step?.toString().trim())
+          .filter(step => step && (step === "watch_video" || step === "open_mini_lesson"));
+        setCompletedSteps(validatedSteps);
+        setXp(materiData.progress.xp || 0);
+      }
+      setIsDataLoaded(true);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Gagal memuat data materi",
+        timer: 2000,
+        toast: true
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
 
+  // 🆕 LOAD DATA ON MOUNT & WHEN BACK FROM DISCUSSION
   useEffect(() => {
-    if (data?.progress) {
-      setCompletedSteps(data.progress.completedSections || []);
-      setXp(data.progress.xp || 0);
-    }
-  }, [data]);
+    fetchData();
+  }, [fetchData]);
 
-  if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
+  // 🆕 REFETCH WHEN WINDOW FOCUS (BACK FROM OTHER PAGE)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isDataLoaded) {
+        fetchData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+    };
+  }, [fetchData, isDataLoaded]);
+
+  if (!isDataLoaded) {
+    return (
+      <Layout>
+        <div style={{ padding: 50, textAlign: 'center', color: '#6b7280' }}>
+          Memuat data...
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Layout>
+        <div style={{ padding: 50, textAlign: 'center', color: '#ef4444' }}>
+          Materi tidak ditemukan
+        </div>
+      </Layout>
+    );
+  }
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
@@ -45,14 +106,20 @@ export default function MateriDetail() {
     try {
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
       
-      setCompletedSteps(res.data.completedSteps);
-      setXp(res.data.totalXP);
+      // 🆕 IMMEDIATE UPDATE DARI RESPONSE
+      const newSteps = res.data.completedSteps || [];
+      const validatedSteps = newSteps
+        .map(step => step?.toString().trim())
+        .filter(step => step && (step === "watch_video" || step === "open_mini_lesson"));
+      
+      setCompletedSteps(validatedSteps);
+      setXp(res.data.totalXP || 0);
 
       const icon = stepKey === "watch_video" ? "🎥" : "📘";
       Swal.fire({
         icon: "success",
-        title: `${icon} +${res.data.xpGain} XP!`,
-        text: `Total XP: ${res.data.totalXP.toLocaleString()}`,
+        title: `${icon} +${res.data.xpGain || 10} XP!`,
+        text: `Total XP: ${res.data.totalXP?.toLocaleString() || xp.toLocaleString()}`,
         timer: 2000,
         toast: true,
         position: "top-end",
@@ -60,6 +127,7 @@ export default function MateriDetail() {
         color: "white"
       });
     } catch (err) {
+      console.error("Complete step error:", err);
       Swal.fire({
         icon: "error",
         title: "Gagal",
@@ -78,13 +146,22 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
-  // 🆕 ROBUST CHECK
-  const normalizedSteps = Array.isArray(completedSteps) 
-    ? completedSteps.map(step => step?.toString?.() || step).filter(Boolean)
-    : [];
-  const allStepsDone = normalizedSteps.includes("watch_video") && normalizedSteps.includes("open_mini_lesson");
-  
+  // 🆕 EXACT MATCH CHECK
+  const hasWatchVideo = completedSteps.includes("watch_video");
+  const hasMiniLesson = completedSteps.includes("open_mini_lesson");
+  const allStepsDone = hasWatchVideo && hasMiniLesson;
+
   const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
+
+  // 🆕 DEBUG CONSOLE (HAPUS DI PRODUCTION)
+  console.log('📊 DEBUG:', {
+    id,
+    completedSteps,
+    hasWatchVideo,
+    hasMiniLesson,
+    allStepsDone,
+    data: data?.progress
+  });
 
   return (
     <Layout>
@@ -130,13 +207,12 @@ export default function MateriDetail() {
             
             <InfoButton 
               onClick={handleOpenMini} 
-              disabled={isLoading || normalizedSteps.includes("open_mini_lesson")}
+              disabled={isLoading || hasMiniLesson}
             >
               📖
             </InfoButton>
           </VideoWrapper>
 
-          {/* 🆕 DISCUSSION SECTION */}
           <DiscussionSection>
             {allStepsDone ? (
               <DiscussionButtonContainer>
@@ -148,13 +224,15 @@ export default function MateriDetail() {
               <LockMessage>
                 🔒 Selesaikan 2 quest untuk unlock diskusi
                 <br />
-                <small>Progress: {normalizedSteps.length}/2</small>
+                <small>
+                  {hasWatchVideo ? '✅ Video' : '📺 Video'} | 
+                  {hasMiniLesson ? ' ✅ Mini Lesson' : ' 📖 Mini Lesson'}
+                </small>
               </LockMessage>
             )}
           </DiscussionSection>
         </ContentArea>
 
-        {/* 🆕 QUEST TEXT ONLY - MINIMIZABLE */}
         <QuestPanel isMinimized={isQuestMinimized}>
           <QuestToggle onClick={toggleQuest}>
             {isQuestMinimized ? "📋" : "✨"} 
@@ -164,7 +242,6 @@ export default function MateriDetail() {
             )}
           </QuestToggle>
           
-          {/* 🆕 MINIMIZE STATE */}
           {isQuestMinimized && (
             <QuestMinimizedText>QUEST</QuestMinimizedText>
           )}
@@ -176,27 +253,25 @@ export default function MateriDetail() {
               </XPBar>
               
               <QuestList>
-                {steps.map((step, index) => (
-                  <QuestItem 
-                    key={step.key} 
-                    done={normalizedSteps.includes(step.key)}
-                  >
-                    <QuestCheck done={normalizedSteps.includes(step.key)}>
-                      {normalizedSteps.includes(step.key) ? "✔" : index + 1}
-                    </QuestCheck>
-                    <div>
-                      <QuestText>{step.label}</QuestText>
-                      <QuestReward>{step.reward}</QuestReward>
-                    </div>
-                  </QuestItem>
-                ))}
+                {steps.map((step, index) => {
+                  const isDone = completedSteps.includes(step.key);
+                  return (
+                    <QuestItem key={step.key} done={isDone}>
+                      <QuestCheck done={isDone}>
+                        {isDone ? "✔" : index + 1}
+                      </QuestCheck>
+                      <div>
+                        <QuestText>{step.label}</QuestText>
+                        <QuestReward>{step.reward}</QuestReward>
+                      </div>
+                    </QuestItem>
+                  );
+                })}
               </QuestList>
               
               <ProgressFooter>
-                Progress: {normalizedSteps.length}/2
-                {allStepsDone && (
-                  <span>✓ SELESAI!</span>
-                )}
+                Progress: {completedSteps.length}/2
+                {allStepsDone && <span>✓ SELESAI!</span>}
               </ProgressFooter>
             </>
           )}
