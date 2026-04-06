@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import styled from "styled-components"; 
+import Swal from "sweetalert2";
 import api from "../api/axiosClient";
 import MiniLessonModal from "../components/MiniLessonModal";
 import Layout from "../components/Layout";
@@ -10,7 +11,10 @@ export default function MateriDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [showMini, setShowMini] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState([]); 
+  const [completedSteps, setCompletedSteps] = useState([]);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     api
@@ -21,6 +25,14 @@ export default function MateriDetail() {
       .catch(err => console.error(err));
   }, [id]);
 
+  useEffect(() => {
+    if (data?.progress) {
+      setCompletedSteps(data.progress.completedSections || []);
+      setXp(data.progress.xp || 0);
+      setLevel(Math.floor((data.progress.xp || 0) / 100));
+    }
+  }, [data]);
+
   if (!data) {
     return <p style={{ padding: 30 }}>Memuat...</p>;
   }
@@ -29,35 +41,64 @@ export default function MateriDetail() {
     s => s.type === "video" && s.content
   );
 
-  const handleVideoEnd = () => {
-    console.log('Video ended, attempting to complete "watch_video"');
-    if (!completedSteps.includes("watch_video")) {
-      api.post(`/materi/${id}/complete-step`, { step: "watch_video" })
-        .then(() => {
-          console.log('Step "watch_video" completed');
-          setCompletedSteps(prev => [...prev, "watch_video"]);
-        })
-        .catch(err => console.error('Error completing "watch_video":', err));
+  const steps = [
+    { key: "watch_video", label: "Tonton Video" },
+    { key: "open_mini_lesson", label: "Buka Mini Lesson" },
+    { key: "join_discussion", label: "Join Diskusi" },
+    { key: "submit_answer", label: "Submit Jawaban" },
+  ];
+
+  const completeStep = async (stepKey) => {
+    if (completedSteps.includes(stepKey) || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
+      
+      setCompletedSteps(res.data.completedSteps);
+      setXp(res.data.xp);
+      setLevel(Math.floor(res.data.xp / 100));
+
+      // XP Mapping untuk icon
+      const xpMap = { watch_video: "🎥", open_mini_lesson: "📘", join_discussion: "💬", submit_answer: "✅" };
+      const icon = xpMap[stepKey] || "⭐";
+      
+      Swal.fire({
+        icon: "success",
+        title: `+${res.data.xp - (xp)} XP ${icon}`,
+        text: `${steps.find(s => s.key === stepKey).label} selesai!`,
+        timer: 2000,
+        showConfirmButton: false,
+        toast: true,
+        position: "top-end"
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal menyimpan progress",
+        text: err.response?.data?.error || "Coba lagi",
+        timer: 2000
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleOpenMini = () => {
-    console.log('Mini lesson opened, attempting to complete "open_mini_lesson"');
-    setShowMini(true);
-    if (!completedSteps.includes("open_mini_lesson")) {
-      api.post(`/materi/${id}/complete-step`, { step: "open_mini_lesson" })
-        .then(() => {
-          console.log('Step "open_mini_lesson" completed');
-          setCompletedSteps(prev => [...prev, "open_mini_lesson"]);
-        })
-        .catch(err => console.error('Error completing "open_mini_lesson":', err));
-    }
+  const handleVideoEnd = () => {
+    completeStep("watch_video");
   };
+
+  const handleOpenMini = () => {
+    setShowMini(true);
+    completeStep("open_mini_lesson");
+  };
+
+  const canJoinDiscussion = completedSteps.includes("watch_video");
 
   return (
     <Layout>
       <Wrapper>
-        {/* HEADER */}
         <Header>
           <HeaderLeft>
             <Title>{data.materi?.title}</Title>
@@ -68,17 +109,15 @@ export default function MateriDetail() {
           </BackButton>
         </Header>
 
-        {/* VIDEO WRAPPER */}
         <VideoWrapper>
           {videoSection ? (
             videoSection.content.includes("/uploads/") ? (
               (() => {
-                // Logika untuk handle URL: Jika sudah lengkap (https://), gunakan langsung; jika relatif, gabung baseUrl
-                const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');  // Base tanpa /api
+                const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
                 const videoSrc = videoSection.content.startsWith('https://') 
                   ? videoSection.content 
                   : `${baseUrl}${videoSection.content}`;
-                console.log("Video src:", videoSrc);  // Tambah logging untuk debug
+
                 return (
                   <video
                     src={videoSrc}
@@ -110,22 +149,38 @@ export default function MateriDetail() {
             <VideoPlaceholder>Video</VideoPlaceholder>
           )}
 
-          {/* INFO BUTTON */}
-          <InfoButton onClick={handleOpenMini}>
+          <InfoButton onClick={handleOpenMini} disabled={isLoading}>
             i
           </InfoButton>
         </VideoWrapper>
 
-        {/* BUTTON RUANG DISKUSI */}
+        <GameBox>
+          <XPBar>
+            ⭐ XP: {xp} | Level: {level} 
+            <LevelBadge>Lv.{level}</LevelBadge>
+          </XPBar>
+
+          <ProgressBox>
+            {steps.map(step => (
+              <StepItem key={step.key} done={completedSteps.includes(step.key)}>
+                {completedSteps.includes(step.key) ? "✔" : "○"} {step.label}
+              </StepItem>
+            ))}
+          </ProgressBox>
+
+          <ProgressFooter>
+            Progress: {Math.round((completedSteps.length / steps.length) * 100)}%
+          </ProgressFooter>
+        </GameBox>
+
         <DiscussionButtonContainer>
-          <Link to={`/materi/${id}/discussion`}>
-            <DiscussionButton>
-              Join Ruang Diskusi
+          <Link to={canJoinDiscussion ? `/materi/${id}/discussion` : "#"}>
+            <DiscussionButton disabled={!canJoinDiscussion || isLoading}>
+              {canJoinDiscussion ? "💬 Join Ruang Diskusi" : "🔒 Selesaikan video dulu"}
             </DiscussionButton>
           </Link>
         </DiscussionButtonContainer>
 
-        {/* MINI LESSON MODAL */}
         {showMini && (
           <MiniLessonModal
             show={showMini}  
@@ -138,10 +193,12 @@ export default function MateriDetail() {
   );
 }
 
-// Styled Components
+/* ================= STYLES ================= */
 const Wrapper = styled.div`
   padding: 20px 40px;
   font-family: 'Roboto', sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
 `;
 
 const Header = styled.div`
@@ -149,15 +206,6 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(15px);
-  z-index: 10;
-  padding: 20px 25px;
-  border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
 `;
 
 const HeaderLeft = styled.div`
@@ -166,91 +214,159 @@ const HeaderLeft = styled.div`
 `;
 
 const Title = styled.h2`
-  margin: 0;
-  color: #2c3e50;
+  margin: 0 0 5px 0;
+  font-size: 28px;
   font-weight: 700;
-  font-size: 32px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const Breadcrumb = styled.div`
-  font-size: 16px;
-  color: #7f8c8d;
-  margin-top: 8px;
-  font-weight: 500;
+  font-size: 14px;
+  color: #666;
 `;
 
 const BackButton = styled.button`
   background: #3759c7;
   color: white;
   border: none;
-  border-radius: 12px;
-  padding: 14px 28px;
+  padding: 10px 20px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 16px;
-  transition: all 0.3s ease;
+  font-weight: 500;
+  transition: background 0.2s;
 
   &:hover {
-    background: #2a4a9c;
-    transform: translateY(-2px);
+    background: #2e4bb6;
   }
 `;
 
 const VideoWrapper = styled.div`
-  width: 70%;
-  height: 380px;
-  background: #d8d8d8;
-  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  height: 450px;
+  background: #1a1a1a;
+  border-radius: 16px;
   position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  margin: 0 auto 30px;
 `;
 
-const VideoPlaceholder = styled.strong`
-  font-size: 22px;
+const VideoPlaceholder = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-size: 24px;
 `;
 
 const InfoButton = styled.button`
   position: absolute;
-  left: -15px;
-  bottom: -15px;
-  width: 45px;
-  height: 45px;
+  left: 20px;
+  bottom: 20px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: #4e8df5;
+  background: linear-gradient(135deg, #4e8df5, #3b6fd8);
   border: none;
   color: white;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(78, 141, 245, 0.4);
+  transition: all 0.2s;
 
-  &:hover {
-    background: #3b7dd8;
-    transform: scale(1.1);
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(78, 141, 245, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
-const DiscussionButtonContainer = styled.div`
-  margin-top: 40px;
-  width: 100%;
+const GameBox = styled.div`
+  max-width: 500px;
+  margin: 0 auto 40px;
+  padding: 25px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f5f9ff 0%, #e8f0fe 100%);
+  box-shadow: 0 8px 32px rgba(78, 141, 245, 0.15);
+  border: 1px solid rgba(78, 141, 245, 0.2);
+`;
+
+const XPBar = styled.div`
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #1e40af;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+`;
+
+const LevelBadge = styled.span`
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const ProgressBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+`;
+
+const StepItem = styled.div`
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: ${props => props.done ? 
+    "linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)" : 
+    "#f8f9fa"
+  };
+  border: ${props => props.done ? "2px solid #28a745" : "1px solid #e9ecef"};
+  font-weight: ${props => props.done ? "600" : "500"};
+  color: ${props => props.done ? "#155724" : "#6c757d"};
+  transition: all 0.2s;
+`;
+
+const ProgressFooter = styled.div`
+  text-align: center;
+  font-weight: 600;
+  color: #1e40af;
+  font-size: 16px;
+`;
+
+const DiscussionButtonContainer = styled.div`
+  max-width: 500px;
+  margin: 0 auto;
 `;
 
 const DiscussionButton = styled.button`
-  background: #a7eeb5;
-  padding: 12px 35px;
-  border-radius: 14px;
+  width: 100%;
+  padding: 16px 30px;
+  border-radius: 12px;
   border: none;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
 
-  &:hover {
-    background: #8fd3f4;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+
+  &:hover:not(:disabled) {
     transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  }
+
+  &:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
