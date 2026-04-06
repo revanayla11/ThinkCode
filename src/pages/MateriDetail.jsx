@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import styled, { keyframes } from "styled-components";
 import Swal from "sweetalert2";
 import api from "../api/axiosClient";
@@ -216,6 +216,30 @@ export default function MateriDetail() {
               {completedSteps.includes("open_mini_lesson") ? "✅" : "📖"} Mini Lesson
             </MiniLessonButton>
           </VideoHero>
+          // ... (sama seperti sebelumnya sampai VideoHero)
+
+{/* DISCUSSION BUTTON - UNLOCK SETELAH 2 QUEST */}
+<DiscussionSection>
+  {allQuestsComplete ? (
+    <Link to={`/materi/${id}/discussion`} style={{ textDecoration: 'none' }}>
+      <DiscussionButton>
+        🚪 Masuk Diskusi Room
+        <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>
+          +35 XP Bonus!
+        </div>
+      </DiscussionButton>
+    </Link>
+  ) : (
+    <LockedDiscussion>
+      🔒 Selesaikan 2 Quest dulu!
+      <ProgressBar>
+        <ProgressFill style={{ width: `${(progressCount / 2) * 100}%` }} />
+        <ProgressText>{progressCount}/2</ProgressText>
+      </ProgressBar>
+    </LockedDiscussion>
+  )}
+</DiscussionSection>
+
 
           {/* ✅ SUCCESS BANNER */}
           {allQuestsComplete && (
@@ -314,6 +338,69 @@ const XPTracker = styled.div`
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   z-index: 1001;
   border: 1px solid rgba(255,255,255,0.1);
+`;
+
+const DiscussionSection = styled.div`
+  max-width: 600px;
+  margin: 40px auto 0;
+`;
+
+const DiscussionButton = styled.button`
+  width: 100%;
+  padding: 28px 40px;
+  border-radius: 24px;
+  border: none;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 20px 50px rgba(59,130,246,0.4);
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 60px rgba(59,130,246,0.6);
+  }
+`;
+
+const LockedDiscussion = styled.div`
+  text-align: center;
+  padding: 40px 30px;
+  background: rgba(15,23,42,0.6);
+  border-radius: 24px;
+  border: 2px solid rgba(107,114,128,0.3);
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const ProgressBar = styled.div`
+  position: relative;
+  height: 10px;
+  width: 200px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  margin: 20px auto 0;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+`;
+
+const ProgressText = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 `;
 
 const ContentArea = styled.div`
