@@ -88,7 +88,9 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
-  const allStepsDone = safeCompletedSteps.length === 2;
+  const allStepsDone =
+  safeCompletedSteps.includes("watch_video") &&
+  safeCompletedSteps.includes("open_mini_lesson");
   const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
 
   return (
