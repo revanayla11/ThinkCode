@@ -12,62 +12,48 @@ export default function MateriDetail() {
   const [data, setData] = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [xp, setXp] = useState(0); // 🆕 Total XP dari USER global
+  const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    api.get(`/materi/${id}`)
-      .then(res => setData(res.data?.data || null))
-      .catch(err => console.error(err));
+    api.get(`/materi/${id}`).then(res => setData(res.data?.data || null));
   }, [id]);
 
   useEffect(() => {
     if (data?.progress) {
       setCompletedSteps(data.progress.completedSections || []);
-      setXp(data.progress.xp || 0); // 🆕 XP dari progress (akan diupdate via API)
+      setXp(data.progress.xp || 0);
     }
   }, [data]);
 
-  if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
+  if (!data) return <Loading>Loading...</Loading>;
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
-  // 🆕 2 Steps only
   const steps = [
-    { key: "watch_video", label: "Tonton video sampai selesai", reward: "+10 XP" },
+    { key: "watch_video", label: "Tonton Video", reward: "+10 XP" },
     { key: "open_mini_lesson", label: "Baca Mini Lesson", reward: "+15 XP" },
   ];
 
   const completeStep = async (stepKey) => {
     if (completedSteps.includes(stepKey) || isLoading) return;
-
     setIsLoading(true);
+    
     try {
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
-      
-      // 🆕 SYNC DARI DATABASE RESPONSE
       setCompletedSteps(res.data.completedSteps);
-      setXp(res.data.totalXP); // Total XP dari USER table
-
-      const icon = stepKey === "watch_video" ? "🎥" : "📘";
+      setXp(res.data.totalXP);
+      
       Swal.fire({
         icon: "success",
-        title: `${icon} +${res.data.xpGain} XP!`,
-        text: `Total XP: ${res.data.totalXP.toLocaleString()}`,
+        title: `+${res.data.xpGain} XP!`,
+        text: `Total: ${res.data.totalXP.toLocaleString()} XP`,
         timer: 2000,
         toast: true,
-        position: "top-end",
-        background: "linear-gradient(135deg, #22c55e, #16a34a)",
-        color: "white"
+        position: "top-end"
       });
     } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: err.response?.data?.message || "Coba lagi",
-        timer: 2000,
-        toast: true
-      });
+      Swal.fire("Error", err.response?.data?.message || "Coba lagi", "error");
     } finally {
       setIsLoading(false);
     }
@@ -83,123 +69,100 @@ export default function MateriDetail() {
 
   return (
     <Layout>
-      <MainContainer>
-        {/* MAIN CONTENT */}
-        <ContentArea>
-          <Header>
-            <HeaderLeft>
-              <Title>{data.materi?.title}</Title>
-              <Breadcrumb>Orientasi Masalah</Breadcrumb>
-            </HeaderLeft>
-            <BackButton onClick={() => navigate(-1)}>← Kembali</BackButton>
-          </Header>
+      <Container>
+        <Header>
+          <Title>{data.materi?.title}</Title>
+          <BackButton onClick={() => navigate(-1)}>← Kembali</BackButton>
+        </Header>
 
-          <VideoWrapper>
-            {videoSection ? (
-              videoSection.content.includes("http") || videoSection.content.includes("/uploads/") ? (
-                <video
-                  src={videoSection.content}
-                  controls
-                  preload="metadata"
-                  onEnded={handleVideoEnd}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: "20px",
-                    background: "#000",
-                    objectFit: "contain",
-                  }}
-                />
+        <MainContent>
+          {/* VIDEO KIRI */}
+          <VideoSection>
+            <VideoWrapper>
+              {videoSection ? (
+                videoSection.content.includes("http") ? (
+                  <video
+                    src={videoSection.content}
+                    controls
+                    onEnded={handleVideoEnd}
+                    style={{ width: "100%", height: "100%", borderRadius: "20px" }}
+                  />
+                ) : (
+                  <iframe
+                    src={videoSection.content}
+                    style={{ width: "100%", height: "100%", borderRadius: "20px" }}
+                    allowFullScreen
+                  />
+                )
               ) : (
-                <iframe
-                  title="video"
-                  width="100%"
-                  height="100%"
-                  src={videoSection.content}
-                  style={{ border: "none", borderRadius: "20px" }}
-                  allowFullScreen
-                />
-              )
-            ) : (
-              <VideoPlaceholder>Video belum tersedia</VideoPlaceholder>
-            )}
+                <VideoPlaceholder>Tunggu video...</VideoPlaceholder>
+              )}
+              <MiniButton onClick={handleOpenMini} disabled={isLoading}>
+                📖 Mini Lesson
+              </MiniButton>
+            </VideoWrapper>
+          </VideoSection>
+
+          {/* QUEST KANAN */}
+          <QuestSection>
+            <QuestHeader>
+              <QuestIcon>⭐</QuestIcon>
+              <div>QUEST</div>
+            </QuestHeader>
             
-            {/* 🆕 BUTTON 📖 KANAN BAWAH */}
-            <InfoButton 
-              onClick={handleOpenMini} 
-              disabled={isLoading || completedSteps.includes("open_mini_lesson")}
-            >
-              📖
-            </InfoButton>
-          </VideoWrapper>
+            <XPContainer>
+              <XPText>Total XP</XPText>
+              <XPValue>{xp.toLocaleString()}</XPValue>
+            </XPContainer>
 
-          {/* 🆕 DISCUSSION - Hanya jika 2 steps selesai */}
-          {allStepsDone && (
-            <DiscussionButtonContainer>
-              <Link to={`/materi/${id}/discussion`}>
-                <DiscussionButton>✅ QUEST SELESAI! 💬 Join Diskusi</DiscussionButton>
-              </Link>
-            </DiscussionButtonContainer>
-          )}
-        </ContentArea>
+            <QuestList>
+              {steps.map((step, i) => (
+                <QuestItem key={step.key} done={completedSteps.includes(step.key)}>
+                  <QuestNumber done={completedSteps.includes(step.key)}>
+                    {completedSteps.includes(step.key) ? "✓" : i + 1}
+                  </QuestNumber>
+                  <QuestInfo>
+                    <QuestTitle>{step.label}</QuestTitle>
+                    <QuestReward>{step.reward}</QuestReward>
+                  </QuestInfo>
+                </QuestItem>
+              ))}
+            </QuestList>
 
-        {/* 🆕 COMPACT QUEST PANEL */}
-        <QuestPanel>
-          <QuestHeader>
-            <QuestIcon>⭐</QuestIcon>
-            <QuestTitle>XP QUEST</QuestTitle>
-          </QuestHeader>
-          
-          <XPBar>
-            Total XP: <strong>{xp.toLocaleString()}</strong>
-          </XPBar>
-          
-          <QuestList>
-            {steps.map((step, index) => (
-              <QuestItem 
-                key={step.key} 
-                done={completedSteps.includes(step.key)}
-              >
-                <QuestCheck done={completedSteps.includes(step.key)}>
-                  {completedSteps.includes(step.key) ? "✔" : index + 1}
-                </QuestCheck>
-                <div>
-                  <QuestText>{step.label}</QuestText>
-                  <QuestReward>{step.reward}</QuestReward>
-                </div>
-              </QuestItem>
-            ))}
-          </QuestList>
-        </QuestPanel>
+            {allStepsDone && (
+              <QuestComplete>🎉 Semua Quest Selesai!</QuestComplete>
+            )}
+          </QuestSection>
+        </MainContent>
 
-        {/* 🆕 XP TRACKER KECIL */}
-        <XPTracker>{xp.toLocaleString()} XP</XPTracker>
+        {/* BUTTON JOIN BAWAH - LOCKED sampai selesai */}
+        <BottomButton>
+          <JoinButton 
+            disabled={!allStepsDone || isLoading}
+            as={allStepsDone ? Link : "button"}
+            to={allStepsDone ? `/materi/${id}/discussion` : "#"}
+          >
+            {allStepsDone ? "💬 JOIN DISKUSI" : "🔒 Selesaikan Quest Dulu"}
+          </JoinButton>
+        </BottomButton>
 
-        {/* MODAL */}
         {showMini && (
           <MiniLessonModal
-            show={showMini}
+            show={true}
             onClose={() => setShowMini(false)}
-            content={data.miniLesson?.content || "Mini lesson kosong."}
+            content={data.miniLesson?.content || "Loading..."}
           />
         )}
-      </MainContainer>
+      </Container>
     </Layout>
   );
 }
 
-/* ================= STYLES ================= */
-const MainContainer = styled.div`
-  position: relative;
-  padding: 20px 40px;
-  max-width: 1200px;
+/* ==================== STYLES ==================== */
+const Container = styled.div`
+  max-width: 1400px;
   margin: 0 auto;
-  min-height: 100vh;
-`;
-
-const ContentArea = styled.div`
-  max-width: 900px;
-  margin: 0 auto;
+  padding: 30px 20px;
 `;
 
 const Header = styled.div`
@@ -209,27 +172,17 @@ const Header = styled.div`
   margin-bottom: 40px;
 `;
 
-const HeaderLeft = styled.div`
-  flex: 1;
-`;
-
 const Title = styled.h1`
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 800;
-  margin: 0 0 8px 0;
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   background-clip: text;
-`;
-
-const Breadcrumb = styled.div`
-  color: #6b7280;
-  font-size: 16px;
-  font-weight: 500;
+  margin: 0;
 `;
 
 const BackButton = styled.button`
-  background: #6b7280;
+  background: #64748b;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -237,21 +190,30 @@ const BackButton = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  &:hover { background: #475569; transform: translateY(-2px); }
+`;
 
-  &:hover {
-    background: #4b5563;
-    transform: translateY(-2px);
+const MainContent = styled.div`
+  display: flex;
+  gap: 40px;
+  margin-bottom: 60px;
+  @media (max-width: 1024px) { 
+    flex-direction: column; 
+    gap: 30px;
   }
+`;
+
+const VideoSection = styled.div`
+  flex: 1;
+  max-width: 800px;
 `;
 
 const VideoWrapper = styled.div`
   position: relative;
-  width: 100%;
-  height: 500px;
-  background: #0f172a;
+  aspect-ratio: 16/9;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   border-radius: 24px;
   overflow: hidden;
-  margin-bottom: 60px;
   box-shadow: 0 25px 50px rgba(0,0,0,0.3);
 `;
 
@@ -260,171 +222,152 @@ const VideoPlaceholder = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
-  font-size: 20px;
+  color: #64748b;
+  font-size: 24px;
   font-weight: 600;
 `;
 
-const InfoButton = styled.button`
+const MiniButton = styled.button`
   position: absolute;
-  right: 24px;
   bottom: 24px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 32px;
   background: linear-gradient(135deg, #ec4899, #db2777);
-  border: none;
   color: white;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 12px 30px rgba(236,72,153,0.4);
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.6 : 1};
   transition: all 0.3s;
-
+  
   &:hover:not(:disabled) {
-    transform: scale(1.1) rotate(180deg);
-    box-shadow: 0 16px 40px rgba(236,72,153,0.6);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    transform: translateX(-50%) translateY(-4px);
+    box-shadow: 0 15px 35px rgba(236,72,153,0.4);
   }
 `;
 
-// 🆕 COMPACT QUEST PANEL
-const QuestPanel = styled.div`
-  position: fixed;
-  right: 30px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 260px;
+const QuestSection = styled.div`
+  width: 320px;
   background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(25px);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px 24px;
   border: 1px solid rgba(255,255,255,0.1);
-  z-index: 1000;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-
-  @media (max-width: 768px) {
-    right: 15px;
-    width: 220px;
-    padding: 20px 16px;
-  }
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 `;
 
 const QuestHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
 `;
 
-const QuestIcon = styled.div`font-size: 18px; color: #60a5fa;`;
-const QuestTitle = styled.div`
-  color: #60a5fa;
-  font-size: 14px;
+const QuestIcon = styled.div`
+  font-size: 24px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  -webkit-background-clip: text;
+  background-clip: text;
   font-weight: 800;
-  letter-spacing: 1px;
 `;
 
-const XPBar = styled.div`
-  padding: 14px 16px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 14px;
-  color: #93c5fd;
-  font-weight: 700;
-  font-size: 15px;
+const XPContainer = styled.div`
   text-align: center;
-  margin-bottom: 20px;
-  border: 1px solid rgba(255,255,255,0.15);
+  margin-bottom: 28px;
+  padding: 20px 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
 `;
 
-const QuestList = styled.div`display: flex; flex-direction: column; gap: 14px;`;
+const XPText = styled.div`color: #94a3b8; font-size: 14px; font-weight: 600; margin-bottom: 8px;`;
+const XPValue = styled.div`color: white; font-size: 28px; font-weight: 800;`;
+
+const QuestList = styled.div`display: flex; flex-direction: column; gap: 18px;`;
 
 const QuestItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 12px;
-  background: ${props => props.done ? 'rgba(34,197,94,0.2)' : 'rgba(99,102,241,0.15)'};
-  border-radius: 14px;
-  border-left: 4px solid ${props => props.done ? '#22c55e' : '#6366f1'};
+  gap: 16px;
+  padding: 16px 14px;
+  background: ${props => props.done ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)'};
+  border-radius: 16px;
+  border-left: 4px solid ${props => props.done ? '#22c55e' : '#3b82f6'};
   transition: all 0.3s;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateX(6px);
-    background: ${props => props.done ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.25)'};
-  }
 `;
 
-const QuestCheck = styled.div`
-  width: 24px;
-  height: 24px;
+const QuestNumber = styled.div`
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 14px;
   background: ${props => props.done ? '#22c55e' : 'rgba(255,255,255,0.2)'};
-  color: ${props => props.done ? 'white' : 'transparent'};
+  color: ${props => props.done ? 'white' : '#94a3b8'};
   border: 2px solid ${props => props.done ? '#22c55e' : 'rgba(255,255,255,0.3)'};
 `;
 
-const QuestText = styled.div`
-  flex: 1;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-`;
+const QuestInfo = styled.div`flex: 1;`;
+const QuestTitle = styled.div`color: white; font-weight: 700; font-size: 15px; margin-bottom: 4px;`;
+const QuestReward = styled.div`color: #60a5fa; font-size: 13px; font-weight: 600;`;
 
-const QuestReward = styled.div`
-  font-size: 12px;
-  color: #93c5fd;
+const QuestComplete = styled.div`
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  text-align: center;
+  border-radius: 16px;
   font-weight: 700;
+  font-size: 15px;
 `;
 
-// 🆕 XP TRACKER
-const XPTracker = styled.div`
-  position: fixed;
-  top: 25px;
-  right: 25px;
-  background: linear-gradient(135deg, #1e3a8a, #1e40af);
-  padding: 14px 20px;
-  border-radius: 25px;
-  color: white;
-  font-weight: 800;
-  font-size: 16px;
-  box-shadow: 0 12px 35px rgba(30,64,175,0.5);
-  z-index: 1001;
-  border: 1px solid rgba(96,165,250,0.3);
+const BottomButton = styled.div`
+  max-width: 800px;
+  margin: 0 auto 40px;
 `;
 
-const DiscussionButtonContainer = styled.div`
-  margin-top: 40px;
-`;
-
-const DiscussionButton = styled.button`
+const JoinButton = styled.button`
   width: 100%;
-  padding: 22px 40px;
-  border-radius: 20px;
+  padding: 24px 48px;
+  border-radius: 24px;
   border: none;
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-  color: white;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 15px 40px rgba(236,72,153,0.4);
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  background: ${props => props.disabled 
+    ? '#64748b' 
+    : 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)'
+  };
+  color: white;
   transition: all 0.3s;
+  box-shadow: ${props => props.disabled 
+    ? 'none' 
+    : '0 20px 45px rgba(236,72,153,0.4)'
+  };
 
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 25px 50px rgba(236,72,153,0.6);
+  &:hover:not(:disabled) {
+    transform: translateY(-6px);
+    box-shadow: 0 30px 60px rgba(236,72,153,0.6);
   }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+`;
+
+const Loading = styled.div`
+  height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #64748b;
 `;
