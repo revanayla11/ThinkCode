@@ -10,6 +10,7 @@ export default function MateriDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
+  // States
   const [data, setData] = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]);
@@ -19,6 +20,14 @@ export default function MateriDetail() {
   const [isLoading, setIsLoading] = useState(false);
   const [isQuestMinimized, setIsQuestMinimized] = useState(false);
 
+  // 🆕 QUEST STEPS
+  const questSteps = [
+    { key: "watch_video", label: "🎬 Tonton Video Sampai Akhir", xp: 20, icon: "🎥", unlocked: true },
+    { key: "open_mini_lesson", label: "📚 Buka Mini Lesson", xp: 25, icon: "📖", unlocked: true },
+    { key: "join_discussion", label: "💬 Gabung Diskusi Room", xp: 35, icon: "🗣️", unlocked: false }
+  ];
+
+  // 🔥 LOAD DATA - Tanpa useCallback dulu
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -29,6 +38,7 @@ export default function MateriDetail() {
         if (d) {
           setData(d);
           
+          // Robust parsing
           const rawSteps = d.progress?.completedSections || [];
           const parsedSteps = Array.isArray(rawSteps) 
             ? rawSteps.map(s => s?.toString?.()?.trim()).filter(Boolean)
@@ -37,15 +47,18 @@ export default function MateriDetail() {
               : [];
           
           setCompletedSteps(parsedSteps);
-          setMateriXp(d.progress?.xp || 0);
-          setUserXp(d.userXP || d.progress?.totalXP || 0);
+          setMateriXp(d.progress?.materiXP || d.progress?.xp || 0);
+          setUserXp(d.progress?.userXP || d.progress?.totalXP || 0);
           setVideoDone(parsedSteps.includes("watch_video"));
+          
+          // Update discussion unlock
+          questSteps[2].unlocked = parsedSteps.includes("watch_video") && parsedSteps.includes("open_mini_lesson");
         }
       } catch (err) {
         console.error("Error loading materi:", err);
         Swal.fire({
           icon: "error",
-          title: "Gagal memuat materi",
+          title: "Gagal memuat",
           text: "Coba refresh halaman",
           timer: 2000,
           toast: true
@@ -56,18 +69,9 @@ export default function MateriDetail() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id]); // ✅ Hanya dependensi id
 
-  if (isLoading || !data) {
-    return <LoadingScreen>Memuat petualangan...</LoadingScreen>;
-  }
-
-  const questSteps = [
-    { key: "watch_video", label: "🎬 Tonton Video Sampai Akhir", xp: 20, icon: "🎥", unlocked: true },
-    { key: "open_mini_lesson", label: "📚 Buka Mini Lesson", xp: 25, icon: "📖", unlocked: true },
-    { key: "join_discussion", label: "💬 Gabung Diskusi Room", xp: 35, icon: "🗣️", unlocked: completedSteps.includes("watch_video") && completedSteps.includes("open_mini_lesson") }
-  ];
-
+  // 🆕 COMPLETE STEP - Fix useCallback deps
   const completeStep = useCallback(async (stepKey) => {
     if (completedSteps.includes(stepKey) || isLoading) return;
 
@@ -75,37 +79,38 @@ export default function MateriDetail() {
     try {
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
       
-      setCompletedSteps(res.data.completedSteps || []);
-      setMateriXp(res.data.materiXP || res.data.xp || 0);
-      setUserXp(res.data.totalXP || res.data.userXP || 0);
+      // Update states
+      setCompletedSteps(res.data.data?.completedSteps || []);
+      setMateriXp(res.data.data?.materiXP || 0);
+      setUserXp(res.data.data?.userXP || res.data.data?.totalXP || 0);
       
-      if (res.data.xpGain > 0) {
+      if (res.data.data?.xpGain > 0) {
         Swal.fire({
           icon: "success",
           title: `${questSteps.find(s => s.key === stepKey)?.icon} Level Up!`,
-          text: `+${res.data.xpGain} XP\nTotal: ${res.data.totalXP?.toLocaleString()} XP`,
+          text: `+${res.data.data.xpGain} XP\nTotal: ${res.data.data.totalXP?.toLocaleString()} XP`,
           timer: 2500,
           toast: true,
           position: "top-end",
           background: "linear-gradient(135deg, #22c55e, #16a34a)",
-          color: "white",
-          showConfirmButton: false
+          color: "white"
         });
       }
     } catch (err) {
       Swal.fire({
         icon: "error",
         title: "Quest gagal!",
-        text: err.response?.data?.message || "Coba lagi ya",
+        text: err.response?.data?.message || "Coba lagi",
         timer: 2000,
         toast: true
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id, completedSteps, isLoading]);
+  }, [id, completedSteps.length, isLoading]); // ✅ Fix deps - pakai length bukan array
 
-  const handleVideoProgress = useCallback((e) => {
+  // Video handlers - Tanpa useCallback
+  const handleVideoProgress = (e) => {
     const video = e.target;
     if (!videoDone && video.duration > 0) {
       const progress = video.currentTime / video.duration;
@@ -114,7 +119,7 @@ export default function MateriDetail() {
         completeStep("watch_video");
       }
     }
-  }, [videoDone, completeStep]);
+  };
 
   const handleVideoEnd = () => {
     setVideoDone(true);
@@ -128,13 +133,17 @@ export default function MateriDetail() {
 
   const toggleQuestPanel = () => setIsQuestMinimized(!isQuestMinimized);
 
-  const progress = completedSteps.length;
-  const maxProgress = questSteps.length;
+  if (isLoading || !data) {
+    return <LoadingScreen>Memuat petualangan...</LoadingScreen>;
+  }
+
+  const progressCount = completedSteps.length;
   const discussionUnlocked = completedSteps.includes("join_discussion");
 
   return (
     <Layout>
       <GameContainer>
+        {/* XP Tracker */}
         <XPTracker>
           <div>⚡ {userXp.toLocaleString()} XP</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
@@ -146,13 +155,20 @@ export default function MateriDetail() {
           <GameHeader>
             <GameTitle>{data.materi?.title}</GameTitle>
             <BackButton onClick={() => navigate(-1)}>
-              ← Kembali ke Base
+              ← Kembali
             </BackButton>
           </GameHeader>
 
           <VideoHero>
             {data.videoSection?.content ? (
-              data.videoSection.content.includes("http") && !data.videoSection.content.includes("youtube") ? (
+              data.videoSection.content.includes("youtube") || data.videoSection.content.includes("youtu.be") ? (
+                <iframe
+                  src={data.videoSection.content}
+                  title="Video"
+                  allowFullScreen
+                  style={{ borderRadius: '24px', width: '100%', height: '100%' }}
+                />
+              ) : (
                 <StyledVideo
                   src={data.videoSection.content}
                   controls
@@ -161,16 +177,9 @@ export default function MateriDetail() {
                   onEnded={handleVideoEnd}
                   videoDone={videoDone}
                 />
-              ) : (
-                <iframe
-                  src={data.videoSection.content}
-                  title="Materi Video"
-                  allowFullScreen
-                  style={{ borderRadius: '24px', width: '100%', height: '100%' }}
-                />
               )
             ) : (
-              <VideoPlaceholder>Video belum tersedia, petualangan dimulai!</VideoPlaceholder>
+              <VideoPlaceholder>Video belum tersedia!</VideoPlaceholder>
             )}
             
             <MiniLessonButton 
@@ -181,19 +190,18 @@ export default function MateriDetail() {
             </MiniLessonButton>
           </VideoHero>
 
+          {/* Discussion */}
           <DiscussionGate>
             {completedSteps.length >= 2 ? (
               <Link to={`/materi/${id}/discussion`}>
                 <DiscussionPortal unlocked={discussionUnlocked}>
-                  {discussionUnlocked ? "🚪 Masuk Diskusi Room" : "🔓 Buka Portal Diskusi"}
-                  <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                    +35 XP menanti!
-                  </div>
+                  {discussionUnlocked ? "🚪 Masuk Diskusi" : "🔓 Buka Diskusi"}
+                  <div style={{ fontSize: '12px', mt: '4px' }}>+35 XP!</div>
                 </DiscussionPortal>
               </Link>
             ) : (
               <LockedPortal>
-                🔒 Selesaikan 2 quest pertama untuk membuka portal diskusi
+                🔒 Selesaikan 2 quest dulu!
                 <ProgressBar>
                   <ProgressFill style={{ width: `${(Math.min(completedSteps.length, 2) / 2) * 100}%` }} />
                   <ProgressText>{Math.min(completedSteps.length, 2)}/2</ProgressText>
@@ -203,23 +211,17 @@ export default function MateriDetail() {
           </DiscussionGate>
         </ContentArea>
 
+        {/* Quest Panel */}
         <QuestPanel isMinimized={isQuestMinimized}>
           <QuestHeader onClick={toggleQuestPanel}>
             <QuestIcon>🎮</QuestIcon>
             <span>QUEST HUB</span>
-            {!isQuestMinimized && (
-              <MinimizeButton onClick={toggleQuestPanel}>−</MinimizeButton>
-            )}
+            {!isQuestMinimized && <MinimizeButton onClick={toggleQuestPanel}>−</MinimizeButton>}
           </QuestHeader>
 
-          {isQuestMinimized ? (
-            <MinimizedLabel>ACTIVE</MinimizedLabel>
-          ) : (
+          {!isQuestMinimized && (
             <>
-              <XPBar>
-                Level Progress: <strong>{progress}/{maxProgress}</strong>
-              </XPBar>
-              
+              <XPBar>Progress: <strong>{progressCount}/3</strong></XPBar>
               <QuestList>
                 {questSteps.map((step, index) => (
                   <QuestItem 
@@ -234,17 +236,6 @@ export default function MateriDetail() {
                       <QuestTitle>{step.icon} {step.label}</QuestTitle>
                       <QuestReward>+{step.xp} XP</QuestReward>
                     </QuestContent>
-                    {!completedSteps.includes(step.key) && step.unlocked && (
-                      <CompleteButton 
-                        onClick={() => {
-                          if (step.key === "watch_video") return;
-                          if (step.key === "open_mini_lesson") handleOpenMini();
-                          if (step.key === "join_discussion") navigate(`/materi/${id}/discussion`);
-                        }}
-                      >
-                        START
-                      </CompleteButton>
-                    )}
                   </QuestItem>
                 ))}
               </QuestList>
@@ -256,7 +247,7 @@ export default function MateriDetail() {
           <MiniLessonModal
             show={showMini}
             onClose={() => setShowMini(false)}
-            content={data.miniLesson?.content || "Mini lesson kosong."}
+            content={data.miniLesson?.content || "Loading..."}
           />
         )}
       </GameContainer>
