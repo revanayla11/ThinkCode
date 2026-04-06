@@ -24,13 +24,15 @@ export default function MateriDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (data?.progress) {
-      setCompletedSteps(Array.isArray(data.progress.completedSteps) 
-        ? data.progress.completedSteps 
+    if (!data?.progress) return;
+
+    setCompletedSteps(
+      Array.isArray(data.progress.completedSteps)
+        ? data.progress.completedSteps
         : []
-      );
-      setXp(data.progress.userXP || 0);
-    }
+    );
+
+    setXp(data.progress.userXP || 0);
   }, [data]);
 
   useEffect(() => {
@@ -39,7 +41,9 @@ export default function MateriDetail() {
   console.log("COMPLETED STEPS:", data?.progress?.completedSteps);
 }, [data]);
 
-  if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
+if (!data || !data.progress) {
+  return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
+}
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
