@@ -14,7 +14,7 @@ export default function MateriDetail() {
   const [completedSteps, setCompletedSteps] = useState([]);
   const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isQuestMinimized, setIsQuestMinimized] = useState(false); // 🆕 Minimize state
+  const [isQuestMinimized, setIsQuestMinimized] = useState(false); 
 
   useEffect(() => {
     api.get(`/materi/${id}`)
@@ -24,8 +24,8 @@ export default function MateriDetail() {
 
   useEffect(() => {
     if (data?.progress) {
-      setCompletedSteps(data.progress.completedSections || []);
-      setXp(data.progress.xp || 0);
+      setCompletedSteps(data.progress.completedSteps || []);
+      setXp(data.progress.userXP || 0);
     }
   }, [data]);
 
