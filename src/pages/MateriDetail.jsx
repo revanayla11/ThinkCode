@@ -216,7 +216,6 @@ export default function MateriDetail() {
               {completedSteps.includes("open_mini_lesson") ? "✅" : "📖"} Mini Lesson
             </MiniLessonButton>
           </VideoHero>
-          // ... (sama seperti sebelumnya sampai VideoHero)
 
 {/* DISCUSSION BUTTON - UNLOCK SETELAH 2 QUEST */}
 <DiscussionSection>
