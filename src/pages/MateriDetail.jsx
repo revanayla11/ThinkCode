@@ -20,14 +20,13 @@ export default function MateriDetail() {
   const [isLoading, setIsLoading] = useState(false);
   const [isQuestMinimized, setIsQuestMinimized] = useState(false);
 
-  // 🆕 QUEST STEPS
+  // 🆕 QUEST STEPS - HANYA 2 QUEST
   const questSteps = [
     { key: "watch_video", label: "🎬 Tonton Video Sampai Akhir", xp: 20, icon: "🎥", unlocked: true },
-    { key: "open_mini_lesson", label: "📚 Buka Mini Lesson", xp: 25, icon: "📖", unlocked: true },
-    { key: "join_discussion", label: "💬 Gabung Diskusi Room", xp: 35, icon: "🗣️", unlocked: false }
+    { key: "open_mini_lesson", label: "📚 Buka Mini Lesson", xp: 25, icon: "📖", unlocked: true }
   ];
 
-  // 🔥 LOAD DATA - Tanpa useCallback dulu
+  // 🔥 LOAD DATA - Fix XP parsing
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -47,12 +46,11 @@ export default function MateriDetail() {
               : [];
           
           setCompletedSteps(parsedSteps);
-          setMateriXp(d.progress?.materiXP || d.progress?.xp || 0);
-          setUserXp(d.progress?.userXP || d.progress?.totalXP || 0);
-          setVideoDone(parsedSteps.includes("watch_video"));
           
-          // Update discussion unlock
-          questSteps[2].unlocked = parsedSteps.includes("watch_video") && parsedSteps.includes("open_mini_lesson");
+          // ✅ FIX XP PARSING - Prioritas userXP > totalXP > materiXP
+          setMateriXp(d.progress?.materiXP || d.progress?.xp || 0);
+          setUserXp(d.progress?.userXP || d.progress?.totalXP || 0); // XP AWAL USER
+          setVideoDone(parsedSteps.includes("watch_video"));
         }
       } catch (err) {
         console.error("Error loading materi:", err);
@@ -69,9 +67,9 @@ export default function MateriDetail() {
     };
 
     fetchData();
-  }, [id]); // ✅ Hanya dependensi id
+  }, [id]);
 
-  // 🆕 COMPLETE STEP - Fix useCallback deps
+  // 🆕 COMPLETE STEP
   const completeStep = useCallback(async (stepKey) => {
     if (completedSteps.includes(stepKey) || isLoading) return;
 
@@ -82,13 +80,13 @@ export default function MateriDetail() {
       // Update states
       setCompletedSteps(res.data.data?.completedSteps || []);
       setMateriXp(res.data.data?.materiXP || 0);
-      setUserXp(res.data.data?.userXP || res.data.data?.totalXP || 0);
+      setUserXp(res.data.data?.userXP || 0); // XP TERBARU
       
       if (res.data.data?.xpGain > 0) {
         Swal.fire({
           icon: "success",
           title: `${questSteps.find(s => s.key === stepKey)?.icon} Level Up!`,
-          text: `+${res.data.data.xpGain} XP\nTotal: ${res.data.data.totalXP?.toLocaleString()} XP`,
+          text: `+${res.data.data.xpGain} XP\nTotal: ${res.data.data.userXP?.toLocaleString()} XP`,
           timer: 2500,
           toast: true,
           position: "top-end",
@@ -107,9 +105,9 @@ export default function MateriDetail() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, completedSteps.length, isLoading]); // ✅ Fix deps - pakai length bukan array
+  }, [id, completedSteps.length, isLoading]);
 
-  // Video handlers - Tanpa useCallback
+  // Video handlers
   const handleVideoProgress = (e) => {
     const video = e.target;
     if (!videoDone && video.duration > 0) {
@@ -138,7 +136,7 @@ export default function MateriDetail() {
   }
 
   const progressCount = completedSteps.length;
-  const discussionUnlocked = completedSteps.includes("join_discussion");
+  const allQuestsComplete = completedSteps.length === 2;
 
   return (
     <Layout>
@@ -175,7 +173,6 @@ export default function MateriDetail() {
                   preload="metadata"
                   onTimeUpdate={handleVideoProgress}
                   onEnded={handleVideoEnd}
-                  videoDone={videoDone}
                 />
               )
             ) : (
@@ -190,25 +187,15 @@ export default function MateriDetail() {
             </MiniLessonButton>
           </VideoHero>
 
-          {/* Discussion */}
-          <DiscussionGate>
-            {completedSteps.length >= 2 ? (
-              <Link to={`/materi/${id}/discussion`}>
-                <DiscussionPortal unlocked={discussionUnlocked}>
-                  {discussionUnlocked ? "🚪 Masuk Diskusi" : "🔓 Buka Diskusi"}
-                  <div style={{ fontSize: '12px', mt: '4px' }}>+35 XP!</div>
-                </DiscussionPortal>
-              </Link>
-            ) : (
-              <LockedPortal>
-                🔒 Selesaikan 2 quest dulu!
-                <ProgressBar>
-                  <ProgressFill style={{ width: `${(Math.min(completedSteps.length, 2) / 2) * 100}%` }} />
-                  <ProgressText>{Math.min(completedSteps.length, 2)}/2</ProgressText>
-                </ProgressBar>
-              </LockedPortal>
-            )}
-          </DiscussionGate>
+          {/* ✅ SUCCESS BANNER - 2 Quest Complete */}
+          {allQuestsComplete && (
+            <SuccessBanner>
+              🎉 <strong>Selamat! Semua Quest Selesai!</strong>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '8px' }}>
+                Total: {materiXp.toLocaleString()} Materi XP ✨
+              </div>
+            </SuccessBanner>
+          )}
         </ContentArea>
 
         {/* Quest Panel */}
@@ -221,13 +208,14 @@ export default function MateriDetail() {
 
           {!isQuestMinimized && (
             <>
-              <XPBar>Progress: <strong>{progressCount}/3</strong></XPBar>
+              <XPBar>Progress: <strong>{progressCount}/2</strong></XPBar>
               <QuestList>
                 {questSteps.map((step, index) => (
                   <QuestItem 
                     key={step.key}
                     completed={completedSteps.includes(step.key)}
                     unlocked={step.unlocked}
+                    onClick={() => !completedSteps.includes(step.key) && step.unlocked && completeStep(step.key)}
                   >
                     <QuestNumber completed={completedSteps.includes(step.key)}>
                       {completedSteps.includes(step.key) ? "✨" : index + 1}
@@ -255,7 +243,7 @@ export default function MateriDetail() {
   );
 }
 
-/* ================= ALL STYLES IN ONE ================= */
+/* ================= ALL STYLES ================= */
 const slideIn = keyframes`
   from {
     opacity: 0;
@@ -366,12 +354,6 @@ const StyledVideo = styled.video`
   height: 100%;
   object-fit: contain;
   border-radius: 28px;
-  
-  ${({ videoDone }) => videoDone && `
-    border: 4px solid #22c55e;
-    box-shadow: 0 0 30px rgba(34,197,94,0.5);
-    animation: ${pulse} 1s ease-in-out;
-  `}
 `;
 
 const VideoPlaceholder = styled.div`
@@ -409,75 +391,18 @@ const MiniLessonButton = styled.button`
   }
 `;
 
-const DiscussionGate = styled.div`
+const SuccessBanner = styled.div`
   max-width: 600px;
-  margin: 0 auto;
-`;
-
-const DiscussionPortal = styled.button`
-  width: 100%;
-  padding: 28px 40px;
+  margin: 40px auto;
+  padding: 32px 40px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   border-radius: 24px;
-  border: none;
-  background: ${({ unlocked }) => 
-    unlocked 
-      ? "linear-gradient(135deg, #22c55e, #16a34a)" 
-      : "linear-gradient(135deg, #f59e0b, #d97706)"
-  };
   color: white;
+  text-align: center;
   font-size: 20px;
   font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 20px 50px ${({ unlocked }) => 
-    unlocked ? "rgba(34,197,94,0.4)" : "rgba(245,158,11,0.4)"
-  };
-  transition: all 0.3s;
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 60px ${({ unlocked }) => 
-      unlocked ? "rgba(34,197,94,0.6)" : "rgba(245,158,11,0.6)"
-    };
-  }
-`;
-
-const LockedPortal = styled.div`
-  text-align: center;
-  padding: 50px 30px;
-  background: rgba(15,23,42,0.6);
-  border-radius: 24px;
-  border: 2px solid rgba(107,114,128,0.3);
-  color: #94a3b8;
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const ProgressBar = styled.div`
-  position: relative;
-  height: 8px;
-  width: 200px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  margin: 20px auto 0;
-  overflow: hidden;
-`;
-
-const ProgressFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #22c55e, #4ade80);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-`;
-
-const ProgressText = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  font-weight: 800;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px rgba(34,197,94,0.4);
+  animation: ${slideIn} 0.8s ease-out;
 `;
 
 const QuestPanel = styled.div`
@@ -504,12 +429,6 @@ const QuestPanel = styled.div`
     align-items: center;
     justify-content: center;
   `}
-  
-  @media (max-width: 768px) {
-    right: 20px;
-    width: 280px;
-    ${({ isMinimized }) => isMinimized && `width: 80px; height: 80px;`}
-  }
 `;
 
 const QuestHeader = styled.div`
@@ -551,14 +470,6 @@ const MinimizeButton = styled.button`
   }
 `;
 
-const MinimizedLabel = styled.div`
-  color: #60a5fa;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  text-align: center;
-`;
-
 const XPBar = styled.div`
   padding: 16px 20px;
   background: rgba(99,102,241,0.2);
@@ -595,7 +506,7 @@ const QuestItem = styled.div`
   };
   transition: all 0.3s;
   opacity: ${({ unlocked }) => unlocked ? 1 : 0.6};
-  cursor: ${({ unlocked }) => unlocked ? 'pointer' : 'default'};
+  cursor: ${({ completed, unlocked }) => completed ? 'default' : unlocked ? 'pointer' : 'default'};
 
   &:hover {
     ${({ completed, unlocked }) => !completed && unlocked && `
@@ -638,22 +549,4 @@ const QuestReward = styled.div`
   font-size: 12px;
   color: #93c5fd;
   font-weight: 800;
-`;
-
-const CompleteButton = styled.button`
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: none;
-  border-radius: 12px;
-  color: white;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(99,102,241,0.4);
-  }
 `;
