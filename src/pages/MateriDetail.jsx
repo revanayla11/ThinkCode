@@ -15,6 +15,7 @@ export default function MateriDetail() {
   const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isQuestMinimized, setIsQuestMinimized] = useState(false); 
+  const safeCompletedSteps = completedSteps || [];
 
   useEffect(() => {
     api.get(`/materi/${id}`)
@@ -29,6 +30,12 @@ export default function MateriDetail() {
     }
   }, [data]);
 
+  useEffect(() => {
+  console.log("DATA:", data);
+  console.log("PROGRESS:", data?.progress);
+  console.log("COMPLETED STEPS:", data?.progress?.completedSteps);
+}, [data]);
+
   if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
@@ -39,13 +46,13 @@ export default function MateriDetail() {
   ];
 
   const completeStep = async (stepKey) => {
-    if (completedSteps.includes(stepKey) || isLoading) return;
+    if (safeCompletedSteps.includes(stepKey) || isLoading) return;
 
     setIsLoading(true);
     try {
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
       
-      setCompletedSteps(res.data.completedSteps);
+      setCompletedSteps(res.data.completedSteps || []);
       setXp(res.data.totalXP);
 
       const icon = stepKey === "watch_video" ? "🎥" : "📘";
@@ -78,7 +85,7 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
-  const allStepsDone = completedSteps.length === 2;
+  const allStepsDone = safeCompletedSteps.length === 2;
   const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
 
   return (
@@ -126,7 +133,7 @@ export default function MateriDetail() {
             {/* 🆕 BUTTON 📖 KIRI BAWAH - Agak bawah */}
             <InfoButton 
               onClick={handleOpenMini} 
-              disabled={isLoading || completedSteps.includes("open_mini_lesson")}
+              disabled={isLoading || safeCompletedSteps.includes("open_mini_lesson")}
             >
               📖
             </InfoButton>
@@ -161,10 +168,10 @@ export default function MateriDetail() {
                 {steps.map((step, index) => (
                   <QuestItem 
                     key={step.key} 
-                    done={completedSteps.includes(step.key)}
+                    done={safeCompletedSteps.includes(step.key)}
                   >
-                    <QuestCheck done={completedSteps.includes(step.key)}>
-                      {completedSteps.includes(step.key) ? "✔" : index + 1}
+                    <QuestCheck done={safeCompletedSteps.includes(step.key)}>
+                      {safeCompletedSteps.includes(step.key) ? "✔" : index + 1}
                     </QuestCheck>
                     <div>
                       <QuestText>{step.label}</QuestText>
