@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axiosClient";
 import Swal from "sweetalert2";
+import styled from "styled-components";
 
 export default function MateriDetail() {
   const { id } = useParams();
