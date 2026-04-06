@@ -14,7 +14,7 @@ export default function MateriDetail() {
   const [completedSteps, setCompletedSteps] = useState([]);
   const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isQuestMinimized, setIsQuestMinimized] = useState(false);
+  const [isQuestMinimized, setIsQuestMinimized] = useState(false); // 🆕 Minimize state
 
   useEffect(() => {
     api.get(`/materi/${id}`)
@@ -78,12 +78,7 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
-  // 🆕 ROBUST CHECK
-  const normalizedSteps = Array.isArray(completedSteps) 
-    ? completedSteps.map(step => step?.toString?.() || step).filter(Boolean)
-    : [];
-  const allStepsDone = normalizedSteps.includes("watch_video") && normalizedSteps.includes("open_mini_lesson");
-  
+  const allStepsDone = completedSteps.length === 2;
   const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
 
   return (
@@ -128,30 +123,22 @@ export default function MateriDetail() {
               <VideoPlaceholder>Video belum tersedia</VideoPlaceholder>
             )}
             
+            {/* 🆕 BUTTON 📖 KIRI BAWAH - Agak bawah */}
             <InfoButton 
               onClick={handleOpenMini} 
-              disabled={isLoading || normalizedSteps.includes("open_mini_lesson")}
+              disabled={isLoading || completedSteps.includes("open_mini_lesson")}
             >
               📖
             </InfoButton>
           </VideoWrapper>
 
-          {/* 🆕 DISCUSSION SECTION */}
-          <DiscussionSection>
-            {allStepsDone ? (
-              <DiscussionButtonContainer>
-                <Link to={`/materi/${id}/discussion`}>
-                  <DiscussionButton>✅ QUEST SELESAI! 💬 Join Diskusi</DiscussionButton>
-                </Link>
-              </DiscussionButtonContainer>
-            ) : (
-              <LockMessage>
-                🔒 Selesaikan 2 quest untuk unlock diskusi
-                <br />
-                <small>Progress: {normalizedSteps.length}/2</small>
-              </LockMessage>
-            )}
-          </DiscussionSection>
+          {allStepsDone && (
+            <DiscussionButtonContainer>
+              <Link to={`/materi/${id}/discussion`}>
+                <DiscussionButton>✅ QUEST SELESAI! 💬 Join Diskusi</DiscussionButton>
+              </Link>
+            </DiscussionButtonContainer>
+          )}
         </ContentArea>
 
         {/* 🆕 QUEST TEXT ONLY - MINIMIZABLE */}
@@ -164,11 +151,6 @@ export default function MateriDetail() {
             )}
           </QuestToggle>
           
-          {/* 🆕 MINIMIZE STATE */}
-          {isQuestMinimized && (
-            <QuestMinimizedText>QUEST</QuestMinimizedText>
-          )}
-          
           {!isQuestMinimized && (
             <>
               <XPBar>
@@ -179,10 +161,10 @@ export default function MateriDetail() {
                 {steps.map((step, index) => (
                   <QuestItem 
                     key={step.key} 
-                    done={normalizedSteps.includes(step.key)}
+                    done={completedSteps.includes(step.key)}
                   >
-                    <QuestCheck done={normalizedSteps.includes(step.key)}>
-                      {normalizedSteps.includes(step.key) ? "✔" : index + 1}
+                    <QuestCheck done={completedSteps.includes(step.key)}>
+                      {completedSteps.includes(step.key) ? "✔" : index + 1}
                     </QuestCheck>
                     <div>
                       <QuestText>{step.label}</QuestText>
@@ -191,13 +173,6 @@ export default function MateriDetail() {
                   </QuestItem>
                 ))}
               </QuestList>
-              
-              <ProgressFooter>
-                Progress: {normalizedSteps.length}/2
-                {allStepsDone && (
-                  <span>✓ SELESAI!</span>
-                )}
-              </ProgressFooter>
             </>
           )}
         </QuestPanel>
@@ -248,7 +223,6 @@ const Title = styled.h1`
   background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-fill-color: transparent;
 `;
 
 const Breadcrumb = styled.div`
@@ -296,8 +270,8 @@ const VideoPlaceholder = styled.div`
 
 const InfoButton = styled.button`
   position: absolute;
-  left: 24px;
-  bottom: 40px;
+  left: 24px;        /* 🆕 KIRI */
+  bottom: 40px;      /* 🆕 LEBIH BAWAH */
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -308,7 +282,6 @@ const InfoButton = styled.button`
   cursor: pointer;
   box-shadow: 0 12px 30px rgba(236,72,153,0.4);
   transition: all 0.3s;
-  z-index: 10;
 
   &:hover:not(:disabled) {
     transform: scale(1.1) rotate(180deg);
@@ -321,51 +294,7 @@ const InfoButton = styled.button`
   }
 `;
 
-const DiscussionSection = styled.div`
-  margin-top: 40px;
-`;
-
-const DiscussionButtonContainer = styled.div`
-  animation: slideIn 0.5s ease-out;
-`;
-
-const DiscussionButton = styled.button`
-  width: 100%;
-  padding: 22px 40px;
-  border-radius: 20px;
-  border: none;
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-  color: white;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 15px 40px rgba(236,72,153,0.4);
-  transition: all 0.3s;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 25px 50px rgba(236,72,153,0.6);
-  }
-`;
-
-const LockMessage = styled.div`
-  text-align: center;
-  color: #6b7280;
-  font-size: 18px;
-  font-weight: 600;
-  padding: 40px 20px;
-  background: rgba(107,114,128,0.1);
-  border-radius: 16px;
-  border: 1px solid rgba(107,114,128,0.2);
-
-  small {
-    display: block;
-    font-size: 14px;
-    margin-top: 8px;
-    font-weight: 500;
-  }
-`;
-
+// 🆕 QUEST TEXT ONLY - MINIMIZABLE
 const QuestPanel = styled.div`
   position: fixed;
   right: 30px;
@@ -383,18 +312,14 @@ const QuestPanel = styled.div`
   
   ${props => props.isMinimized && `
     width: 80px;
-    height: 80px;
+    height: 60px;
     padding: 16px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
   `}
 
   @media (max-width: 768px) {
     right: 15px;
     width: 220px;
-    ${props => props.isMinimized && `width: 70px; height: 70px;`}
+    ${props => props.isMinimized && `width: 70px;`}
   }
 `;
 
@@ -409,13 +334,6 @@ const QuestToggle = styled.div`
   cursor: pointer;
   padding: 8px 0;
   transition: all 0.3s;
-  justify-content: center;
-
-  ${props => props.isMinimized && `
-    flex-direction: column;
-    gap: 2px;
-    font-size: 12px;
-  `}
 
   &:hover {
     color: #93c5fd;
@@ -432,16 +350,6 @@ const QuestMinimizeBtn = styled.span`
     transform: scale(1.2);
     color: #ef4444;
   }
-`;
-
-const QuestMinimizedText = styled.div`
-  color: #60a5fa;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-align: center;
-  margin-top: 4px;
-  opacity: 0.9;
 `;
 
 const XPBar = styled.div`
@@ -506,23 +414,6 @@ const QuestReward = styled.div`
   font-weight: 700;
 `;
 
-const ProgressFooter = styled.div`
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  color: #93c5fd;
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  span {
-    color: #22c55e;
-    font-weight: 800;
-  }
-`;
-
 const XPTracker = styled.div`
   position: fixed;
   top: 25px;
@@ -538,16 +429,25 @@ const XPTracker = styled.div`
   border: 1px solid rgba(96,165,250,0.3);
 `;
 
-/* 🆕 ANIMATION */
-const slideIn = `
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+const DiscussionButtonContainer = styled.div`
+  margin-top: 40px;
+`;
+
+const DiscussionButton = styled.button`
+  width: 100%;
+  padding: 22px 40px;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 15px 40px rgba(236,72,153,0.4);
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 25px 50px rgba(236,72,153,0.6);
   }
 `;
