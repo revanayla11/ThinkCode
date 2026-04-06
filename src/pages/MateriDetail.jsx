@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import Swal from "sweetalert2";
 import api from "../api/axiosClient";
 import MiniLessonModal from "../components/MiniLessonModal";
@@ -14,6 +14,8 @@ export default function MateriDetail() {
   const [completedSteps, setCompletedSteps] = useState([]);
   const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isQuestMinimized, setIsQuestMinimized] = useState(false); // 🆕 Minimize
+  const questRef = useRef(null);
 
   useEffect(() => {
     api.get(`/materi/${id}`).then(res => setData(res.data?.data || null));
@@ -26,7 +28,7 @@ export default function MateriDetail() {
     }
   }, [data]);
 
-  if (!data) return <Loading>Loading...</Loading>;
+  if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Loading...</div>;
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
@@ -38,22 +40,23 @@ export default function MateriDetail() {
   const completeStep = async (stepKey) => {
     if (completedSteps.includes(stepKey) || isLoading) return;
     setIsLoading(true);
-    
+
     try {
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
       setCompletedSteps(res.data.completedSteps);
-      setXp(res.data.totalXP);
-      
+      setXp(res.data.totalXP); // 🆕 LIVE UPDATE dari DB
+
+      const icon = stepKey === "watch_video" ? "🎥" : "📘";
       Swal.fire({
         icon: "success",
-        title: `+${res.data.xpGain} XP!`,
+        title: `${icon} ${res.data.xpGain}XP!`,
         text: `Total: ${res.data.totalXP.toLocaleString()} XP`,
-        timer: 2000,
+        timer: 1500,
         toast: true,
-        position: "top-end"
+        position: "top-right"
       });
     } catch (err) {
-      Swal.fire("Error", err.response?.data?.message || "Coba lagi", "error");
+      Swal.fire('Error', err.response?.data?.message || 'Coba lagi', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -65,18 +68,21 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
+  const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
   const allStepsDone = completedSteps.length === 2;
 
   return (
     <Layout>
       <Container>
+        {/* HEADER */}
         <Header>
           <Title>{data.materi?.title}</Title>
           <BackButton onClick={() => navigate(-1)}>← Kembali</BackButton>
         </Header>
 
-        <MainContent>
-          {/* VIDEO KIRI */}
+        {/* MAIN VIDEO + QUEST LAYOUT */}
+        <VideoQuestContainer>
+          {/* VIDEO */}
           <VideoSection>
             <VideoWrapper>
               {videoSection ? (
@@ -84,71 +90,69 @@ export default function MateriDetail() {
                   <video
                     src={videoSection.content}
                     controls
+                    preload="metadata"
                     onEnded={handleVideoEnd}
-                    style={{ width: "100%", height: "100%", borderRadius: "20px" }}
+                    style={{ width: "100%", height: "100%", borderRadius: "20px", objectFit: "contain", background: "#000" }}
                   />
                 ) : (
                   <iframe
                     src={videoSection.content}
-                    style={{ width: "100%", height: "100%", borderRadius: "20px" }}
+                    style={{ border: "none", borderRadius: "20px", width: "100%", height: "100%" }}
                     allowFullScreen
                   />
                 )
               ) : (
-                <VideoPlaceholder>Tunggu video...</VideoPlaceholder>
+                <VideoPlaceholder>Video Loading...</VideoPlaceholder>
               )}
-              <MiniButton onClick={handleOpenMini} disabled={isLoading}>
+              
+              {/* 🆕 MINI LESSON BUTTON - RIGHT BOTTOM */}
+              <MiniLessonBtn onClick={handleOpenMini} disabled={completedSteps.includes("open_mini_lesson") || isLoading}>
                 📖 Mini Lesson
-              </MiniButton>
+              </MiniLessonBtn>
             </VideoWrapper>
           </VideoSection>
 
-          {/* QUEST KANAN */}
-          <QuestSection>
-            <QuestHeader>
-              <QuestIcon>⭐</QuestIcon>
-              <div>QUEST</div>
-            </QuestHeader>
+          {/* 🆕 QUEST SIDE - NO BOX, OVERLAY */}
+          <QuestOverlay ref={questRef}>
+            <QuestToggle onClick={toggleQuest}>
+              {isQuestMinimized ? '📋' : '✕'}
+            </QuestToggle>
             
-            <XPContainer>
-              <XPText>Total XP</XPText>
-              <XPValue>{xp.toLocaleString()}</XPValue>
-            </XPContainer>
-
-            <QuestList>
-              {steps.map((step, i) => (
-                <QuestItem key={step.key} done={completedSteps.includes(step.key)}>
-                  <QuestNumber done={completedSteps.includes(step.key)}>
-                    {completedSteps.includes(step.key) ? "✓" : i + 1}
-                  </QuestNumber>
-                  <QuestInfo>
-                    <QuestTitle>{step.label}</QuestTitle>
-                    <QuestReward>{step.reward}</QuestReward>
-                  </QuestInfo>
-                </QuestItem>
-              ))}
-            </QuestList>
-
-            {allStepsDone && (
-              <QuestComplete>🎉 Semua Quest Selesai!</QuestComplete>
+            {!isQuestMinimized && (
+              <QuestContent>
+                <QuestTitle>QUEST</QuestTitle>
+                <XPLine>⭐ {xp.toLocaleString()} XP</XPLine>
+                
+                {/* STEPS */}
+                <StepsContainer>
+                  {steps.map((step, i) => (
+                    <StepRow key={step.key} done={completedSteps.includes(step.key)}>
+                      <StepNum done={completedSteps.includes(step.key)}>
+                        {completedSteps.includes(step.key) ? '✔' : i + 1}
+                      </StepNum>
+                      <StepLabel>{step.label}</StepLabel>
+                      <StepXP>{step.reward}</StepXP>
+                    </StepRow>
+                  ))}
+                </StepsContainer>
+              </QuestContent>
             )}
-          </QuestSection>
-        </MainContent>
+          </QuestOverlay>
+        </VideoQuestContainer>
 
-        {/* BUTTON JOIN BAWAH - LOCKED sampai selesai */}
-        <BottomButton>
-          <JoinButton 
-            disabled={!allStepsDone || isLoading}
-            as={allStepsDone ? Link : "button"}
-            to={allStepsDone ? `/materi/${id}/discussion` : "#"}
-          >
-            {allStepsDone ? "💬 JOIN DISKUSI" : "🔒 Selesaikan Quest Dulu"}
-          </JoinButton>
-        </BottomButton>
+        {/* 🆕 JOIN DISCUSSION - BOTTOM ONLY IF COMPLETE */}
+        {allStepsDone && (
+          <JoinDiscussion>
+            <Link to={`/materi/${id}/discussion`}>
+              <JoinBtn>💬 JOIN DISKUSI ROOM</JoinBtn>
+            </Link>
+          </JoinDiscussion>
+        )}
 
+        {/* MODAL */}
         {showMini && (
           <MiniLessonModal
-            show={true}
+            show={showMini}
             onClose={() => setShowMini(false)}
             content={data.miniLesson?.content || "Loading..."}
           />
@@ -158,11 +162,12 @@ export default function MateriDetail() {
   );
 }
 
-/* ==================== STYLES ==================== */
+/* ================= STYLES ================= */
 const Container = styled.div`
   max-width: 1400px;
   margin: 0 auto;
-  padding: 30px 20px;
+  padding: 30px;
+  position: relative;
 `;
 
 const Header = styled.div`
@@ -174,10 +179,10 @@ const Header = styled.div`
 
 const Title = styled.h1`
   font-size: 36px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  font-weight: 900;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
-  background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin: 0;
 `;
 
@@ -185,36 +190,41 @@ const BackButton = styled.button`
   background: #64748b;
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
+  padding: 14px 28px;
+  border-radius: 50px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
-  &:hover { background: #475569; transform: translateY(-2px); }
+  font-size: 15px;
+  transition: all 0.3s;
+
+  &:hover {
+    background: #475569;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(100,116,139,0.4);
+  }
 `;
 
-const MainContent = styled.div`
+// 🆕 VIDEO + QUEST FLEX
+const VideoQuestContainer = styled.div`
   display: flex;
-  gap: 40px;
-  margin-bottom: 60px;
-  @media (max-width: 1024px) { 
-    flex-direction: column; 
-    gap: 30px;
-  }
+  gap: 30px;
+  align-items: flex-start;
+  position: relative;
 `;
 
 const VideoSection = styled.div`
   flex: 1;
-  max-width: 800px;
+  max-width: 900px;
 `;
 
 const VideoWrapper = styled.div`
   position: relative;
-  aspect-ratio: 16/9;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-radius: 24px;
+  width: 100%;
+  height: 550px;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e);
+  border-radius: 30px;
   overflow: hidden;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
 `;
 
 const VideoPlaceholder = styled.div`
@@ -224,150 +234,168 @@ const VideoPlaceholder = styled.div`
   justify-content: center;
   color: #64748b;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
 `;
 
-const MiniButton = styled.button`
+// 🆕 MINI LESSON BUTTON
+const MiniLessonBtn = styled.button`
   position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 32px;
-  background: linear-gradient(135deg, #ec4899, #db2777);
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;
   border: none;
-  border-radius: 50px;
+  padding: 16px 28px;
+  border-radius: 25px;
   font-weight: 700;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  opacity: ${props => props.disabled ? 0.6 : 1};
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 15px 35px rgba(245,158,11,0.4);
   transition: all 0.3s;
-  
+
   &:hover:not(:disabled) {
-    transform: translateX(-50%) translateY(-4px);
-    box-shadow: 0 15px 35px rgba(236,72,153,0.4);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 25px 50px rgba(245,158,11,0.6);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
   }
 `;
 
-const QuestSection = styled.div`
-  width: 320px;
-  background: rgba(15, 23, 42, 0.95);
+// 🆕 QUEST OVERLAY - NO BOX!
+const QuestOverlay = styled.div`
+  position: sticky;
+  top: 20px;
+  width: 280px;
+  height: fit-content;
+  z-index: 10;
+`;
+
+const QuestToggle = styled.div`
+  width: 40px;
+  height: 40px;
+  background: rgba(99,102,241,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(99,102,241,0.4);
+  transition: all 0.3s;
+  margin-bottom: 15px;
+
+  &:hover {
+    background: rgba(99,102,241,1);
+    transform: scale(1.1);
+  }
+`;
+
+const QuestContent = styled.div`
+  background: rgba(15,23,42,0.95);
   backdrop-filter: blur(20px);
-  border-radius: 24px;
-  padding: 32px 24px;
+  padding: 25px;
+  border-radius: 25px;
   border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
 `;
 
-const QuestHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-`;
-
-const QuestIcon = styled.div`
-  font-size: 24px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  font-weight: 800;
-`;
-
-const XPContainer = styled.div`
+const QuestTitle = styled.div`
+  color: #60a5fa;
+  font-size: 18px;
+  font-weight: 900;
   text-align: center;
-  margin-bottom: 28px;
-  padding: 20px 16px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 20px;
+  letter-spacing: 2px;
 `;
 
-const XPText = styled.div`color: #94a3b8; font-size: 14px; font-weight: 600; margin-bottom: 8px;`;
-const XPValue = styled.div`color: white; font-size: 28px; font-weight: 800;`;
+const XPLine = styled.div`
+  background: rgba(255,255,255,0.1);
+  color: #93c5fd;
+  padding: 12px 20px;
+  border-radius: 15px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 25px;
+  border: 1px solid rgba(255,255,255,0.15);
+`;
 
-const QuestList = styled.div`display: flex; flex-direction: column; gap: 18px;`;
+const StepsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+`;
 
-const QuestItem = styled.div`
+const StepRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 14px;
-  background: ${props => props.done ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)'};
-  border-radius: 16px;
-  border-left: 4px solid ${props => props.done ? '#22c55e' : '#3b82f6'};
+  gap: 15px;
+  padding: 16px 12px;
+  background: ${props => props.done ? 'rgba(34,197,94,0.2)' : 'rgba(99,102,241,0.15)'};
+  border-radius: 18px;
+  border-left: 5px solid ${props => props.done ? '#22c55e' : '#6366f1'};
   transition: all 0.3s;
 `;
 
-const QuestNumber = styled.div`
+const StepNum = styled.div`
   width: 32px;
   height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 14px;
   background: ${props => props.done ? '#22c55e' : 'rgba(255,255,255,0.2)'};
-  color: ${props => props.done ? 'white' : '#94a3b8'};
-  border: 2px solid ${props => props.done ? '#22c55e' : 'rgba(255,255,255,0.3)'};
+  color: ${props => props.done ? 'white' : 'transparent'};
+  border: 3px solid ${props => props.done ? '#22c55e' : 'rgba(255,255,255,0.3)'};
 `;
 
-const QuestInfo = styled.div`flex: 1;`;
-const QuestTitle = styled.div`color: white; font-weight: 700; font-size: 15px; margin-bottom: 4px;`;
-const QuestReward = styled.div`color: #60a5fa; font-size: 13px; font-weight: 600;`;
-
-const QuestComplete = styled.div`
-  margin-top: 20px;
-  padding: 16px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+const StepLabel = styled.div`
+  flex: 1;
   color: white;
-  text-align: center;
-  border-radius: 16px;
   font-weight: 700;
   font-size: 15px;
 `;
 
-const BottomButton = styled.div`
-  max-width: 800px;
-  margin: 0 auto 40px;
+const StepXP = styled.div`
+  color: #93c5fd;
+  font-weight: 800;
+  font-size: 13px;
 `;
 
-const JoinButton = styled.button`
-  width: 100%;
-  padding: 24px 48px;
-  border-radius: 24px;
-  border: none;
-  font-size: 20px;
-  font-weight: 800;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  background: ${props => props.disabled 
-    ? '#64748b' 
-    : 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)'
-  };
-  color: white;
-  transition: all 0.3s;
-  box-shadow: ${props => props.disabled 
-    ? 'none' 
-    : '0 20px 45px rgba(236,72,153,0.4)'
-  };
+// 🆕 JOIN BUTTON
+const JoinDiscussion = styled.div`
+  text-align: center;
+  margin-top: 60px;
+  padding: 40px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 30px;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+`;
 
-  &:hover:not(:disabled) {
-    transform: translateY(-6px);
+const JoinBtn = styled.button`
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  color: white;
+  border: none;
+  padding: 24px 50px;
+  border-radius: 50px;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 20px 50px rgba(236,72,153,0.4);
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+
+  &:hover {
+    transform: translateY(-8px);
     box-shadow: 0 30px 60px rgba(236,72,153,0.6);
   }
-
-  &:disabled {
-    opacity: 0.6;
-  }
-`;
-
-const Loading = styled.div`
-  height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: #64748b;
 `;
