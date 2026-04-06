@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes } from "styled-components"; 
 import Swal from "sweetalert2";
 import api from "../api/axiosClient";
 import MiniLessonModal from "../components/MiniLessonModal";
@@ -9,637 +9,579 @@ import Layout from "../components/Layout";
 export default function MateriDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const videoRef = useRef(null);
-  
-  // States
   const [data, setData] = useState(null);
   const [showMini, setShowMini] = useState(false);
+  const [showTaskPanel, setShowTaskPanel] = useState(false); // 🆕 Side panel
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [materiXp, setMateriXp] = useState(0);
-  const [userXp, setUserXp] = useState(0);
-  const [videoDone, setVideoDone] = useState(false);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isQuestMinimized, setIsQuestMinimized] = useState(false);
-  const [miniContent, setMiniContent] = useState("");
 
-  // 🆕 QUEST STEPS - 2 QUEST
-  const questSteps = [
-    { key: "watch_video", label: "🎬 Tonton Video Sampai Akhir", xp: 20, icon: "🎥", unlocked: true },
-    { key: "open_mini_lesson", label: "📚 Buka Mini Lesson", xp: 25, icon: "📖", unlocked: true }
-  ];
-
-  // 🔥 LOAD DATA - Fix XP & Mini Content
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const res = await api.get(`/materi/${id}`);
-        const d = res.data?.data;
-        
-        if (d) {
-          setData(d);
-          
-          // Parse completed steps
-          const rawSteps = d.progress?.completedSections || [];
-          const parsedSteps = Array.isArray(rawSteps) 
-            ? rawSteps.map(s => s?.toString?.()?.trim()).filter(Boolean)
-            : typeof rawSteps === 'string' 
-              ? JSON.parse(rawSteps || "[]").map(s => s?.toString?.()?.trim()).filter(Boolean)
-              : [];
-          
-          setCompletedSteps(parsedSteps);
-          setMateriXp(d.progress?.materiXP || d.progress?.xp || 0);
-          setUserXp(d.progress?.userXP || d.progress?.totalXP || 0); // ✅ XP AWAL
-          setVideoDone(parsedSteps.includes("watch_video"));
-          
-          // Preload mini content
-          setMiniContent(d.miniLesson?.content || "");
-        }
-      } catch (err) {
-        console.error("Error loading materi:", err);
-        Swal.fire({
-          icon: "error",
-          title: "Gagal memuat",
-          text: "Coba refresh halaman",
-          timer: 2000,
-          toast: true,
-          position: "top-end"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    api
+      .get(`/materi/${id}`)
+      .then(res => {
+        setData(res.data?.data || null);
+      })
+      .catch(err => console.error(err));
   }, [id]);
 
-  // ✅ COMPLETE STEP - Fix deps & logic
-  const completeStep = useCallback(async (stepKey) => {
+  // 🆕 Auto show task panel
+  useEffect(() => {
+    if (data) {
+      // Delay biar smooth
+      const timer = setTimeout(() => setShowTaskPanel(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (data?.progress) {
+      setCompletedSteps(data.progress.completedSections || []);
+      setXp(data.progress.xp || 0);
+      setLevel(Math.floor((data.progress.xp || 0) / 100));
+    }
+  }, [data]);
+
+  if (!data) {
+    return <p style={{ padding: 30 }}>Memuat...</p>;
+  }
+
+  const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
+
+  // 🆕 Hanya 2 step awal
+  const steps = [
+    { key: "watch_video", label: "🎥 Tonton Video", reward: "+10 XP" },
+    { key: "open_mini_lesson", label: "📘 Baca Mini Lesson", reward: "+15 XP" },
+  ];
+
+  const completeStep = async (stepKey) => {
     if (completedSteps.includes(stepKey) || isLoading) return;
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
       
-      // Update states IMMEDIATE
-      setCompletedSteps(res.data.data?.completedSteps || []);
-      setMateriXp(res.data.data?.materiXP || 0);
-      setUserXp(res.data.data?.userXP || 0);
+      setCompletedSteps(res.data.completedSteps);
+      setXp(res.data.xp);
+      setLevel(Math.floor(res.data.xp / 100));
+
+      const xpMap = { watch_video: "🎥", open_mini_lesson: "📘" };
+      const icon = xpMap[stepKey] || "⭐";
       
-      if (res.data.data?.xpGain > 0) {
-        Swal.fire({
-          icon: "success",
-          title: `${questSteps.find(s => s.key === stepKey)?.icon} Level Up!`,
-          text: `+${res.data.data.xpGain} XP\nTotal: ${res.data.data.userXP?.toLocaleString()} XP`,
-          timer: 2500,
-          toast: true,
-          position: "top-end",
-          background: "linear-gradient(135deg, #22c55e, #16a34a)",
-          color: "white"
-        });
-      }
+      Swal.fire({
+        icon: "success",
+        title: `+${res.data.xpGain || 10} XP ${icon}`,
+        text: `${steps.find(s => s.key === stepKey).label} selesai!`,
+        timer: 2000,
+        showConfirmButton: false,
+        toast: true,
+        position: "top-end",
+        background: "linear-gradient(135deg, #d4edda, #c3e6cb)",
+        color: "#155724"
+      });
     } catch (err) {
-      console.error("Complete step error:", err);
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: err.response?.data?.message || "Coba lagi",
+        timer: 2000,
+        toast: true,
+        position: "top-end"
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [id, completedSteps.length, isLoading, userXp]);
-
-  // Video handlers - AUTO COMPLETE 85%
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleProgress = () => {
-      if (!videoDone && video.duration > 0) {
-        const progress = video.currentTime / video.duration;
-        if (progress >= 0.85 && !completedSteps.includes("watch_video")) {
-          completeStep("watch_video");
-          setVideoDone(true);
-        }
-      }
-    };
-
-    const handleEnd = () => {
-      if (!completedSteps.includes("watch_video")) {
-        completeStep("watch_video");
-        setVideoDone(true);
-      }
-    };
-
-    video.addEventListener('timeupdate', handleProgress);
-    video.addEventListener('ended', handleEnd);
-
-    return () => {
-      video.removeEventListener('timeupdate', handleProgress);
-      video.removeEventListener('ended', handleEnd);
-    };
-  }, [videoDone, completedSteps, completeStep]);
-
-  const handleOpenMini = () => {
-    if (!completedSteps.includes("open_mini_lesson")) {
-      completeStep("open_mini_lesson");
-    }
-    setShowMini(true);
   };
 
-  const toggleQuestPanel = () => setIsQuestMinimized(!isQuestMinimized);
+  const handleVideoEnd = () => {
+    completeStep("watch_video");
+  };
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <LoadingScreen>
-          <div>⚡ Memuat...</div>
-        </LoadingScreen>
-      </Layout>
-    );
-  }
+  const handleOpenMini = () => {
+    setShowMini(true);
+    completeStep("open_mini_lesson");
+  };
 
-  if (!data) {
-    return (
-      <Layout>
-        <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>
-          Materi tidak ditemukan
-        </div>
-      </Layout>
-    );
-  }
+  const toggleTaskPanel = () => {
+    setShowTaskPanel(!showTaskPanel);
+  };
 
-  const progressCount = completedSteps.length;
-  const allQuestsComplete = progressCount === 2;
+  const allStepsDone = completedSteps.length === steps.length;
 
   return (
     <Layout>
-      <GameContainer>
-        {/* XP Tracker - NO BIRU */}
-        <XPTracker>
-          <div>⚡ {userXp.toLocaleString()} XP</div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            📚 {materiXp.toLocaleString()} Materi XP
-          </div>
-        </XPTracker>
-
+      <MainContainer>
+        {/* MAIN CONTENT */}
         <ContentArea>
-          <GameHeader>
-            <GameTitle>{data.materi?.title}</GameTitle>
+          <Header>
+            <HeaderLeft>
+              <Title>{data.materi?.title || data.materi?.title}</Title>
+              <Breadcrumb>Orientasi Masalah</Breadcrumb>
+            </HeaderLeft>
             <BackButton onClick={() => navigate(-1)}>
               ← Kembali
             </BackButton>
-          </GameHeader>
+          </Header>
 
-          <VideoHero>
-            {data.videoSection?.content ? (
-              data.videoSection.content.includes("youtube") || data.videoSection.content.includes("youtu.be") ? (
-                <iframe
-                  src={data.videoSection.content}
-                  title="Video"
-                  allowFullScreen
-                  style={{ borderRadius: '24px', width: '100%', height: '100%' }}
-                />
+          {/* VIDEO */}
+          <VideoWrapper>
+            {videoSection ? (
+              videoSection.content.includes("/uploads/") || videoSection.content.includes("http") ? (
+                (() => {
+                  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+                  const videoSrc = videoSection.content.startsWith('http') 
+                    ? videoSection.content 
+                    : `${baseUrl}${videoSection.content}`;
+
+                  return (
+                    <video
+                      src={videoSrc}
+                      controls
+                      preload="metadata"
+                      onEnded={handleVideoEnd}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: "16px",
+                        background: "#000",
+                        objectFit: "contain",
+                      }}
+                    />
+                  );
+                })()
               ) : (
-                <StyledVideo
-                  ref={videoRef}
-                  src={data.videoSection.content}
-                  controls
-                  preload="metadata"
-                  videoDone={videoDone}
+                <iframe
+                  title="video"
+                  width="100%"
+                  height="100%"
+                  src={videoSection.content}
+                  style={{ border: "none", borderRadius: "16px" }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
                 />
               )
             ) : (
-              <VideoPlaceholder>Video belum tersedia!</VideoPlaceholder>
+              <VideoPlaceholder>Video belum tersedia</VideoPlaceholder>
             )}
-            
-            <MiniLessonButton 
-              onClick={handleOpenMini}
-              disabled={isLoading}
-            >
-              {completedSteps.includes("open_mini_lesson") ? "✅" : "📖"} Mini Lesson
-            </MiniLessonButton>
-          </VideoHero>
 
-{/* DISCUSSION BUTTON - UNLOCK SETELAH 2 QUEST */}
-<DiscussionSection>
-  {allQuestsComplete ? (
-    <Link to={`/materi/${id}/discussion`} style={{ textDecoration: 'none' }}>
-      <DiscussionButton>
-        🚪 Masuk Diskusi Room
-        <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>
-          +35 XP Bonus!
-        </div>
-      </DiscussionButton>
-    </Link>
-  ) : (
-    <LockedDiscussion>
-      🔒 Selesaikan 2 Quest dulu!
-      <ProgressBar>
-        <ProgressFill style={{ width: `${(progressCount / 2) * 100}%` }} />
-        <ProgressText>{progressCount}/2</ProgressText>
-      </ProgressBar>
-    </LockedDiscussion>
-  )}
-</DiscussionSection>
+            {/* 🆕 BUTTON I DIPINDAH KE KANAN BAWAH */}
+            <InfoButton onClick={handleOpenMini} disabled={isLoading || completedSteps.includes("open_mini_lesson")}>
+              📖
+            </InfoButton>
+          </VideoWrapper>
 
-
-          {/* ✅ SUCCESS BANNER */}
-          {allQuestsComplete && (
-            <SuccessBanner>
-              🎉 <strong>Semua Quest Selesai!</strong>
-              <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '8px' }}>
-                Total: {materiXp.toLocaleString()} Materi XP ✨
-              </div>
-            </SuccessBanner>
+          {/* DISCUSSION BUTTON */}
+          {allStepsDone && (
+            <DiscussionButtonContainer>
+              <Link to={`/materi/${id}/discussion`}>
+                <DiscussionButton>
+                  💬 Join Ruang Diskusi (Tersedia!)
+                </DiscussionButton>
+              </Link>
+            </DiscussionButtonContainer>
           )}
         </ContentArea>
 
-        {/* Quest Panel */}
-        <QuestPanel isMinimized={isQuestMinimized}>
-          <QuestHeader onClick={toggleQuestPanel}>
-            <QuestIcon>🎮</QuestIcon>
-            <span>QUESTS</span>
-            {!isQuestMinimized && <MinimizeButton onClick={toggleQuestPanel}>−</MinimizeButton>}
-          </QuestHeader>
+        {/* 🆕 GAMIFICATION SIDE PANEL */}
+        <TaskPanel show={showTaskPanel}>
+          <TaskHeader onClick={toggleTaskPanel}>
+            <TaskIcon>🎮</TaskIcon>
+            <span>MISI KERJA</span>
+            <CloseIcon>×</CloseIcon>
+          </TaskHeader>
+          
+          <TaskContent>
+            <XPBar>
+              ⭐ XP: <strong>{xp}</strong> | Level: <LevelBadge>Lv.{level}</LevelBadge>
+            </XPBar>
 
-          {!isQuestMinimized && (
-            <>
-              <XPBar>Progress: <strong>{progressCount}/2</strong></XPBar>
-              <QuestList>
-                {questSteps.map((step, index) => (
-                  <QuestItem 
-                    key={step.key}
-                    completed={completedSteps.includes(step.key)}
-                  >
-                    <QuestNumber completed={completedSteps.includes(step.key)}>
-                      {completedSteps.includes(step.key) ? "✅" : index + 1}
-                    </QuestNumber>
-                    <QuestContent>
-                      <QuestTitle>{step.icon} {step.label}</QuestTitle>
-                      <QuestReward>+{step.xp} XP</QuestReward>
-                    </QuestContent>
-                  </QuestItem>
-                ))}
-              </QuestList>
-            </>
-          )}
-        </QuestPanel>
+            <ProgressBar>
+              <ProgressFill progress={Math.round((completedSteps.length / steps.length) * 100)} />
+            </ProgressBar>
+            <ProgressText>
+              {Math.round((completedSteps.length / steps.length) * 100)}% Selesai
+            </ProgressText>
 
+            <StepsList>
+              {steps.map((step, index) => (
+                <StepItem key={step.key} done={completedSteps.includes(step.key)} active={!completedSteps.includes(step.key) && completedSteps.length === index}>
+                  <StepCircle done={completedSteps.includes(step.key)}>
+                    {completedSteps.includes(step.key) ? "✔" : index + 1}
+                  </StepCircle>
+                  <StepContent>
+                    <StepLabel>{step.label}</StepLabel>
+                    <StepReward>{step.reward}</StepReward>
+                  </StepContent>
+                </StepItem>
+              ))}
+            </StepsList>
+
+            {allStepsDone && (
+              <CompleteBadge>
+                🎉 Semua Misi Selesai!
+              </CompleteBadge>
+            )}
+          </TaskContent>
+        </TaskPanel>
+
+        {/* MINI LESSON MODAL */}
         {showMini && (
           <MiniLessonModal
             show={showMini}
             onClose={() => setShowMini(false)}
-            content={miniContent} // ✅ Preloaded content - NO LOADING
+            content={data.miniLesson?.content || "Mini lesson tidak ditemukan."}
           />
         )}
-      </GameContainer>
+      </MainContainer>
     </Layout>
   );
 }
 
-/* ================= STYLES - NO BIRU, CLEAN ================= */
-const slideIn = keyframes`
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ================= ANIMATIONS ================= */
+const slideInRight = keyframes`
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 `;
 
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+const slideOutRight = keyframes`
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 `;
 
-const GameContainer = styled.div`
-  position: relative;
+/* ================= STYLES ================= */
+const MainContainer = styled.div`
+  display: flex;
+  gap: 20px;
   padding: 20px 40px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   min-height: 100vh;
 `;
 
-const LoadingScreen = styled.div`
-  min-height: 100vh;
+const ContentArea = styled.div`
+  flex: 1;
+  max-width: 900px;
+`;
+
+const Header = styled.div`
+  margin-bottom: 30px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: #60a5fa;
-  font-weight: 600;
 `;
 
-const XPTracker = styled.div`
-  position: fixed;
-  top: 30px;
-  right: 30px;
-  background: rgba(15,23,42,0.95);
-  backdrop-filter: blur(20px);
-  padding: 16px 24px;
-  border-radius: 20px;
-  color: white;
+const HeaderLeft = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const Title = styled.h1`
+  margin: 0 0 8px 0;
+  font-size: 32px;
   font-weight: 800;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+`;
+
+const Breadcrumb = styled.div`
   font-size: 16px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-  z-index: 1001;
-  border: 1px solid rgba(255,255,255,0.1);
+  color: #6b7280;
+  font-weight: 500;
 `;
 
-const DiscussionSection = styled.div`
-  max-width: 600px;
-  margin: 40px auto 0;
-`;
-
-const DiscussionButton = styled.button`
-  width: 100%;
-  padding: 28px 40px;
-  border-radius: 24px;
-  border: none;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+const BackButton = styled.button`
+  background: linear-gradient(135deg, #6b7280, #4b5563);
   color: white;
-  font-size: 20px;
-  font-weight: 800;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 20px 50px rgba(59,130,246,0.4);
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
 
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 60px rgba(59,130,246,0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
   }
 `;
 
-const LockedDiscussion = styled.div`
-  text-align: center;
-  padding: 40px 30px;
-  background: rgba(15,23,42,0.6);
+const VideoWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  height: 500px;
+  background: linear-gradient(135deg, #1f2937, #111827);
   border-radius: 24px;
-  border: 2px solid rgba(107,114,128,0.3);
-  color: #94a3b8;
-  font-size: 18px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+`;
+
+const VideoPlaceholder = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9ca3af;
+  font-size: 24px;
+  font-weight: 600;
+`;
+
+// 🆕 BUTTON I DI KANAN BAWAH
+const InfoButton = styled.button`
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  border: 3px solid rgba(255,255,255,0.2);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+
+  &:hover:not(:disabled) {
+    transform: scale(1.1) rotate(10deg);
+    box-shadow: 0 12px 32px rgba(236, 72, 153, 0.6);
+    border-color: rgba(255,255,255,0.4);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+// 🆕 SIDE TASK PANEL
+const TaskPanel = styled.div`
+  width: 360px;
+  height: fit-content;
+  max-height: 80vh;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.2);
+  overflow: hidden;
+  animation: ${props => props.show ? slideInRight : slideOutRight} 0.4s ease;
+  transform: ${props => props.show ? 'translateX(0)' : 'translateX(100%)'};
+  position: sticky;
+  top: 20px;
+
+  @media (max-width: 1200px) {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 320px;
+    max-height: 70vh;
+    z-index: 1000;
+  }
+`;
+
+const TaskHeader = styled.div`
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
   font-weight: 700;
+  font-size: 16px;
+
+  &:hover {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  }
+`;
+
+const TaskIcon = styled.div`
+  font-size: 20px;
+`;
+
+const CloseIcon = styled.div`
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 900;
+  opacity: 0.8;
+`;
+
+const TaskContent = styled.div`
+  padding: 24px;
+`;
+
+const XPBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: 16px;
+  margin-bottom: 24px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #1e40af;
+`;
+
+const LevelBadge = styled.span`
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 `;
 
 const ProgressBar = styled.div`
-  position: relative;
-  height: 10px;
-  width: 200px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 5px;
-  margin: 20px auto 0;
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 10px;
   overflow: hidden;
+  margin-bottom: 8px;
 `;
 
 const ProgressFill = styled.div`
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #4ade80);
-  border-radius: 5px;
-  transition: width 0.5s ease;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 10px;
+  width: ${props => props.progress}%;
+  transition: width 0.8s ease;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
 `;
 
 const ProgressText = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  font-weight: 800;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-`;
-
-const ContentArea = styled.div`
-  max-width: 900px;
-  margin: 0 auto 200px auto;
-`;
-
-const GameHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
-  padding: 20px 0;
-  animation: ${slideIn} 0.8s ease-out;
-`;
-
-const GameTitle = styled.h1`
-  font-size: 36px;
-  font-weight: 900;
-  background: linear-gradient(135deg, #60a5fa, #a78bfa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-`;
-
-const BackButton = styled.button`
-  background: rgba(107,114,128,0.3);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 14px 28px;
-  border-radius: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  backdrop-filter: blur(10px);
-
-  &:hover {
-    background: rgba(107,114,128,0.5);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  }
-`;
-
-const VideoHero = styled.div`
-  position: relative;
-  width: 100%;
-  height: 520px;
-  background: #000;
-  border-radius: 28px;
-  overflow: hidden;
-  margin-bottom: 60px;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-`;
-
-const StyledVideo = styled.video`
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 28px;
-  
-  ${({ videoDone }) => videoDone && `
-    border: 4px solid #22c55e;
-    box-shadow: 0 0 30px rgba(34,197,94,0.5);
-  `}
-`;
-
-const VideoPlaceholder = styled.div`
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 20px;
-  font-weight: 600;
-`;
-
-const MiniLessonButton = styled.button`
-  position: absolute;
-  left: 30px;
-  bottom: 30px;
-  padding: 16px 24px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #ec4899, #db2777);
-  border: none;
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 15px 35px rgba(236,72,153,0.4);
-  transition: all 0.3s;
-
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 45px rgba(236,72,153,0.6);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const SuccessBanner = styled.div`
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 32px 40px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  border-radius: 24px;
-  color: white;
   text-align: center;
-  font-size: 20px;
-  font-weight: 800;
-  box-shadow: 0 20px 50px rgba(34,197,94,0.4);
-  animation: ${slideIn} 0.8s ease-out;
-`;
-
-const QuestPanel = styled.div`
-  position: fixed;
-  right: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 320px;
-  background: rgba(15,23,42,0.95);
-  backdrop-filter: blur(30px);
-  border-radius: 24px;
-  padding: 24px;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-  border: 1px solid rgba(255,255,255,0.15);
-  z-index: 1000;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  ${({ isMinimized }) => isMinimized && `
-    width: 90px;
-    height: 90px;
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  `}
-`;
-
-const QuestHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #60a5fa;
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  cursor: pointer;
-  padding: 12px 0;
-  margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-
-  &:hover { color: #93c5fd; }
-`;
-
-const QuestIcon = styled.div` font-size: 24px; margin-right: 12px; `;
-
-const MinimizeButton = styled.button`
-  background: none;
-  border: none;
-  color: #ef4444;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: all 0.3s;
-
-  &:hover {
-    background: rgba(239,68,68,0.2);
-    transform: scale(1.2);
-  }
-`;
-
-const XPBar = styled.div`
-  padding: 16px 20px;
-  background: rgba(34,197,94,0.2);
-  border-radius: 16px;
-  color: #22c55e;
-  font-weight: 800;
+  font-weight: 700;
+  color: #1e40af;
   font-size: 14px;
-  text-align: center;
   margin-bottom: 24px;
-  border: 1px solid rgba(34,197,94,0.3);
 `;
 
-const QuestList = styled.div`
+const StepsList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
 `;
 
-const QuestItem = styled.div`
+const StepItem = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 16px;
-  background: ${({ completed }) => 
-    completed ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.15)'
+  padding: 20px;
+  background: ${props => props.done 
+    ? "linear-gradient(135deg, #d4edda, #c3e6cb)" 
+    : props.active 
+    ? "linear-gradient(135deg, #fef3c7, #fde68a)" 
+    : "#f8fafc"
   };
-  border-radius: 16px;
-  border-left: 4px solid ${({ completed }) => 
-    completed ? '#22c55e' : '#6366f1'
-  };
-  transition: all 0.3s;
+  border-radius: 20px;
+  border: ${props => props.done ? "2px solid #10b981" : props.active ? "2px solid #f59e0b" : "1px solid #e2e8f0"};
+  transition: all 0.3s ease;
+  cursor: ${props => props.done || props.active ? "default" : "pointer"};
+
+  &:hover {
+    ${props => !props.done && !props.active && `
+      background: #f1f5f9;
+      transform: translateX(4px);
+    `}
+  }
 `;
 
-const QuestNumber = styled.div`
-  width: 32px;
-  height: 32px;
+const StepCircle = styled.div`
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 900;
+  font-weight: 700;
   font-size: 14px;
-  background: ${({ completed }) => 
-    completed ? '#22c55e' : 'rgba(255,255,255,0.15)'
+  background: ${props => props.done 
+    ? "#10b981" 
+    : "#6b7280"
   };
-  color: ${({ completed }) => completed ? 'white' : '#94a3b8'};
-  border: 2px solid ${({ completed }) => 
-    completed ? '#22c55e' : 'rgba(255,255,255,0.2)'
-  };
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 `;
 
-const QuestContent = styled.div`
+const StepContent = styled.div`
   flex: 1;
 `;
 
-const QuestTitle = styled.div`
-  color: white;
-  font-size: 14px;
+const StepLabel = styled.div`
   font-weight: 700;
+  font-size: 15px;
+  color: ${props => props.done ? "#065f46" : "#374151"};
   margin-bottom: 4px;
 `;
 
-const QuestReward = styled.div`
-  font-size: 12px;
-  color: #93c5fd;
+const StepReward = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #059669;
+`;
+
+const CompleteBadge = styled.div`
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: 16px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+`;
+
+const DiscussionButtonContainer = styled.div`
+  margin-top: 40px;
+`;
+
+const DiscussionButton = styled.button`
+  width: 100%;
+  padding: 20px 32px;
+  border-radius: 20px;
+  border: none;
+  font-size: 18px;
   font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  color: white;
+  box-shadow: 0 12px 32px rgba(236, 72, 153, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(236, 72, 153, 0.6);
+  }
+
+  &:active {
+    transform: translateY(-2px);
+  }
 `;
