@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import styled from "styled-components";
 import Swal from "sweetalert2";
@@ -12,136 +12,24 @@ export default function MateriDetail() {
   const [data, setData] = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [xp, setXp] = useState(0); // 🆕 USER TOTAL XP
-  const [materiXp, setMateriXp] = useState(0); // 🆕 MATERI XP
+  const [xp, setXp] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isQuestMinimized, setIsQuestMinimized] = useState(false);
 
-  // 🆕 SINGLE SOURCE FETCH
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const res = await api.get(`/materi/${id}`);
-      const materiData = res.data?.data;
-      setData(materiData);
-      
-      // 🆕 TRUST BACKEND DATA - NO FILTER
-      if (materiData?.progress) {
-        setCompletedSteps(materiData.progress.completedSections || []);
-        setMateriXp(materiData.progress.xp || 0);
-        setXp(materiData.progress.totalUserXP || materiData.progress.xp || 0);
-      }
-      setIsDataLoaded(true);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Gagal memuat data materi",
-        timer: 2000,
-        toast: true
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    api.get(`/materi/${id}`)
+      .then(res => setData(res.data?.data || null))
+      .catch(err => console.error(err));
   }, [id]);
 
-  // 🆕 LOAD ONCE ONLY
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // 🆕 FIXED COMPLETE STEP - NO DOUBLE CALL
-  const completeStep = async (stepKey) => {
-    if (completedSteps.includes(stepKey) || isLoading) {
-      console.log(`✅ ${stepKey} already completed`);
-      return;
+    if (data?.progress) {
+      setCompletedSteps(data.progress.completedSections || []);
+      setXp(data.progress.xp || 0);
     }
+  }, [data]);
 
-    setIsLoading(true);
-    try {
-      const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
-      
-      setCompletedSteps(res.data.completedSteps || []);
-      setMateriXp(res.data.materiXP || 0);
-      setXp(res.data.totalXP || 0);
-
-      const icon = stepKey === "watch_video" ? "🎥" : "📘";
-      const xpGain = res.data.xpGain || 0;
-      Swal.fire({
-        icon: "success",
-        title: `${icon} +${xpGain} XP!`,
-        text: `Total XP: ${res.data.totalXP?.toLocaleString() || '0'}`,
-        timer: 2000,
-        toast: true,
-        position: "top-end",
-        background: "linear-gradient(135deg, #22c55e, #16a34a)",
-        color: "white"
-      });
-    } catch (err) {
-      console.error("Complete step error:", err);
-      if (err.response?.status !== 400) {
-        Swal.fire({
-          icon: "error",
-          title: "Gagal",
-          text: err.response?.data?.message || "Coba lagi",
-          timer: 2000,
-          toast: true
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 🆕 FIXED HANDLERS
-  const handleVideoEnd = useCallback(() => {
-    completeStep("watch_video");
-  }, [completedSteps.length, isLoading]);
-
-  const handleOpenMini = useCallback(() => {
-    if (isLoading) return;
-    setShowMini(true);
-    completeStep("open_mini_lesson");
-  }, [completedSteps.length, isLoading]);
-
-  const hasWatchVideo = completedSteps.includes("watch_video");
-  const hasMiniLesson = completedSteps.includes("open_mini_lesson");
-  const allStepsDone = hasWatchVideo && hasMiniLesson;
-
-  const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
-
-  console.log('📊 DEBUG:', {
-    id,
-    completedSteps,
-    hasWatchVideo,
-    hasMiniLesson,
-    allStepsDone,
-    materiXp,
-    userXp: xp,
-    progress: data?.progress
-  });
-
-  if (!isDataLoaded) {
-    return (
-      <Layout>
-        <div style={{ padding: 50, textAlign: 'center', color: '#6b7280' }}>
-          Memuat data...
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!data) {
-    return (
-      <Layout>
-        <div style={{ padding: 50, textAlign: 'center', color: '#ef4444' }}>
-          Materi tidak ditemukan
-        </div>
-      </Layout>
-    );
-  }
+  if (!data) return <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>;
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
@@ -149,6 +37,54 @@ export default function MateriDetail() {
     { key: "watch_video", label: "Tonton video sampai selesai", reward: "+10 XP" },
     { key: "open_mini_lesson", label: "Baca Mini Lesson", reward: "+15 XP" },
   ];
+
+  const completeStep = async (stepKey) => {
+    if (completedSteps.includes(stepKey) || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const res = await api.post(`/materi/${id}/complete-step`, { step: stepKey });
+      
+      setCompletedSteps(res.data.completedSteps);
+      setXp(res.data.totalXP);
+
+      const icon = stepKey === "watch_video" ? "🎥" : "📘";
+      Swal.fire({
+        icon: "success",
+        title: `${icon} +${res.data.xpGain} XP!`,
+        text: `Total XP: ${res.data.totalXP.toLocaleString()}`,
+        timer: 2000,
+        toast: true,
+        position: "top-end",
+        background: "linear-gradient(135deg, #22c55e, #16a34a)",
+        color: "white"
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: err.response?.data?.message || "Coba lagi",
+        timer: 2000,
+        toast: true
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVideoEnd = () => completeStep("watch_video");
+  const handleOpenMini = () => {
+    setShowMini(true);
+    completeStep("open_mini_lesson");
+  };
+
+  // 🆕 ROBUST CHECK
+  const normalizedSteps = Array.isArray(completedSteps) 
+    ? completedSteps.map(step => step?.toString?.() || step).filter(Boolean)
+    : [];
+  const allStepsDone = normalizedSteps.includes("watch_video") && normalizedSteps.includes("open_mini_lesson");
+  
+  const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
 
   return (
     <Layout>
@@ -194,12 +130,13 @@ export default function MateriDetail() {
             
             <InfoButton 
               onClick={handleOpenMini} 
-              disabled={isLoading || hasMiniLesson}
+              disabled={isLoading || normalizedSteps.includes("open_mini_lesson")}
             >
               📖
             </InfoButton>
           </VideoWrapper>
 
+          {/* 🆕 DISCUSSION SECTION */}
           <DiscussionSection>
             {allStepsDone ? (
               <DiscussionButtonContainer>
@@ -211,15 +148,13 @@ export default function MateriDetail() {
               <LockMessage>
                 🔒 Selesaikan 2 quest untuk unlock diskusi
                 <br />
-                <small>
-                  {hasWatchVideo ? '✅ Video' : '📺 Video'} | 
-                  {hasMiniLesson ? ' ✅ Mini Lesson' : ' 📖 Mini Lesson'}
-                </small>
+                <small>Progress: {normalizedSteps.length}/2</small>
               </LockMessage>
             )}
           </DiscussionSection>
         </ContentArea>
 
+        {/* 🆕 QUEST TEXT ONLY - MINIMIZABLE */}
         <QuestPanel isMinimized={isQuestMinimized}>
           <QuestToggle onClick={toggleQuest}>
             {isQuestMinimized ? "📋" : "✨"} 
@@ -229,6 +164,7 @@ export default function MateriDetail() {
             )}
           </QuestToggle>
           
+          {/* 🆕 MINIMIZE STATE */}
           {isQuestMinimized && (
             <QuestMinimizedText>QUEST</QuestMinimizedText>
           )}
@@ -236,29 +172,31 @@ export default function MateriDetail() {
           {!isQuestMinimized && (
             <>
               <XPBar>
-                Materi: <strong>{materiXp.toLocaleString()}</strong> | Total: <strong>{xp.toLocaleString()}</strong>
+                Total XP: <strong>{xp.toLocaleString()}</strong>
               </XPBar>
               
               <QuestList>
-                {steps.map((step, index) => {
-                  const isDone = completedSteps.includes(step.key);
-                  return (
-                    <QuestItem key={step.key} done={isDone}>
-                      <QuestCheck done={isDone}>
-                        {isDone ? "✔" : index + 1}
-                      </QuestCheck>
-                      <div>
-                        <QuestText>{step.label}</QuestText>
-                        <QuestReward>{step.reward}</QuestReward>
-                      </div>
-                    </QuestItem>
-                  );
-                })}
+                {steps.map((step, index) => (
+                  <QuestItem 
+                    key={step.key} 
+                    done={normalizedSteps.includes(step.key)}
+                  >
+                    <QuestCheck done={normalizedSteps.includes(step.key)}>
+                      {normalizedSteps.includes(step.key) ? "✔" : index + 1}
+                    </QuestCheck>
+                    <div>
+                      <QuestText>{step.label}</QuestText>
+                      <QuestReward>{step.reward}</QuestReward>
+                    </div>
+                  </QuestItem>
+                ))}
               </QuestList>
               
               <ProgressFooter>
-                Progress: {completedSteps.length}/2
-                {allStepsDone && <span>✓ SELESAI!</span>}
+                Progress: {normalizedSteps.length}/2
+                {allStepsDone && (
+                  <span>✓ SELESAI!</span>
+                )}
               </ProgressFooter>
             </>
           )}
@@ -278,7 +216,7 @@ export default function MateriDetail() {
   );
 }
 
-// STYLES (SAMA PERSIS - NO CHANGE)
+/* ================= STYLES ================= */
 const MainContainer = styled.div`
   position: relative;
   padding: 20px 40px;
@@ -512,11 +450,10 @@ const XPBar = styled.div`
   border-radius: 14px;
   color: #93c5fd;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   text-align: center;
   margin: 16px 0 20px 0;
   border: 1px solid rgba(255,255,255,0.15);
-  font-size: 12px;
 `;
 
 const QuestList = styled.div`
@@ -601,6 +538,7 @@ const XPTracker = styled.div`
   border: 1px solid rgba(96,165,250,0.3);
 `;
 
+/* 🆕 ANIMATION */
 const slideIn = `
   @keyframes slideIn {
     from {
