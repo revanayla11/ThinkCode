@@ -288,7 +288,6 @@ const GameContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 `;
 
 const LoadingScreen = styled.div`
