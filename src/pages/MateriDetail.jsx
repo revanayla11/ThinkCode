@@ -25,7 +25,10 @@ export default function MateriDetail() {
 
   useEffect(() => {
     if (data?.progress) {
-      setCompletedSteps(data.progress.completedSteps || []);
+      setCompletedSteps(Array.isArray(data.progress.completedSteps) 
+        ? data.progress.completedSteps 
+        : []
+      );
       setXp(data.progress.userXP || 0);
     }
   }, [data]);
