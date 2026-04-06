@@ -33,9 +33,11 @@ export default function MateriDetail() {
 
   const videoSection = data.videoSection || data.sections?.find(s => s.type === "video" && s.content);
 
+  // 🆕 3 STEPS QUEST
   const steps = [
     { key: "watch_video", label: "Tonton video sampai selesai", reward: "+10 XP" },
     { key: "open_mini_lesson", label: "Baca Mini Lesson", reward: "+15 XP" },
+    { key: "join_discussion", label: "Join Diskusi Room", reward: "+20 XP" },
   ];
 
   const completeStep = async (stepKey) => {
@@ -48,7 +50,8 @@ export default function MateriDetail() {
       setCompletedSteps(res.data.completedSteps);
       setXp(res.data.totalXP);
 
-      const icon = stepKey === "watch_video" ? "🎥" : "📘";
+      const icon = stepKey === "watch_video" ? "🎥" : 
+                   stepKey === "open_mini_lesson" ? "📘" : "💬";
       Swal.fire({
         icon: "success",
         title: `${icon} +${res.data.xpGain} XP!`,
@@ -78,11 +81,15 @@ export default function MateriDetail() {
     completeStep("open_mini_lesson");
   };
 
-  // 🆕 ROBUST CHECK
+  // 🆕 ROBUST CHECK + 3 STEPS LOGIC
   const normalizedSteps = Array.isArray(completedSteps) 
     ? completedSteps.map(step => step?.toString?.() || step).filter(Boolean)
     : [];
-  const allStepsDone = normalizedSteps.includes("watch_video") && normalizedSteps.includes("open_mini_lesson");
+  
+  const videoAndMiniDone = normalizedSteps.includes("watch_video") && 
+                          normalizedSteps.includes("open_mini_lesson");
+  const discussionUnlocked = normalizedSteps.includes("join_discussion");
+  const allStepsDone = normalizedSteps.length === 3;
   
   const toggleQuest = () => setIsQuestMinimized(!isQuestMinimized);
 
@@ -136,25 +143,32 @@ export default function MateriDetail() {
             </InfoButton>
           </VideoWrapper>
 
-          {/* 🆕 DISCUSSION SECTION */}
+          {/* 🆕 3-STEPS DISCUSSION LOGIC */}
           <DiscussionSection>
-            {allStepsDone ? (
+            {videoAndMiniDone ? (
               <DiscussionButtonContainer>
                 <Link to={`/materi/${id}/discussion`}>
-                  <DiscussionButton>✅ QUEST SELESAI! 💬 Join Diskusi</DiscussionButton>
+                  <DiscussionButton 
+                    unlocked={discussionUnlocked}
+                  >
+                    {discussionUnlocked ? 
+                      "✅ Diskusi Room Dibuka!" : 
+                      "🔓 Buka Diskusi Room"
+                    }
+                  </DiscussionButton>
                 </Link>
               </DiscussionButtonContainer>
             ) : (
               <LockMessage>
                 🔒 Selesaikan 2 quest untuk unlock diskusi
                 <br />
-                <small>Progress: {normalizedSteps.length}/2</small>
+                <small>Progress: {Math.min(normalizedSteps.length, 2)}/2</small>
               </LockMessage>
             )}
           </DiscussionSection>
         </ContentArea>
 
-        {/* 🆕 QUEST TEXT ONLY - MINIMIZABLE */}
+        {/* 🆕 QUEST PANEL - 3 STEPS */}
         <QuestPanel isMinimized={isQuestMinimized}>
           <QuestToggle onClick={toggleQuest}>
             {isQuestMinimized ? "📋" : "✨"} 
@@ -164,7 +178,6 @@ export default function MateriDetail() {
             )}
           </QuestToggle>
           
-          {/* 🆕 MINIMIZE STATE */}
           {isQuestMinimized && (
             <QuestMinimizedText>QUEST</QuestMinimizedText>
           )}
@@ -193,9 +206,9 @@ export default function MateriDetail() {
               </QuestList>
               
               <ProgressFooter>
-                Progress: {normalizedSteps.length}/2
+                Progress: {normalizedSteps.length}/3
                 {allStepsDone && (
-                  <span>✓ SELESAI!</span>
+                  <span style={{ color: '#22c55e', fontWeight: '800' }}>✓ SEMUA SELESAI!</span>
                 )}
               </ProgressFooter>
             </>
@@ -329,22 +342,31 @@ const DiscussionButtonContainer = styled.div`
   animation: slideIn 0.5s ease-out;
 `;
 
+// STYLES (SAMA, TAPI TAMBAH DISCUSSIONBUTTON unlocked prop)
 const DiscussionButton = styled.button`
   width: 100%;
   padding: 22px 40px;
   border-radius: 20px;
   border: none;
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  background: ${({ unlocked }) => 
+    unlocked ? 
+    "linear-gradient(135deg, #22c55e, #16a34a)" : 
+    "linear-gradient(135deg, #ec4899, #db2777)"
+  };
   color: white;
   font-size: 18px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 15px 40px rgba(236,72,153,0.4);
+  box-shadow: 0 15px 40px ${({ unlocked }) => 
+    unlocked ? "rgba(34,197,94,0.4)" : "rgba(236,72,153,0.4)"
+  };
   transition: all 0.3s;
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 25px 50px rgba(236,72,153,0.6);
+    box-shadow: 0 25px 50px ${({ unlocked }) => 
+      unlocked ? "rgba(34,197,94,0.6)" : "rgba(236,72,153,0.6)"
+    };
   }
 `;
 
