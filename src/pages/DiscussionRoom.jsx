@@ -345,33 +345,34 @@ const savePseudocode = async () => {
 };
 
 const saveFlowchart = async () => {
-  if (conditions.length === 0) return Swal.fire("⚠️", "Tambah kondisi!", "warning");
+  if (conditions.length === 0) {
+    return Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
+  }
   
   const flowchartData = {
-    conditions: conditions.map(c => ({
-      condition: c.condition.trim(),
-      yes: c.yes.trim(),
-      no: c.no || ''
+    conditions: conditions.map(cond => ({
+      condition: cond.condition?.trim() || '',
+      yes: cond.yes?.trim() || '',
+      no: cond.no || ''
     })),
-    elseInstruction: elseInstruction.trim(),
-    showElse
+    elseInstruction: elseInstruction?.trim() || '',
+    showElse: !!showElse
   };
   
+  console.log("💾 Saving flowchart:", flowchartData);
+  
   try {
-    const res = await api.post(`/discussion/room/${roomId}/flowchart`, { 
-      flowchart: flowchartData 
+    const res = await api.post(`/discussion/room/${roomId}/flowchart`, {
+      flowchart: flowchartData
     });
     
-    Swal.fire({
-      title: "✅ Saved!",
-      text: res.data.message,
-      icon: "success",
-      timer: 2000
-    });
-    
+    Swal.fire("✅", res.data.message || "Flowchart tersimpan!", "success");
     loadPerformance();
+    loadWorkspaceData(); // Reload tampilan
+    
   } catch (err) {
-    Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
+    console.error("Save flowchart error:", err.response?.data);
+    Swal.fire("❌", err.response?.data?.message || "Gagal simpan", "error");
   }
 };
 
