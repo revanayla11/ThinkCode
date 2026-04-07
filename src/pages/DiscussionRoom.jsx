@@ -14,8 +14,8 @@ export default function DiscussionRoom() {
   const [miniContent, setMiniContent] = useState("");
   const [showMini, setShowMini] = useState(false);
   const [showCompilerGuide, setShowCompilerGuide] = useState(false);
-  const [showRules, setShowRules] = useState(false); // ✅ NEW: Rules popup
-  const [timeLeft, setTimeLeft] = useState(5400); // ✅ NEW: Timer
+  const [showRules, setShowRules] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(5400);
   const [timerActive, setTimerActive] = useState(false);
   
   // Template System
@@ -41,7 +41,6 @@ export default function DiscussionRoom() {
   const [validationResult, setValidationResult] = useState(null);
 
   /* ================= TIMER FUNCTIONS ================= */
-  // ✅ FIXED TIMER - Persistent across page navigation
   const loadTimerStatus = useCallback(async () => {
     try {
       const res = await api.get(`/discussion/timer/${roomId}/check`);
@@ -52,7 +51,6 @@ export default function DiscussionRoom() {
     }
   }, [roomId]);
 
-  // Timer countdown
   useEffect(() => {
     let interval;
     if (timerActive && timeLeft > 0) {
@@ -69,7 +67,7 @@ export default function DiscussionRoom() {
     return () => clearInterval(interval);
   }, [timerActive, timeLeft]);
 
-  /* ================= FIXED LOAD FUNCTIONS ================= */
+  /* ================= LOAD FUNCTIONS ================= */
   const loadSubmissionStatus = async () => {
     try {
       const res = await api.get(`/discussion/submission/status/${roomId}`);
@@ -82,9 +80,10 @@ export default function DiscussionRoom() {
   const loadPerformance = async () => {
     try {
       const res = await api.get(`/discussion/room/${roomId}/performance`);
-      setPerformanceScore(res.data.score || 0);
+      setPerformanceScore(res.data.score || 100); // ✅ START 100%
     } catch (err) {
       console.error("Load performance error:", err);
+      setPerformanceScore(100); // ✅ DEFAULT 100%
     }
   };
 
@@ -93,15 +92,11 @@ export default function DiscussionRoom() {
       const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
       const data = res.data.data || {};
 
-      // ✅ LOAD PSEUDOCODE (FIX UTAMA)
       setPseudocode(data.pseudocode || "");
-
-      // ✅ LOAD FLOWCHART
       const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
-
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
       setElseInstruction(flowchart.elseInstruction || "");
-
+      setShowElse(!!flowchart.elseInstruction);
     } catch (err) {
       console.error("Load workspace error:", err);
     }
@@ -143,83 +138,81 @@ export default function DiscussionRoom() {
     }
   };
 
+  // ✅ NEW TEMPLATE SESUAI REQUEST
   const loadTemplateData = async () => {
     try {
       const res = await api.get(`/discussion/template/${roomId}`);
       const data = res.data.data;
       setTemplateData(data);
-      // ✅ RESET BLANKS ke KOSONG
       setPseudocodeBlanks(Array(data.blanks?.length || 0).fill(""));
     } catch (err) {
       console.error("Load template error:", err);
-      // ✅ DEFAULT BLANK TEMPLATE
       setTemplateData({
-        template: `IF (___BLANK_0___) THEN
-    ___BLANK_1___
-  ELSE
-    ___BLANK_2___
-  ENDIF`,
+        template: `DEKLARASI 
+    ___BLANK_0___ : integer
+
+ALGORITMA 
+    read(___BLANK_1___)
+    
+    IF (___BLANK_2___) THEN 
+        write("___BLANK_3___")
+    ENDIF 
+
+END`,
         blanks: [
-          { hint: "kondisi " },
-          { hint: "aksi YES" },
-          { hint: "aksi NO" }
+          { hint: "Nama variabel (contoh: angka)" },
+          { hint: "Variabel input (contoh: angka)" },
+          { hint: "Kondisi (contoh: angka > 0)" },
+          { hint: "Pesan output (contoh: Angka positif)" }
         ]
       });
-      setPseudocodeBlanks(["", "", ""]); // ✅ BLANK
+      setPseudocodeBlanks(["", "", "", ""]);
     }
   };
 
+  useEffect(() => {
+    if (!roomId || !materiId) return;
 
-  // ✅ FIXED INITIAL LOAD + RULES POPUP + TIMER
-useEffect(() => {
-  if (!roomId || !materiId) return;
-
-  Promise.all([
-    loadSubmissionStatus(),
-    loadPerformance(),
-    loadWorkspaceData(),
-    loadTasks(),
-    loadClues(),
-    loadTemplateData(),
-    loadTimerStatus()
-  ]).then(() => {
-
-    const hasSeenRules = localStorage.getItem(`rules_${roomId}`);
-
-    if (!hasSeenRules) {
-      setTimeout(() => {
-        setShowRules(true);
-        localStorage.setItem(`rules_${roomId}`, "true");
-      }, 500);
-    }
-
-  }).catch(err => console.error("Initial load error:", err));
-
-}, [roomId, materiId]);
+    Promise.all([
+      loadSubmissionStatus(),
+      loadPerformance(),
+      loadWorkspaceData(),
+      loadTasks(),
+      loadClues(),
+      loadTemplateData(),
+      loadTimerStatus()
+    ]).then(() => {
+      const hasSeenRules = localStorage.getItem(`rules_${roomId}`);
+      if (!hasSeenRules) {
+        setTimeout(() => {
+          setShowRules(true);
+          localStorage.setItem(`rules_${roomId}`, "true");
+        }, 500);
+      }
+    }).catch(err => console.error("Initial load error:", err));
+  }, [roomId, materiId]);
 
   /* ================= TEMPLATE FUNCTIONS ================= */
-const updateBlank = (index, value) => {
-  const newBlanks = [...pseudocodeBlanks];
-  newBlanks[index] = value;
-  setPseudocodeBlanks(newBlanks);
+  const updateBlank = (index, value) => {
+    const newBlanks = [...pseudocodeBlanks];
+    newBlanks[index] = value;
+    setPseudocodeBlanks(newBlanks);
 
-  // ✅ LANGSUNG HITUNG TANPA DELAY STATE
-  let filled = templateData.template || "";
-  templateData.blanks?.forEach((_, i) => {
-    filled = filled.replaceAll(
-      `___BLANK_${i}___`,
-      newBlanks[i] || `[BLANK ${i + 1}]`
-    );
-  });
-
-  setPseudocode(filled);
-};
+    let filled = templateData.template || "";
+    templateData.blanks?.forEach((_, i) => {
+      filled = filled.replaceAll(
+        `___BLANK_${i}___`,
+        newBlanks[i] || `[BLANK ${i + 1}]`
+      );
+    });
+    setPseudocode(filled);
+  };
 
   const renderFilledTemplate = () => {
     let filled = templateData.template || "";
     templateData.blanks?.forEach((_, i) => {
       const placeholder = `___BLANK_${i}___`;
-      const value = pseudocodeBlanks[i] || ""; // ✅ SHOW BLANK jika kosong
+      const value = pseudocodeBlanks[i] || "";
       filled = filled.replaceAll(placeholder, value || `[BLANK ${i+1}]`);
     });
     return filled;
@@ -227,12 +220,8 @@ const updateBlank = (index, value) => {
 
   /* ================= FLOWCHART FUNCTIONS ================= */
   const addCondition = () => {
-    if (isSubmitted) return;
-    const newConditions = [...conditions, {
-      condition: "",
-      yes: "",
-      no: ""
-    }];
+    if (isSubmitted || conditions.length >= 5) return;
+    const newConditions = [...conditions, { condition: "", yes: "", no: "" }];
     setConditions(newConditions);
   };
 
@@ -249,10 +238,22 @@ const updateBlank = (index, value) => {
     setConditions(newConditions);
   };
 
+  const toggleElse = () => {
+    if (isSubmitted || conditions.length === 0) return;
+    setShowElse(prev => !prev);
+    if (!showElse) {
+      setElseInstruction(""); // Reset else instruction saat tambah
+    }
+  };
+
+  const updateElseInstruction = (value) => {
+    if (isSubmitted) return;
+    setElseInstruction(value);
+  };
+
   /* ================= TASK FUNCTIONS ================= */
   const toggleTask = async (taskId, currentDone) => {
     try {
-      // ✅ ROUTE YANG BENAR
       await api.post(`/discussion/room/${roomId}/task/${taskId}/toggle`, { 
         done: !currentDone 
       });
@@ -266,12 +267,7 @@ const updateBlank = (index, value) => {
     }
   };
 
-  const toggleElse = () => {
-    if (isSubmitted) return;
-    setShowElse(prev => !prev);
-  };
-
-  /* ================= FIXED CLUE FUNCTIONS ================= */
+  /* ================= CLUE FUNCTIONS ================= */
   const requestClue = async () => {
     if (usedClues.length >= clueMax) {
       Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
@@ -285,7 +281,6 @@ const updateBlank = (index, value) => {
       return;
     }
 
-    // ✅ FIXED: Jangan tampilkan clue dulu, konfirmasi aja
     const result = await Swal.fire({
       title: "🧩 Ambil Clue?",
       html: `
@@ -295,7 +290,7 @@ const updateBlank = (index, value) => {
           <em>(Clue akan ditampilkan setelah konfirmasi)</em>
         </div>
       `,
-      icon: "question", // ✅ FIXED: Valid icon
+      icon: "question",
       showCancelButton: true,
       confirmButtonText: "💰 Bayar & Ambil",
       cancelButtonText: "Batal"
@@ -314,178 +309,172 @@ const updateBlank = (index, value) => {
   };
 
   /* ================= SAVE FUNCTIONS ================= */
-const savePseudocode = async () => {
-  if (!pseudocode.trim()) {
-    Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
-    return;
-  }
+  const savePseudocode = async () => {
+    if (!pseudocode.trim()) {
+      Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
+      return;
+    }
+    try {
+      await api.post(`/discussion/room/${roomId}/pseudocode`, { pseudocode });
+      Swal.fire("✅", "Pseudocode tersimpan!", "success");
+      loadPerformance();
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan", "error");
+    }
+  };
 
-  try {
-    await api.post(`/discussion/room/${roomId}/pseudocode`, { pseudocode });
-    Swal.fire("✅", "Pseudocode tersimpan!", "success");
-    loadPerformance();
-  } catch (err) {
-    Swal.fire("❌", "Gagal simpan", "error");
-  }
-};
+  const saveFlowchart = async () => {
+    if (conditions.length === 0) {
+      Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
+      return;
+    }
+    try {
+      await api.post(`/discussion/room/${roomId}/flowchart`, {
+        flowchart: { conditions, elseInstruction, showElse }
+      });
+      Swal.fire("✅", "Flowchart tersimpan!", "success");
+      loadPerformance();
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan", "error");
+    }
+  };
 
-const saveFlowchart = async () => {
-  if (conditions.length === 0) {
-    Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
-    return;
-  }
-
-  try {
-    await api.post(`/discussion/room/${roomId}/flowchart`, {
-      flowchart: { conditions, elseInstruction }
-    });
-    Swal.fire("✅", "Flowchart tersimpan!", "success");
-    loadPerformance();
-  } catch (err) {
-    Swal.fire("❌", "Gagal simpan", "error");
-  }
-};
-
-  /* ================= FLOWCHART RENDER ================= */
-  /* ================= FLOWCHART BUILDER - FULL VERSION ================= */
+  /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
+  /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
 const renderFlowchart = () => {
-  const height = 160 + conditions.length * 180 + (elseInstruction ? 140 : 0);
-  const endY = height - 30;
-
+  // Hitung height yang pas
+  const conditionHeight = 220;
+  const elseHeight = showElse ? 200 : 0;
+  const totalHeight = 300 + (conditions.length * conditionHeight) + elseHeight;
+  
   return (
-    <svg
-      width="100%"
-      height={height}
-      viewBox={`0 0 800 ${height}`}
+    <svg 
+      width="100%" 
+      height="100%" 
+      viewBox={`0 0 950 ${totalHeight}`}
+      style={{ background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)' }}
     >
       <defs>
-        <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L6,3 z" fill="#000" />
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+          <path d="M0,0 L0,10 L10,5 z" fill="#374151" />
         </marker>
+        <linearGradient id="startGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#059669"/>
+        </linearGradient>
+        <linearGradient id="yesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#d1fae5"/>
+          <stop offset="100%" stopColor="#a7f3d0"/>
+        </linearGradient>
+        <linearGradient id="noGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fee2e2"/>
+          <stop offset="100%" stopColor="#fecaca"/>
+        </linearGradient>
       </defs>
 
       {/* START */}
-      <ellipse cx="400" cy="60" rx="70" ry="30" fill="#fff" stroke="#333" />
-      <text x="400" y="65" textAnchor="middle">Mulai</text>
+      <ellipse cx="475" cy="80" rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
+      <text x="475" y="88" textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🟢 MULAI</text>
 
+      {/* CONDITIONS LOOP */}
       {conditions.map((item, index) => {
-        const y = 140 + index * 180;
+        const startY = 200 + (index * conditionHeight);
+        const prevEndY = index === 0 ? 125 : (200 + ((index - 1) * conditionHeight) + 180);
 
         return (
           <g key={index}>
-            {/* GARIS MASUK */}
+            {/* CONNECTION FROM PREV */}
             <line
-              x1="400"
-              y1={index === 0 ? 90 : y - 100}
-              x2="400"
-              y2={y - 40}
-              stroke="#333"
+              x1="475" y1={prevEndY}
+              x2="475" y2={startY - 70}
+              stroke="#374151" strokeWidth="4" strokeDasharray={index > 0 ? "10,5" : "none"}
               markerEnd="url(#arrow)"
             />
 
-            {/* DIAMOND */}
+            {/* DECISION DIAMOND */}
             <polygon
-              points={`400,${y - 40} 480,${y} 400,${y + 40} 320,${y}`}
-              fill="#fff"
-              stroke="#333"
+              points={`475,${startY-70} 580,${startY} 475,${startY+70} 370,${startY}`}
+              fill="#dbeafe" stroke="#3b82f6" strokeWidth="5" strokeLinejoin="round"
             />
-
-            {/* INPUT KONDISI */}
-            <foreignObject x="340" y={y - 20} width="120" height="40">
+            <text x="475" y={startY+5} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#1e40af">IF ?</text>
+            <foreignObject x="385" y={startY-25} width="170" height="50">
               <input
                 value={item.condition}
                 onChange={(e) => updateCondition(index, "condition", e.target.value)}
-                style={{ width: "100%", textAlign: "center", border: "none" }}
+                style={{
+                  width: "100%", height: "100%",
+                  border: "3px solid #3b82f6", borderRadius: "8px",
+                  textAlign: "center", fontSize: "14px", fontWeight: "600",
+                  background: "white", padding: "4px"
+                }}
                 disabled={isSubmitted}
+                placeholder="Kondisi (contoh: angka > 0)"
               />
             </foreignObject>
 
-            {/* YES */}
-            <text x="500" y={y - 10}>Ya</text>
-            <line
-              x1="480"
-              y1={y}
-              x2="650"
-              y2={y}
-              stroke="#333"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* PROCESS YES */}
-            <rect x="650" y={y - 30} width="120" height="60" stroke="#333" fill="#fff" />
-            <foreignObject x="655" y={y - 20} width="110" height="40">
+            {/* YES BRANCH */}
+            <text x="615" y={startY-5} fontWeight="bold" fontSize="16" fill="#059669">✅ YA</text>
+            <path d={`M580 ${startY} L820 ${startY}`} fill="none" stroke="#059669" strokeWidth="5" markerEnd="url(#arrow)"/>
+            
+            <rect x="820" y={startY-50} width="200" height="100" rx="15" fill="url(#yesGrad)" stroke="#10b981" strokeWidth="4"/>
+            <text x="920" y={startY-30} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#059669">AKSI YA</text>
+            <foreignObject x="830" y={startY-20} width="180" height="60">
               <input
                 value={item.yes}
                 onChange={(e) => updateCondition(index, "yes", e.target.value)}
-                style={{ width: "100%", border: "none" }}
+                style={{ width: "100%", height: "100%", border: "none", padding: "8px", fontSize: "13px", fontWeight: "500" }}
                 disabled={isSubmitted}
+                placeholder="Jika benar lakukan ini..."
               />
             </foreignObject>
 
-            {/* GARIS KE END */}
-            <line
-              x1="710"
-              y1={y + 30}
-              x2="710"
-              y2={endY - 30}
-              stroke="#333"
-            />
+            {/* YES TO END */}
+            <line x1="920" y1={startY+50} x2="920" y2={totalHeight-80} stroke="#059669" strokeWidth="4" markerEnd="url(#arrow)"/>
 
-            {/* NO */}
-            <text x="350" y={y + 60}>Tidak</text>
-
-            {/* KE KONDISI BERIKUT */}
-            {index < conditions.length - 1 && (
-              <line
-                x1="400"
-                y1={y + 40}
-                x2="400"
-                y2={y + 100}
-                stroke="#333"
-                markerEnd="url(#arrow)"
-              />
-            )}
-
-            {/* ELSE */}
-            {index === conditions.length - 1 && elseInstruction && (
-              <>
-                <line
-                  x1="400"
-                  y1={y + 40}
-                  x2="400"
-                  y2={y + 100}
-                  stroke="#333"
-                  markerEnd="url(#arrow)"
-                />
-
-                <rect x="320" y={y + 100} width="160" height="60" stroke="#333" fill="#fff" />
-
-                <foreignObject x="330" y={y + 110} width="140" height="40">
-                  <input
-                    value={elseInstruction}
-                    onChange={(e) => updateElseInstruction(e.target.value)}
-                    style={{ width: "100%", border: "none" }}
-                    disabled={isSubmitted}
-                  />
-                </foreignObject>
-
-                {/* ELSE → END */}
-                <line
-                  x1="400"
-                  y1={y + 160}
-                  x2="400"
-                  y2={endY - 30}
-                  stroke="#333"
-                />
-              </>
-            )}
+            {/* NO BRANCH SETUP */}
+            <text x="440" y={startY+90} fontWeight="bold" fontSize="16" fill="#dc2626">❌ TIDAK</text>
           </g>
         );
       })}
 
+      {/* ELSE BLOCK - ONLY LAST CONDITION */}
+      {conditions.length > 0 && showElse && (
+        <g>
+          <line 
+            x1="370" y1={200 + ((conditions.length - 1) * conditionHeight) + 70}
+            x2="370" y2={200 + (conditions.length * conditionHeight) + 20}
+            stroke="#dc2626" strokeWidth="5" markerEnd="url(#arrow)"
+          />
+          
+          {/* ELSE BOX */}
+          <rect 
+            x="250" y={200 + (conditions.length * conditionHeight) + 30} 
+            width="240" height="110" 
+            rx="15" fill="url(#noGrad)" stroke="#dc2626" strokeWidth="5"
+          />
+          <text x="370" y={200 + (conditions.length * conditionHeight) + 55} textAnchor="middle" fontWeight="bold" fontSize="16" fill="#dc2626">🔴 ELSE</text>
+          <foreignObject x="260" y={200 + (conditions.length * conditionHeight) + 70} width="220" height="60">
+            <input
+              value={elseInstruction}
+              onChange={(e) => updateElseInstruction(e.target.value)}
+              style={{ width: "100%", height: "100%", border: "none", padding: "10px", fontSize: "14px", fontWeight: "500" }}
+              disabled={isSubmitted}
+              placeholder="Jika salah lakukan ini..."
+            />
+          </foreignObject>
+          
+          {/* ELSE TO END */}
+          <line 
+            x1="370" y1={200 + (conditions.length * conditionHeight) + 140}
+            x2="920" y2={totalHeight-80}
+            stroke="#dc2626" strokeWidth="4" markerEnd="url(#arrow)"
+          />
+        </g>
+      )}
+
       {/* END */}
-      <ellipse cx="550" cy={endY} rx="70" ry="30" fill="#fff" stroke="#333" />
-      <text x="550" y={endY + 5} textAnchor="middle">Selesai</text>
+      <ellipse cx="920" cy={totalHeight-60} rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
+      <text x="920" y={totalHeight-52} textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🏁 SELESAI</text>
     </svg>
   );
 };
@@ -499,10 +488,10 @@ const renderFlowchart = () => {
       
       if (res.data.valid) {
         Swal.fire({
-          title: "🎉 BENAR!",
+          title: "🎉 BENAR 100%!",
           text: "Siap upload C code!",
           icon: "success",
-          confirmButtonText: "🚀 UPLOAD"
+          confirmButtonText: "🚀 UPLOAD C CODE"
         }).then(result => {
           if (result.isConfirmed) {
             navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
@@ -513,9 +502,9 @@ const renderFlowchart = () => {
           title: "⚠️ Perlu Perbaikan",
           html: `
             <div style="text-align: left;">
-              <strong>Pseudocode:</strong> ${res.data.details.pseudocodeMatch ? '✅' : '❌'}<br>
-              <strong>Flowchart:</strong> ${res.data.details.flowchartMatch ? '✅' : '❌'}<br>
-              <strong>Score:</strong> ${res.data.score}%
+              <strong>📝 Pseudocode:</strong> ${res.data.details.pseudocodeMatch ? '✅' : '❌'}<br>
+              <strong>🔄 Flowchart:</strong> ${res.data.details.flowchartMatch ? '✅' : '❌'}<br>
+              <strong>Score:</strong> <span style="color: ${res.data.score >= 80 ? '#10b981' : '#f59e0b'}">${res.data.score}%</span>
             </div>
           `,
           icon: "warning"
@@ -528,37 +517,31 @@ const renderFlowchart = () => {
     }
   };
 
-  /* ================= FIXED COMPILER GUIDE MODAL ================= */
+  /* ================= MODALS ================= */
   const CompilerGuideModal = () => {
     if (!showCompilerGuide) return null;
     
-    // ✅ FIXED: Return promise properly, use valid icon
     Swal.fire({
       title: "💻 C Compiler Guide",
       html: `
         <div style="text-align: left; font-size: 14px;">
           <ol style="line-height: 1.8;">
             <li><strong>Buat</strong> pseudocode & flowchart logic</li>
-            <li><strong>Ubahlah atau buatkan dalam </strong> kode C </li>
+            <li><strong>Convert ke C code</strong></li>
           </ol>
           <ol start="3" style="line-height: 1.8;">
             <li><strong>Test</strong> di <a href="https://www.onlinegdb.com/" target="_blank" style="color: #3b82f6;">OnlineGDB</a></li>
-            <li><strong>Download</strong> .c atau salin kode yang sudah dibuat lalu Upload!</li>
+            <li><strong>Download/Salin</strong> .c file → Upload!</li>
           </ol>
         </div>
       `,
-      icon: "info", // ✅ FIXED: Valid icon
+      icon: "info",
       confirmButtonText: "✅ Paham!",
       width: "700px"
-    }).then(() => {
-      setShowCompilerGuide(false); // ✅ FIXED: Close properly
-    });
-    
+    }).then(() => setShowCompilerGuide(false));
     return null;
   };
 
-  /* ================= RULES POPUP ================= */
-  // ✅ NEW: Rules popup
   const RulesPopup = () => {
     if (!showRules) return null;
 
@@ -569,43 +552,28 @@ const renderFlowchart = () => {
           <h4>🎯 Tujuan:</h4>
           <ul>
             <li>Selesaikan <strong>5 Quest</strong> secara berurutan</li>
-            <li>Cek jawaban dan upload C code</li>
-            <li>Target: <strong>90%+ score</strong> untuk MASTER badge 🥇</li>
+            <li>Target: <strong>90%+ score</strong> untuk 🥇 MASTER</li>
           </ul>
           
           <h4>⏰ Timer: <strong>${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}</strong></h4>
-          <ul>
-            <li>90 menit total</li>
-            <li>Overtime = penalty XP</li>
-          </ul>
+          <ul><li>90 menit total</li><li>Overtime = penalty XP</li></ul>
           
-          <h4>🧩 Clue System:</h4>
-          <ul>
-            <li>Maksimal <strong>3 clue</strong></li>
-            <li>Biaya: <strong>50 XP per anggota</strong></li>
-            <li>Clue = -10% score</li>
-          </ul>
-          
-          <div style="background: #fef3c7; padding: 15px; border-radius: 10px; margin: 15px 0;">
-            <strong>⚠️ Attempt terbatas: 10x pseudocode + 10x flowchart</strong>
-          </div>
+          <h4>🧩 Clue: Max 3 (-10% score/clue)</h4>
+          <h4>⚠️ Attempt: Max 10x pseudocode + 10x flowchart</h4>
         </div>
       `,
       icon: "info",
       confirmButtonText: "🚀 MULAI QUEST!",
       confirmButtonColor: "#10b981",
-      width: "650px",
-      backdrop: "rgba(0,0,0,0.7)"
-    }).then(() => {
-      setShowRules(false);
-    });
+      width: "650px"
+    }).then(() => setShowRules(false));
   };
 
   /* ================= MAIN RENDER ================= */
   return (
     <Layout>
       <Wrapper>
-        {/* TIMER DISPLAY ✅ NEW */}
+        {/* TIMER */}
         {timerActive && (
           <TimerBox>
             <TimerEmoji>⏰</TimerEmoji>
@@ -696,14 +664,16 @@ const renderFlowchart = () => {
               <BlanksContainer>
                 {templateData.blanks?.map((blank, index) => (
                   <BlankRow key={index}>
-                    <BlankLabel>Blank {index + 1}: {blank.hint}</BlankLabel>
+                    <BlankLabel>
+                      📝 Blank {index + 1}: <strong>{blank.hint}</strong>
+                    </BlankLabel>
                     <InputGroup>
                       <BlankInput
                         value={pseudocodeBlanks[index] || ""}
                         onChange={(e) => updateBlank(index, e.target.value)}
-                        placeholder={`Jawaban blank ${index + 1}...`}
+                        placeholder={`Masukkan jawaban blank ${index + 1}...`}
                       />
-                      <HintButton onClick={() => Swal.fire(`Hint: ${blank.hint}`, "", "info")}>
+                      <HintButton onClick={() => Swal.fire(`💡 Hint Blank ${index + 1}`, blank.hint, "info")}>
                         ❓
                       </HintButton>
                     </InputGroup>
@@ -722,14 +692,14 @@ const renderFlowchart = () => {
                 {renderFlowchart()}
               </FlowchartContainer>
               <FlowchartButtons>
-                <FlowBtn onClick={addCondition} disabled={isSubmitted}>
-                  ➕ Add Condition
+                <FlowBtn onClick={addCondition} disabled={isSubmitted || conditions.length >= 5}>
+                  ➕ Add IF ({conditions.length}/5)
                 </FlowBtn>
-                <FlowBtn onClick={toggleElse} disabled={isSubmitted}>
-                  ➕ Add Else
+                <FlowBtn onClick={toggleElse} disabled={isSubmitted || conditions.length === 0}>
+                  {showElse ? "❌ Remove ELSE" : "➕ Add ELSE"}
                 </FlowBtn>
-                <FlowBtn onClick={saveFlowchart} disabled={isSubmitted}>
-                  💾 Save Flowchart
+                <FlowBtn onClick={saveFlowchart} disabled={isSubmitted || conditions.length === 0}>
+                                    💾 Save Flowchart
                 </FlowBtn>
               </FlowchartButtons>
             </FlowchartCard>
@@ -740,7 +710,7 @@ const renderFlowchart = () => {
       {/* MODALS */}
       <MiniLessonModal show={showMini} onClose={() => setShowMini(false)} content={miniContent} />
       <CompilerGuideModal />
-      <RulesPopup /> {/* ✅ NEW: Rules popup */}
+      <RulesPopup />
     </Layout>
   );
 }
@@ -760,19 +730,13 @@ const getLevelName = (score) => {
   return "LEARNER";
 };
 
-/* ================= NEW STYLED COMPONENTS ================= */
+/* ================= STYLED COMPONENTS ================= */
 const TimerBox = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
+  position: fixed; top: 20px; right: 20px;
   background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  padding: 15px 25px;
-  border-radius: 25px;
+  color: white; padding: 15px 25px; border-radius: 25px;
   box-shadow: 0 10px 30px rgba(239,68,68,0.4);
-  z-index: 1000;
-  font-weight: 800;
-  font-size: 18px;
+  z-index: 1000; font-weight: 800; font-size: 18px;
   animation: pulse 2s infinite;
   @keyframes pulse {
     0%, 100% { transform: scale(1); }
@@ -783,7 +747,6 @@ const TimerBox = styled.div`
 const TimerEmoji = styled.span`font-size: 24px; margin-right: 8px;`;
 const TimerText = styled.span``;
 
-/* ================= COMPLETE STYLED COMPONENTS ================= */
 const Wrapper = styled.div`padding: 20px 40px; max-width: 1600px; margin: 0 auto;`;
 const Header = styled.div`background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 25px; padding: 30px; margin-bottom: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);`;
 const HeaderTop = styled.div`display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;`;
@@ -795,67 +758,18 @@ const InfoButton = styled.button`background: #3b82f6; color: white; border: none
 const CompilerBtn = styled(InfoButton)`background: #06b6d4; &:hover { box-shadow: 0 10px 20px rgba(6,182,212,0.3); }`;
 const BackButton = styled(InfoButton)`background: #6b7280; &:hover { box-shadow: 0 10px 20px rgba(107,114,128,0.3); }`;
 
-// Tambahkan ini di styled components
 const PerformanceBox = styled.div`
-  width: 97%;
-  padding: 8px 16px;
-  border-radius: 12px;
+  width: 97%; padding: 15px 20px; border-radius: 20px;
   background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  justify-content: space-between;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  font-size: 13px;
-
-  .label {
-    font-weight: 500;
-    opacity: 0.9;
-    white-space: nowrap;
-  }
-
-  .stars {
-    font-size: 16px;
-    white-space: nowrap;
-  }
+  color: white; display: flex; align-items: center; gap: 20px;
+  box-shadow: 0 10px 30px rgba(102,126,234,0.4);
 `;
 
-const ProgressWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 220px;
-
-  span {
-    font-size: 11px;
-    font-weight: 600;
-    background: rgba(255,255,255,0.2);
-    padding: 3px 8px;
-    border-radius: 20px;
-    min-width: 40px;
-    text-align: center;
-  }
-`;
-
-const ProgressBar = styled.div`
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
-  overflow: hidden;
-
-  div {
-    height: 100%;
-    background: white;
-    border-radius: 10px;
-    transition: width 0.4s ease;
-  }
-`;
-const Emoji = styled.div`font-size: 48px; margin-bottom: 10px;`;
-const Level = styled.div`font-size: 20px; font-weight: 800; color: #059669; margin-bottom: 5px; text-transform: uppercase;`;
-const Score = styled.div`font-size: 36px; font-weight: 900; color: #059669; margin-bottom: 15px;`;
-const ProgressFill = styled.div`height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.5s ease; border-radius: 6px;`;
+const Emoji = styled.div`font-size: 32px;`;
+const Level = styled.div`font-size: 18px; font-weight: 800; color: #10b981; text-transform: uppercase;`;
+const Score = styled.div`font-size: 32px; font-weight: 900; color: #10b981;`;
+const ProgressBar = styled.div`flex: 1; height: 10px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; margin-left: 20px;`;
+const ProgressFill = styled.div`height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.5s ease; border-radius: 10px;`;
 
 const Container = styled.div`display: grid; grid-template-columns: 420px 1fr; gap: 40px;`;
 const LeftPanel = styled.div`display: flex; flex-direction: column; gap: 30px;`;
@@ -867,7 +781,7 @@ const ClueCard = styled.div`background: linear-gradient(135deg, #e0e7ff, #c7d2fe
 const ClueHeader = styled.div`font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center;`;
 const ClueStatus = styled.div`margin-bottom: 20px; text-align: center;`;
 const ClueButton = styled.button`width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; &:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(139,92,246,0.4); }`;
-const ClueMaxed = styled.div`padding: 12px; background: #fee2e2; color: #dc2626; border-radius: 12px; font-weight: 600;`;
+const ClueMaxed = styled.div`padding: 12px; background: #fee2e2; color: #dc2626; border-radius: 12px; font-weight: 600; text-align: center;`;
 const ClueList = styled.div`display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto;`;
 const ClueItem = styled.div`padding: 12px; background: ${props => props.used ? '#c7d2fe' : '#f8fafc'}; border-radius: 10px; font-size: 13px; border-left: 4px solid ${props => props.used ? '#6366f1' : '#d1d5db'};`;
 
@@ -885,7 +799,7 @@ const ProveMasteryButton = styled.button`
 `;
 
 const PseudocodeCard = styled.div`background: linear-gradient(135deg, #f0f9ff, #e0f2fe); padding: 25px; border-radius: 20px; border: 3px solid #0ea5e9;`;
-const TemplatePreview = styled.div`background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 2px dashed #bfdbfe; max-height: 220px; overflow: auto; pre {margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; }`;
+const TemplatePreview = styled.div`background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 2px dashed #bfdbfe; max-height: 250px; overflow: auto; pre {margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; font-family: 'Courier New', monospace; }`;
 const BlanksContainer = styled.div`display: flex; flex-direction: column; gap: 20px; margin-bottom: 25px;`;
 const BlankRow = styled.div``;
 const BlankLabel = styled.div`margin-bottom: 8px; color: #374151; font-weight: 600; font-size: 14px;`;
@@ -895,6 +809,49 @@ const HintButton = styled.button`background: #f59e0b; color: white; border: none
 const SaveButton = styled.button`width: 100%; padding: 15px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 15px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 15px; transition: all 0.3s; &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(16,185,129,0.4); } &:disabled { background: #6b7280; cursor: not-allowed; }`;
 
 const FlowchartCard = styled.div`background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 25px; border-radius: 20px; border: 3px solid #f59e0b;`;
-const FlowchartContainer = styled.div`height: 450px; border: 3px solid #f59e0b; border-radius: 15px; overflow: hidden; background: linear-gradient(135deg, #fffbf0, #fef7d6); margin-bottom: 20px; display: flex; justify-content: center; align-items: center;`;
-const FlowchartButtons = styled.div`display: flex; gap: 12px;`;
-const FlowBtn = styled.button`flex: 1; padding: 12px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); } &:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.6; }`;
+const FlowchartContainer = styled.div`
+  height: 550px !important;
+  min-height: 550px;
+  border: 4px solid #f59e0b;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fefce8;
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 20px 40px rgba(245,158,11,0.2);
+  position: relative;
+`;
+
+const FlowchartButtons = styled.div`
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+`;
+
+const FlowBtn = styled.button`
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 160px;
+  box-shadow: 0 8px 25px rgba(245,158,11,0.3);
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(245,158,11,0.4);
+  }
+  &:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+`;
