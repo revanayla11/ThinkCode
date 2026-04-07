@@ -143,20 +143,27 @@ export default function DiscussionRoom() {
       const res = await api.get(`/discussion/template/${roomId}`);
       const data = res.data.data;
       setTemplateData(data);
+      // ✅ RESET BLANKS ke KOSONG
       setPseudocodeBlanks(Array(data.blanks?.length || 0).fill(""));
     } catch (err) {
       console.error("Load template error:", err);
+      // ✅ DEFAULT BLANK TEMPLATE
       setTemplateData({
-        template: "IF (___BLANK_0___) THEN\n    ___BLANK_1___\nELSE\n    ___BLANK_2___\nENDIF",
+        template: `IF (___BLANK_0___) THEN
+    ___BLANK_1___
+  ELSE
+    ___BLANK_2___
+  ENDIF`,
         blanks: [
-          { hint: "kondisi seperti x > 0" },
-          { hint: "print 'Positif'" },
-          { hint: "print 'Negatif'" }
+          { hint: "kondisi " },
+          { hint: "aksi YES" },
+          { hint: "aksi NO" }
         ]
       });
-      setPseudocodeBlanks(["", "", ""]);
+      setPseudocodeBlanks(["", "", ""]); // ✅ BLANK
     }
   };
+
 
   // ✅ FIXED INITIAL LOAD + RULES POPUP + TIMER
   useEffect(() => {
@@ -194,7 +201,8 @@ export default function DiscussionRoom() {
     let filled = templateData.template || "";
     templateData.blanks?.forEach((_, i) => {
       const placeholder = `___BLANK_${i}___`;
-      filled = filled.replaceAll(placeholder, pseudocodeBlanks[i] || `[BLANK ${i+1}]`);
+      const value = pseudocodeBlanks[i] || ""; // ✅ SHOW BLANK jika kosong
+      filled = filled.replaceAll(placeholder, value || `[BLANK ${i+1}]`);
     });
     return filled;
   };
@@ -226,6 +234,7 @@ export default function DiscussionRoom() {
   /* ================= TASK FUNCTIONS ================= */
   const toggleTask = async (taskId, currentDone) => {
     try {
+      // ✅ ROUTE YANG BENAR
       await api.post(`/discussion/room/${roomId}/task/${taskId}/toggle`, { 
         done: !currentDone 
       });
@@ -235,6 +244,7 @@ export default function DiscussionRoom() {
       loadPerformance();
     } catch (err) {
       console.error("Toggle task error:", err);
+      Swal.fire("Error", "Gagal update task", "error");
     }
   };
 
@@ -304,78 +314,287 @@ export default function DiscussionRoom() {
   };
 
   /* ================= FLOWCHART RENDER ================= */
-  const renderFlowchart = () => {
-    const height = Math.max(400, 200 + conditions.length * 120);
-    return (
-      <svg width="100%" height={height} viewBox={`0 0 900 ${height}`}>
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                  refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
-          </marker>
-        </defs>
-        
-        <ellipse cx="100" cy="50" rx="60" ry="30" fill="#10b981" stroke="white" strokeWidth="3"/>
-        <text x="100" y="55" textAnchor="middle" fill="white" fontWeight="bold" fontSize="14">START</text>
-        
-        {conditions.map((item, index) => {
-          const yBase = 100 + index * 120;
-          return (
-            <g key={index}>
-              <polygon 
-                points={`300,${yBase},360,${yBase+30},300,${yBase+60},240,${yBase+30}`} 
-                fill="#3b82f6" stroke="white" strokeWidth="3"
+  /* ================= FLOWCHART BUILDER - FULL VERSION ================= */
+const renderFlowchart = () => {
+  const height = 160 + conditions.length * 180 + (elseInstruction ? 120 : 0);
+
+  return (
+    <svg
+      width="100%"
+      height={height}
+      viewBox={`0 0 800 ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ background: '#f9fafb', borderRadius: '8px' }}
+    >
+      <defs>
+        <marker
+          id="arrow"
+          markerWidth="6"
+          markerHeight="6"
+          refX="5"
+          refY="3"
+          orient="auto"
+        >
+          <path d="M0,0 L0,6 L6,3 z" fill="#374151" />
+        </marker>
+        <linearGradient id="startGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#059669" />
+        </linearGradient>
+        <linearGradient id="decisionGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#1d4ed8" />
+        </linearGradient>
+        <linearGradient id="processGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+        <linearGradient id="endGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#8b5cf6" />
+          <stop offset="100%" stopColor="#7c3aed" />
+        </linearGradient>
+      </defs>
+
+      {/* START */}
+      <ellipse
+        cx="300"
+        cy="80"
+        rx="70"
+        ry="35"
+        fill="url(#startGrad)"
+        stroke="white"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <text x="300" y="85" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white" dy=".3em">
+        MULAI
+      </text>
+
+      {/* CONDITIONS LOOP */}
+      {conditions.map((item, index) => {
+        const y = 180 + index * 180;
+
+        return (
+          <g key={index}>
+            {/* Arrow from previous */}
+            <line
+              x1="300"
+              y1={index === 0 ? 115 : y - 100}
+              x2="300"
+              y2={y - 50}
+              stroke="#374151"
+              strokeWidth="3"
+              strokeLinecap="round"
+              markerEnd="url(#arrow)"
+            />
+
+            {/* DECISION DIAMOND */}
+            <polygon
+              points={`300,${y - 50} 390,${y} 300,${y + 50} 210,${y}`}
+              fill="url(#decisionGrad)"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinejoin="round"
+            />
+
+            {/* Condition Input */}
+            <foreignObject x="235" y={y - 25} width="110" height="50">
+              <input
+                type="text"
+                value={item.condition || ""}
+                onChange={(e) => updateCondition(index, "condition", e.target.value)}
+                placeholder={`Kondisi ${index + 1}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  textAlign: "center",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  background: "rgba(255,255,255,0.9)",
+                  borderRadius: "6px",
+                  outline: "none",
+                  fontWeight: "bold",
+                  fontSize: "12px",
+                  color: "#1f2937",
+                  padding: "4px"
+                }}
+                disabled={isSubmitted}
               />
-              <foreignObject x="220" y={yBase+10} width="160" height="50">
-                <input 
-                  type="text" 
-                  value={item.condition || ""} 
-                  onChange={(e) => updateCondition(index, 'condition', e.target.value)}
-                  placeholder="Kondisi IF..."
-                  style={{
-                    width: '100%', padding: '5px', borderRadius: '5px', 
-                    border: '1px solid #ccc', fontSize: '12px'
-                  }}
-                  disabled={isSubmitted}
-                />
-              </foreignObject>
-              
-              <rect x="380" y={yBase+10} width="140" height="40" rx="8" fill="#10b981" stroke="white" strokeWidth="2"/>
-              <foreignObject x="385" y={yBase+20} width="130" height="30">
-                <input 
-                  type="text" 
-                  value={item.yes || ""} 
-                  onChange={(e) => updateCondition(index, 'yes', e.target.value)}
-                  placeholder="YES action"
-                  style={{width: '100%', padding: '3px', fontSize: '11px'}}
-                  disabled={isSubmitted}
-                />
-              </foreignObject>
-              
-              <rect x="200" y={yBase+70} width="140" height="40" rx="8" fill="#ef4444" stroke="white" strokeWidth="2"/>
-              <foreignObject x="205" y={yBase+80} width="130" height="30">
-                <input 
-                  type="text" 
-                  value={item.no || ""} 
-                  onChange={(e) => updateCondition(index, 'no', e.target.value)}
-                  placeholder="NO action"
-                  style={{width: '100%', padding: '3px', fontSize: '11px'}}
-                  disabled={isSubmitted}
-                />
-              </foreignObject>
-              
-              <path d={`M160 ${index === 0 ? 50 : yBase-40} L240 ${yBase-40}`} stroke="#333" strokeWidth="3" markerEnd="url(#arrowhead)"/>
-              <path d={`M360 ${yBase+30} L380 ${yBase+25}`} stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-              <path d={`M360 ${yBase+40} L320 ${yBase+60}`} stroke="#ef4444" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-            </g>
-          );
-        })}
-        
-        <ellipse cx="500" cy={height - 50} rx="60" ry="30" fill="#8b5cf6" stroke="white" strokeWidth="3"/>
-        <text x="500" y={height - 45} textAnchor="middle" fill="white" fontWeight="bold" fontSize="14">END</text>
-      </svg>
-    );
-  };
+            </foreignObject>
+
+            {/* YES Label & Arrow */}
+            <text x="410" y={y - 15} fontSize="13" fontWeight="600" fill="#10b981">YA</text>
+            <line
+              x1="390"
+              y1={y}
+              x2="580"
+              y2={y}
+              stroke="#10b981"
+              strokeWidth="3"
+              strokeLinecap="round"
+              markerEnd="url(#arrow)"
+            />
+
+            {/* YES Process Box */}
+            <rect
+              x="580"
+              y={y - 35}
+              width="220"
+              height="70"
+              rx="10"
+              ry="10"
+              fill="url(#processGrad)"
+              stroke="white"
+              strokeWidth="3"
+            />
+            <foreignObject x="605" y={y - 25} width="170" height="50">
+              <input
+                type="text"
+                value={item.yes || ""}
+                onChange={(e) => updateCondition(index, "yes", e.target.value)}
+                placeholder={`Aksi YA ${index + 1}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  textAlign: "center",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  background: "rgba(255,255,255,0.9)",
+                  borderRadius: "6px",
+                  outline: "none",
+                  fontSize: "12px",
+                  color: "#1f2937",
+                  padding: "4px"
+                }}
+                disabled={isSubmitted}
+              />
+            </foreignObject>
+
+            {/* Arrow down from YES */}
+            <line
+              x1="690"
+              y1={y + 35}
+              x2="690"
+              y2={height - 70}
+              stroke="#f59e0b"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray={index < conditions.length - 1 ? "5,5" : "none"}
+            />
+
+            {/* NO Label & Arrow */}
+            <text x="225" y={y + 65} fontSize="13" fontWeight="600" fill="#ef4444">TIDAK</text>
+            {index < conditions.length - 1 && (
+              <line
+                x1="300"
+                y1={y + 50}
+                x2="300"
+                y2={y + 110}
+                stroke="#ef4444"
+                strokeWidth="3"
+                strokeLinecap="round"
+                markerEnd="url(#arrow)"
+              />
+            )}
+          </g>
+        );
+      })}
+
+      {/* ELSE BOX - Hanya jika ada */}
+      {conditions.length > 0 && elseInstruction && (
+        <>
+          <line
+            x1="300"
+            y1={160 + conditions.length * 180 - 50}
+            x2="300"
+            y2={160 + conditions.length * 180 + 20}
+            stroke="#ef4444"
+            strokeWidth="3"
+            strokeLinecap="round"
+            markerEnd="url(#arrow)"
+          />
+          <rect
+            x="150"
+            y={160 + conditions.length * 180 + 20}
+            width="300"
+            height="70"
+            rx="10"
+            ry="10"
+            fill="#ef4444"
+            stroke="white"
+            strokeWidth="3"
+          />
+          <text x="300" y={160 + conditions.length * 180 + 55} 
+                textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">
+            ELSE
+          </text>
+          <foreignObject 
+            x="170" 
+            y={160 + conditions.length * 180 + 40} 
+            width="260" 
+            height="50"
+          >
+            <input
+              type="text"
+              value={elseInstruction}
+              onChange={(e) => setElseInstruction(e.target.value)}
+              placeholder="Instruksi ELSE..."
+              style={{
+                width: "100%",
+                height: "100%",
+                textAlign: "center",
+                border: "2px solid rgba(255,255,255,0.5)",
+                background: "rgba(255,255,255,0.95)",
+                borderRadius: "6px",
+                outline: "none",
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#1f2937",
+                padding: "6px"
+              }}
+              disabled={isSubmitted}
+            />
+          </foreignObject>
+          <line
+            x1="300"
+            y1={160 + conditions.length * 180 + 90}
+            x2="300"
+            y2={height - 70}
+            stroke="#ef4444"
+            strokeWidth="3"
+            strokeLinecap="round"
+            markerEnd="url(#arrow)"
+          />
+        </>
+      )}
+
+      {/* END */}
+      <ellipse
+        cx="690"
+        cy={height - 40}
+        rx="70"
+        ry="35"
+        fill="url(#endGrad)"
+        stroke="white"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <text x="690" y={height - 35} textAnchor="middle" fontSize="14" fontWeight="bold" fill="white" dy=".3em">
+        SELESAI
+      </text>
+
+      {/* Add Condition Hint */}
+      {conditions.length === 0 && (
+        <g opacity="0.4">
+          <text x="400" y={height / 2} textAnchor="middle" fontSize="16" fontWeight="600" fill="#6b7280">
+            Klik "➕ Tambah Kondisi"
+          </text>
+          <text x="400" y={height / 2 + 25} textAnchor="middle" fontSize="14" fill="#9ca3af">
+            untuk memulai flowchart
+          </text>
+        </g>
+      )}
+    </svg>
+  );
+};
 
   /* ================= VALIDATE ================= */
   const validateBeforeUpload = async () => {
@@ -679,11 +898,66 @@ const InfoButton = styled.button`background: #3b82f6; color: white; border: none
 const CompilerBtn = styled(InfoButton)`background: #06b6d4; &:hover { box-shadow: 0 10px 20px rgba(6,182,212,0.3); }`;
 const BackButton = styled(InfoButton)`background: #6b7280; &:hover { box-shadow: 0 10px 20px rgba(107,114,128,0.3); }`;
 
-const PerformanceBox = styled.div`text-align: center; padding: 25px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 20px; border: 3px solid #10b981;`;
+// Tambahkan ini di styled components
+const PerformanceBox = styled.div`
+  width: 97%;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+
+  .label {
+    font-weight: 500;
+    opacity: 0.9;
+    white-space: nowrap;
+  }
+
+  .stars {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+`;
+
+const ProgressWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+
+  span {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.2);
+    padding: 3px 8px;
+    border-radius: 20px;
+    min-width: 40px;
+    text-align: center;
+  }
+`;
+
+const ProgressBar = styled.div`
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+
+  div {
+    height: 100%;
+    background: white;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+  }
+`;
 const Emoji = styled.div`font-size: 48px; margin-bottom: 10px;`;
 const Level = styled.div`font-size: 20px; font-weight: 800; color: #059669; margin-bottom: 5px; text-transform: uppercase;`;
 const Score = styled.div`font-size: 36px; font-weight: 900; color: #059669; margin-bottom: 15px;`;
-const ProgressBar = styled.div`height: 12px; background: rgba(16,185,129,0.2); border-radius: 6px; overflow: hidden;`;
 const ProgressFill = styled.div`height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.5s ease; border-radius: 6px;`;
 
 const Container = styled.div`display: grid; grid-template-columns: 420px 1fr; gap: 40px;`;
