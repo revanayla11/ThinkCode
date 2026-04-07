@@ -349,10 +349,10 @@ const renderFlowchart = () => {
   
   return (
     <svg 
-      width="100%" 
-      height="100%" 
-      viewBox={`0 0 950 ${totalHeight}`}
-      style={{ background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)' }}
+      width="1200"   // 🔥 kasih lebar asli
+      height={totalHeight}
+      viewBox={`0 0 1200 ${totalHeight}`}
+      style={{ minWidth: "100%" }}
     >
       <defs>
         <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
@@ -810,18 +810,12 @@ const SaveButton = styled.button`width: 100%; padding: 15px; background: linear-
 
 const FlowchartCard = styled.div`background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 25px; border-radius: 20px; border: 3px solid #f59e0b;`;
 const FlowchartContainer = styled.div`
-  height: 550px !important;
-  min-height: 550px;
+  height: 550px;
   border: 4px solid #f59e0b;
   border-radius: 20px;
-  overflow: hidden;
+  overflow: auto; /* 🔥 penting */
   background: #fefce8;
   margin-bottom: 25px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 20px 40px rgba(245,158,11,0.2);
-  position: relative;
 `;
 
 const FlowchartButtons = styled.div`
