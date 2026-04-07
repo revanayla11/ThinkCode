@@ -36,6 +36,7 @@ import Logout from "./admin/pages/Logout";
 import AdminUserAdd from "./admin/pages/AdminUserAdd";
 import AdminUserImport from "./admin/pages/AdminUserImport";
 import AdminUserProfilePage from "./admin/pages/AdminUserProfilePage";
+import GameMap from "./pages/GameMap";
 
 function App() {
   return (
@@ -59,7 +60,7 @@ function App() {
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/achievement" element={<Achievement />} />
       <Route path="/profile" element={<Profile />} />
-      <Route path="/game" element={<MiniGame />} />
+      <Route path="/game" element={<GameMap />} />
       <Route path="/game/play/:id" element={<GamePlay />} />
 
       {/* ================= ADMIN ================= */}
