@@ -26,6 +26,12 @@ export default function UploadAnswer() {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
 
+  // BARU: State untuk success modal dan random picker
+  const [successModal, setSuccessModal] = useState(false);
+  const [isAllRoomsCompleted, setIsAllRoomsCompleted] = useState(false);
+  const [randomPresenter, setRandomPresenter] = useState(null);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
   const token = localStorage.getItem("token");
   let userId = null;
 
@@ -37,8 +43,27 @@ export default function UploadAnswer() {
     }
   }
 
+  // BARU: Fungsi check rooms completion
+  const checkAllRoomsCompletion = async () => {
+    if (!userId || !materiId) return;
+    
+    try {
+      setLoadingRooms(true);
+      const res = await api.get(`/upload/${materiId}/rooms-completion/${userId}`);
+      setIsAllRoomsCompleted(res.data.allCompleted);
+      setRandomPresenter(res.data.randomPresenter);
+    } catch (err) {
+      console.error('Error checking rooms:', err);
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId || !materiId) return;
+
+    // BARU: Check rooms completion
+    checkAllRoomsCompletion();
 
     api
       .get(`/upload/${userId}/${materiId}`)
@@ -77,6 +102,31 @@ export default function UploadAnswer() {
       });
   }, [userId, materiId]);
 
+  // BARU: Fungsi handle success modal close
+  const handleSuccessModalClose = () => {
+    setSuccessModal(false);
+    checkAllRoomsCompletion();
+  };
+
+  // BARU: Fungsi complete step dan check rooms
+  const completeStepAndCheckRooms = async () => {
+    try {
+      api.get(`/materi/${materiId}`).then(res => {
+        const completed = res.data?.data?.progress?.completedSections || [];
+        if (!completed.includes("submit_answer")) {
+          api.post(`/materi/${materiId}/complete-step`, { step: "submit_answer" })
+            .then(() => {
+              console.log('Step "submit_answer" completed');
+            })
+            .catch(err => console.error('Error completing "submit_answer":', err));
+        }
+      });
+      await checkAllRoomsCompletion();
+    } catch (err) {
+      console.error('Error completing step:', err);
+    }
+  };
+
   const submit = async () => {
     if (!file && !textAnswer.trim()) {
       return alert("Isi jawaban atau unggah file terlebih dahulu.");
@@ -109,18 +159,11 @@ export default function UploadAnswer() {
       setScore(last.score || 0);
       setBadge(last.Badge); 
 
-      // Perbaiki: Gunakan /complete-step untuk "submit_answer"
-      console.log('Upload successful, attempting to complete "submit_answer"');
-      api.get(`/materi/${materiId}`).then(res => {
-        const completed = res.data?.data?.progress?.completedSections || [];
-        if (!completed.includes("submit_answer")) {
-          api.post(`/materi/${materiId}/complete-step`, { step: "submit_answer" })
-            .then(() => {
-              console.log('Step "submit_answer" completed');
-            })
-            .catch(err => console.error('Error completing "submit_answer":', err));
-        }
-      });
+      // Complete step dan check rooms
+      await completeStepAndCheckRooms();
+
+      // Show success modal
+      setSuccessModal(true);
 
     } catch (err) {
       console.error(err);
@@ -287,7 +330,7 @@ export default function UploadAnswer() {
           </RightPanel>
         </Container>
 
-        {/* MODAL */}
+        {/* MODAL FILE PREVIEW */}
         {modalOpen && (
           <ModalOverlay onClick={closeModal}>
             <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -297,12 +340,59 @@ export default function UploadAnswer() {
             </ModalContent>
           </ModalOverlay>
         )}
+
+        {/* BARU: SUCCESS MODAL */}
+        {successModal && (
+          <SuccessModalOverlay onClick={handleSuccessModalClose}>
+            <SuccessModalContent onClick={(e) => e.stopPropagation()}>
+              <SuccessIcon>🎉</SuccessIcon>
+              <SuccessTitle>Selamat!</SuccessTitle>
+              <SuccessSubtitle>
+                Jawaban kamu berhasil dikirim. 
+                Terima kasih telah menyelesaikan tugas ini!
+              </SuccessSubtitle>
+              <SuccessButton onClick={handleSuccessModalClose}>
+                Lanjutkan
+              </SuccessButton>
+            </SuccessModalContent>
+          </SuccessModalOverlay>
+        )}
+
+        {/* BARU: RANDOM PICKER MODAL */}
+        {isAllRoomsCompleted && randomPresenter && !loadingRooms && (
+          <SuccessModalOverlay onClick={handleSuccessModalClose}>
+            <RandomPickerModal onClick={(e) => e.stopPropagation()}>
+              <SuccessIcon>🎲</SuccessIcon>
+              <SuccessTitle>Presentasi Dipilih!</SuccessTitle>
+              <SuccessSubtitle>
+                Selamat kepada yang terpilih untuk presentasi!
+              </SuccessSubtitle>
+              
+              <PresenterCard>
+                <PresenterName>{randomPresenter?.name || 'Loading...'}</PresenterName>
+                <p style={{color: '#7f8c8d', margin: 0}}>Room: {randomPresenter?.roomName || 'Main'}</p>
+                <p style={{color: '#7f8c8d', margin: '5px 0 0 0'}}>
+                  Score: <strong style={{color: '#3759c7'}}>{randomPresenter?.score || 0}</strong>
+                </p>
+              </PresenterCard>
+              
+              <div style={{display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap'}}>
+                <SuccessButton onClick={handleSuccessModalClose} style={{background: 'rgba(255,255,255,0.2)'}}>
+                  Tutup
+                </SuccessButton>
+                <SuccessButton onClick={() => navigate('/leaderboard')}>
+                  Lihat Leaderboard
+                </SuccessButton>
+              </div>
+            </RandomPickerModal>
+          </SuccessModalOverlay>
+        )}
       </Wrapper>
     </Layout>
   );
 }
 
-// Styled Components
+// Existing Styled Components (NO CHANGES)
 const Wrapper = styled.div`
   padding: 20px 40px;
   font-family: 'Roboto', sans-serif;
@@ -403,6 +493,7 @@ const AnswerTextarea = styled.textarea`
     border-color: #3759c7;
   }
 `;
+
 const CloseButton = styled.button`
   position: absolute;
   top: 10px;
@@ -424,7 +515,6 @@ const ModalTitle = styled.h3`
   color: #2c3e50;
   text-align: center;
 `;
-
 
 const FileSection = styled.div`
   margin-top: 20px;
@@ -613,4 +703,123 @@ const ModalContent = styled.div`
   overflow: auto;
   position: relative;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+`;
+
+// BARU: Styled Components untuk Success Modal & Random Picker
+const SuccessModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  animation: fadeIn 0.3s ease;
+`;
+
+const SuccessModalContent = styled.div`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  color: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: slideUp 0.4s ease;
+`;
+
+const SuccessIcon = styled.div`
+  font-size: 80px;
+  margin-bottom: 20px;
+`;
+
+const SuccessTitle = styled.h2`
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 15px 0;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+`;
+
+const SuccessSubtitle = styled.p`
+  font-size: 18px;
+  margin: 0 0 30px 0;
+  opacity: 0.95;
+  line-height: 1.5;
+`;
+
+const SuccessButton = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 15px 40px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0 5px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  }
+`;
+
+const RandomPickerModal = styled(SuccessModalContent)`
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  max-width: 600px;
+  max-height: 70vh;
+`;
+
+const PresenterCard = styled.div`
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  margin: 20px 0;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+`;
+
+const PresenterName = styled.h3`
+  font-size: 28px;
+  color: #2c3e50;
+  margin: 0 0 10px 0;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+`;
+
+// BARU: Animations
+const keyframes = {
+  fadeIn: `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  `,
+  slideUp: `
+    @keyframes slideUp {
+      from { 
+        opacity: 0; 
+        transform: translateY(50px) scale(0.9); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+      }
+    }
+  `
+};
+
+// Inject animations
+const GlobalStyle = styled.div`
+  ${keyframes.fadeIn}
+  ${keyframes.slideUp}
 `;

@@ -977,9 +977,6 @@ Swal.fire({
                 <FlowBtn onClick={saveFlowchart} disabled={isSubmitted || conditions.length === 0}>
                                     💾 Save Flowchart
                 </FlowBtn>
-                  <DebugBtn onClick={debugFlowchart} disabled={isSubmitted}>
-    🔍 DEBUG
-  </DebugBtn>
               </FlowchartButtons>
             </FlowchartCard>
           </RightPanel>
@@ -1105,16 +1102,3 @@ const FlowchartContainer = styled.div`
 `;
 const FlowchartButtons = styled.div`display: flex; gap: 12px; flex-wrap: wrap;`;
 const FlowBtn = styled.button`flex: 1; padding: 14px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; min-width: 140px; &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); } &:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.6; }`;
-
-// 🔥 DEBUG STYLING
-const DebugBtn = styled.button`
-  flex: 1; padding: 14px 20px; border: none; border-radius: 12px; 
-  background: linear-gradient(135deg, #ec4899, #db2777); 
-  color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; 
-  min-width: 120px; 
-  &:hover:not(:disabled) { 
-    transform: translateY(-2px); 
-    box-shadow: 0 8px 20px rgba(236,72,153,0.4); 
-  } 
-  &:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.6; }
-`;
