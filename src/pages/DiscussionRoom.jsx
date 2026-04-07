@@ -112,7 +112,7 @@ export default function DiscussionRoom() {
         { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
         { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
         { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
-        { id: 5, text: "Cek Jawaban dan upload kode c", done: !!taskMap[5] }
+        { id: 5, text: "Buat kode c", done: !!taskMap[5] }
       ];
       setTasks(dynamicTasks);
     } catch (err) {
@@ -121,7 +121,7 @@ export default function DiscussionRoom() {
         { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
         { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
         { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
-        { id: 5, text: "Cek Jawaban dan upload kode c", done: !!taskMap[5] }
+        { id: 5, text: "Buat kode c", done: !!taskMap[5] }
       ]);
     }
   };
@@ -593,17 +593,85 @@ const renderFlowchart = () => {
           }
         });
       } else {
-        Swal.fire({
-          title: "⚠️ Perlu Perbaikan",
-          html: `
-            <div style="text-align: left;">
-              <strong>📝 Pseudocode:</strong> ${res.data.details.pseudocodeMatch ? '✅' : '❌'}<br>
-              <strong>🔄 Flowchart:</strong> ${res.data.details.flowchartMatch ? '✅' : '❌'}<br>
-              <strong>Score:</strong> <span style="color: ${res.data.score >= 80 ? '#10b981' : '#f59e0b'}">${res.data.score}%</span>
-            </div>
-          `,
-          icon: "warning"
-        });
+Swal.fire({
+  title: "⚠️ Hampir Berhasil!",
+  html: `
+    <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+      
+      <div style="margin-bottom: 15px;">
+        <strong>💯 Skor Kamu:</strong> 
+        <span style="color:${res.data.score >= 80 ? '#10b981' : '#f59e0b'}; font-size:16px;">
+          ${res.data.score}%
+        </span>
+      </div>
+
+      <hr/>
+
+      <div style="margin-top: 10px;">
+        <strong>📝 Pseudocode:</strong><br/>
+        ${res.data.details.pseudocodeMatch 
+          ? "✅ Sudah benar!"
+          : "❌ Masih ada yang perlu diperbaiki"}
+      </div>
+
+      ${
+        !res.data.details.pseudocodeMatch
+          ? `
+        <div style="margin-top:8px; padding:10px; background:#fef2f2; border-radius:8px;">
+          <strong>💡 Perbaiki di bagian:</strong><br/>
+          ${res.data.details.pseudocodeFeedback || "Periksa kondisi / output"}
+        </div>
+
+        <div style="margin-top:8px;">
+          <strong>📘 Jawaban Kamu:</strong>
+          <pre style="background:#f8fafc; padding:8px; border-radius:6px;">${pseudocode}</pre>
+        </div>
+
+        <div style="margin-top:8px;">
+          <strong>🎯 Contoh Jawaban Benar:</strong>
+          <pre style="background:#ecfdf5; padding:8px; border-radius:6px;">${res.data.correctAnswer?.pseudocode || "-"}</pre>
+        </div>
+      `
+          : ""
+      }
+
+      <hr/>
+
+      <div style="margin-top: 10px;">
+        <strong>🔄 Flowchart:</strong><br/>
+        ${res.data.details.flowchartMatch 
+          ? "✅ Sudah benar!"
+          : "❌ Masih belum sesuai"}
+      </div>
+
+      ${
+        !res.data.details.flowchartMatch
+          ? `
+        <div style="margin-top:8px; padding:10px; background:#fef2f2; border-radius:8px;">
+          <strong>💡 Perbaiki:</strong><br/>
+          ${res.data.details.flowchartFeedback || "Cek alur kondisi dan ELSE"}
+        </div>
+
+        <div style="margin-top:8px;">
+          <strong>🎯 Flowchart yang benar:</strong><br/>
+          ${res.data.correctAnswer?.flowchart || "Perhatikan alur IF-ELSE"}
+        </div>
+      `
+          : ""
+      }
+
+      <hr/>
+
+      <div style="margin-top: 15px; color:#6b7280;">
+        💪 Sedikit lagi! Coba perbaiki dan ulangi lagi ya!
+      </div>
+
+    </div>
+  `,
+  icon: "warning",
+  confirmButtonText: "🔄 Perbaiki Lagi",
+  confirmButtonColor: "#3b82f6"
+});
       }
     } catch (err) {
       Swal.fire("Error", "Validasi gagal", "error");
@@ -623,8 +691,6 @@ const renderFlowchart = () => {
           <ol style="line-height: 1.8;">
             <li><strong>Buat</strong> pseudocode & flowchart logic</li>
             <li><strong>Convert ke C code</strong></li>
-          </ol>
-          <ol start="3" style="line-height: 1.8;">
             <li><strong>Test</strong> di <a href="https://www.onlinegdb.com/" target="_blank" style="color: #3b82f6;">OnlineGDB</a></li>
             <li><strong>Download/Salin</strong> .c file → Upload!</li>
           </ol>
