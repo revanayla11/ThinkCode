@@ -61,9 +61,6 @@ function App() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/game" element={<MiniGame />} />
       <Route path="/game/play/:id" element={<GamePlay />} />
-      <Route path="/games" element={<MiniGameList />} />
-<Route path="/game/:gameId" element={<GameLevelList />} />
-<Route path="/game/:gameId/level/:level" element={<GamePlay />} />
 
       {/* ================= ADMIN ================= */}
       <Route path="/admin" element={<AdminLayout />}>
