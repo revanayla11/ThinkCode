@@ -8,17 +8,16 @@ export default function GameMap() {
   const [progress, setProgress] = useState([]);
   const [userStats, setUserStats] = useState({ xp: 0, streak: 0, hearts: 5 });
 
-useEffect(() => {
-  apiGet("/game/map")
-    .then((res) => {
-      console.log("GAME MAP DATA:", res);
-      console.log("LEVELS:", res.levels); // 🔥 TAMBAH INI
-      setLevels(res.levels || []);
-      setProgress(res.progress || []);
-      setUserStats(res.userStats || {});
-    })
-    .catch(err => console.error("Map load error:", err));
-}, []);
+  useEffect(() => {
+    apiGet("/game/map").then((res) => {
+      console.log("GAME MAP DATA:", res); // Debug
+      if (res.status) {
+        setLevels(res.levels || []);
+        setProgress(res.progress || []);
+        setUserStats(res.userStats || {});
+      }
+    }).catch(err => console.error("Map load error:", err));
+  }, []);
 
   // ✅ FIXED: Unlock logic berdasarkan grouped data
   const isUnlocked = (mIdx, lIdx) => {
@@ -49,29 +48,36 @@ useEffect(() => {
       to={unlocked ? `/game/play/${level.id}` : "#"}
       style={{ textDecoration: 'none' }}
     >
-    <div 
-      style={{
-        position: 'absolute', // 🔥 INI YANG KURANG
-        ...position,
-        width: 80,
-        height: 80,
-        borderRadius: "50%",
-        background: completed 
-          ? "linear-gradient(135deg, #10b981, #059669)" 
-          : unlocked 
-          ? "linear-gradient(135deg, #f59e0b, #d97706)" 
-          : "linear-gradient(135deg, #6b7280, #4b5563)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: 700,
-        fontSize: '1.5rem',
-        color: 'white',
-        cursor: unlocked ? 'pointer' : 'not-allowed',
-        transform: unlocked ? 'scale(1.1)' : 'scale(0.9)',
-        zIndex: 10
-      }}
-    >
+      <div 
+        style={{
+          ...position,
+          width: 80,
+          height: 80,
+          borderRadius: "50%",
+          background: completed 
+            ? "linear-gradient(135deg, #10b981, #059669)" 
+            : unlocked 
+            ? "linear-gradient(135deg, #f59e0b, #d97706)" 
+            : "linear-gradient(135deg, #6b7280, #4b5563)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 700,
+          fontSize: '1.5rem',
+          color: 'white',
+          boxShadow: completed 
+            ? '0 0 30px rgba(16, 185, 129, 0.6)' 
+            : unlocked 
+            ? '0 0 25px rgba(245, 158, 11, 0.7)' 
+            : '0 8px 25px rgba(0,0,0,0.3)',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: unlocked ? 'pointer' : 'not-allowed',
+          transform: unlocked ? 'scale(1.1) rotate(5deg)' : 'scale(0.9)',
+          position: 'relative',
+          zIndex: 10
+        }}
+        onClick={onClick}
+      >
         {completed ? '⭐' : level.levelNumber}
         {unlocked && !completed && (
           <div style={{
