@@ -10,240 +10,204 @@ export default function GameMap() {
 
   useEffect(() => {
     apiGet("/game/map").then((res) => {
-      console.log("GAME MAP DATA:", res);
       if (res.status) {
         setLevels(res.levels || []);
         setProgress(res.progress || []);
         setUserStats(res.userStats || {});
       }
-    }).catch(err => console.error("Map load error:", err));
+    }).catch(console.error);
   }, []);
 
   const isUnlocked = (mIdx, lIdx) => {
     const prevMateriLevels = levels.slice(0, mIdx)
-      .reduce((sum, materi) => sum + (materi.levels?.length || 0), 0);
-    const totalPrevLevels = prevMateriLevels + lIdx;
-    return progress.filter(p => p.completed).length >= totalPrevLevels;
+      .reduce((sum, m) => sum + (m.levels?.length || 0), 0);
+    return progress.filter(p => p.completed).length >= prevMateriLevels + lIdx;
   };
 
-  const isCompleted = (levelId) => {
-    return progress.some(p => p.levelId == levelId && p.completed);
-  };
+  const isCompleted = (levelId) => progress.some(p => p.levelId == levelId && p.completed);
 
-  const getStreakEmoji = (streak) => {
-    if (streak >= 30) return "🔥";
-    if (streak >= 14) return "⚡";
-    if (streak >= 7) return "⭐";
-    return "✨";
-  };
+  const getStreakEmoji = (streak) => streak >= 7 ? "🔥" : "⭐";
 
-  const PathNode = ({ level, position, unlocked, completed, onClick }) => (
-    <Link 
-      to={unlocked ? `/game/play/${level.id}` : "#"}
-      style={{ textDecoration: 'none' }}
-    >
-      <div 
-        style={{
-          ...position,
-          width: 80,
-          height: 80,
-          borderRadius: "50%",
-          background: completed 
-            ? "linear-gradient(135deg, #10b981, #059669)" 
-            : unlocked 
-            ? "linear-gradient(135deg, #f59e0b, #d97706)" 
-            : "linear-gradient(135deg, #6b7280, #4b5563)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 700,
-          fontSize: '1.5rem',
-          color: 'white',
-          boxShadow: completed 
-            ? '0 0 30px rgba(16, 185, 129, 0.6)' 
-            : unlocked 
-            ? '0 0 25px rgba(245, 158, 11, 0.7)' 
-            : '0 8px 25px rgba(0,0,0,0.3)',
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          cursor: unlocked ? 'pointer' : 'not-allowed',
-          transform: unlocked ? 'scale(1.1) rotate(5deg)' : 'scale(0.9)',
-          position: 'relative',
-          zIndex: 10
-        }}
-        onClick={onClick}
-      >
+  const LevelNode = ({ level, unlocked, completed, position }) => (
+    <Link to={unlocked ? `/game/play/${level.id}` : "#"} style={{textDecoration: 'none'}}>
+      <div style={{
+        ...position,
+        width: 70,
+        height: 70,
+        borderRadius: '50%',
+        background: completed ? '#10b981' : unlocked ? '#f59e0b' : '#6b7280',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+        boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
+        cursor: unlocked ? 'pointer' : 'default',
+        transition: 'all 0.3s ease',
+        transform: unlocked ? 'scale(1.1)' : 'scale(1)',
+        position: 'relative',
+        zIndex: 20
+      }}>
         {completed ? '⭐' : level.levelNumber}
-        {unlocked && !completed && (
-          <div style={{
-            position: 'absolute',
-            top: -8, right: -8,
-            width: 28, height: 28,
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.9rem',
-            boxShadow: '0 4px 12px rgba(239,68,68,0.6)',
-            animation: 'pulse 2s infinite'
-          }}>
-            🔥
-          </div>
-        )}
       </div>
     </Link>
   );
 
-  if (levels.length === 0) {
-    return (
-      <Layout>
-        <div style={{ 
-          padding: 100, 
-          textAlign: 'center', 
-          color: 'white', 
-          fontSize: '1.8rem',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          🤠 Loading petualangan Sheriff...
-        </div>
-      </Layout>
-    );
-  }
+  if (levels.length === 0) return (
+    <Layout>
+      <div style={{padding: 100, textAlign: 'center', color: 'white', fontSize: '1.8rem', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+        Loading map...
+      </div>
+    </Layout>
+  );
 
   return (
     <Layout>
-      <div style={{ 
-        padding: 20, 
-        fontFamily: 'Roboto, sans-serif',
+      <div style={{
+        padding: '20px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        minHeight: '100vh'
+        minHeight: '100vh',
+        fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
       }}>
-        {/* ✅ FIXED: STICKY HEADER - SELALU TERLIHAT SAAT SCROLL */}
+        {/* STICKY HEADER - MINIMAL */}
         <div style={{
           position: 'sticky',
           top: 20,
-          background: 'linear-gradient(135deg, #10b981, #059669)',
-          padding: '25px 35px',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          padding: '25px 30px',
           borderRadius: '25px',
-          marginBottom: '30px',
-          color: 'white',
-          textAlign: 'center',
-          boxShadow: '0 20px 45px rgba(16,185,129,0.5)',
+          marginBottom: '40px',
+          boxShadow: '0 15px 50px rgba(0,0,0,0.15)',
           zIndex: 100,
-          backdropFilter: 'blur(20px)'
+          textAlign: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
-            <div style={{ fontSize: '2.3rem' }}>
-              {getStreakEmoji(userStats.streak)}
-            </div>
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 10}}>
+            <span style={{fontSize: '2rem'}}>{getStreakEmoji(userStats.streak)}</span>
             <div>
-              <h2 style={{ margin: '0 0 3px 0', fontSize: '1.8rem' }}>
-                Streak: {userStats.streak} hari
-              </h2>
-              <div style={{ fontSize: '1.2rem', opacity: 0.95 }}>
-                ❤️ {userStats.hearts}/5 Hearts
-              </div>
+              <div style={{fontSize: '1.4rem', fontWeight: '700'}}>Streak: {userStats.streak}</div>
+              <div style={{fontSize: '1rem', color: '#6b7280'}}>❤️ {userStats.hearts}/5</div>
             </div>
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>
-            XP: <span style={{ fontSize: '1.7rem', textShadow: '0 0 15px rgba(255,255,255,0.9)' }}>{userStats.xp}</span>
+          <div style={{fontSize: '1.6rem', fontWeight: '700', color: '#1f2937'}}>
+            {userStats.xp} XP
           </div>
         </div>
 
-        {/* ✅ FIXED: MAP LAYOUT - LEBIH RAPI & RESPONSIF */}
-        <div style={{ 
-          maxWidth: 1100,
-          margin: '0 auto',
-          height: 'auto',
-          minHeight: 700,
-          overflowX: 'auto',
-          paddingBottom: 50
-        }}>
-          {/* Background path SVG */}
-          <svg style={{ 
-            position: 'absolute', 
-            top: 0, left: 0, 
-            width: '100%', 
-            height: '100%', 
-            zIndex: 1, 
-            opacity: 0.25,
+        {/* MAP CONTAINER */}
+        <div style={{maxWidth: '900px', margin: '0 auto', position: 'relative'}}>
+          {/* ✅ PATH YANG NEMPAL & SMOOTH */}
+          <svg style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 1,
             pointerEvents: 'none'
-          }} viewBox="0 0 1200 800">
-            <path d="M100 200 Q300 100 500 200 Q700 300 900 200 Q1100 300 1200 400" 
-                  stroke="#fbbf24" strokeWidth="60" fill="none" strokeLinecap="round"/>
-            <path d="M100 400 Q400 500 700 400 Q1000 500 1200 450" 
-                  stroke="#f59e0b" strokeWidth="50" fill="none" strokeLinecap="round"/>
-          </svg>
-
-          {/* LEVEL NODES - POSISI LEBIH RAPI */}
-          <div style={{ position: 'relative', padding: '40px 20px' }}>
-            {levels.map((materi, mIdx) => (
-              <div key={materi.materiId} style={{ marginBottom: 120 }}>
-                {/* MATERI TITLE */}
-                <h3 style={{ 
-                  textAlign: "center", 
-                  color: 'white', 
-                  marginBottom: '60px',
-                  fontSize: '2rem',
-                  textShadow: '0 0 20px rgba(255,255,255,0.8)',
-                  background: 'linear-gradient(45deg, #fbbf24, #f59e0b)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  position: 'relative',
-                  zIndex: 20
-                }}>
-                  📚 {materi.materiName}
-                </h3>
-                
-                {/* LEVEL CIRCLES - GRID LAYOUT */}
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                  gap: 40,
-                  maxWidth: 900,
-                  margin: '0 auto',
-                  position: 'relative'
-                }}>
-                  {materi.levels?.map((lvl, lIdx) => {
-                    const unlocked = isUnlocked(mIdx, lIdx);
-                    const completed = isCompleted(lvl.id);
-                    
+          }} viewBox="0 0 900 1200">
+            {levels.map((materi, mIdx) => {
+              const startY = mIdx * 250;
+              return (
+                <g key={materi.materiId}>
+                  {/* PATH KE MATERI */}
+                  {mIdx > 0 && (
+                    <path 
+                      d={`M 450 ${startY - 100} Q 450 ${startY - 50} 450 ${startY}`} 
+                      stroke="#f59e0b" 
+                      strokeWidth="20" 
+                      fill="none" 
+                      strokeLinecap="round"
+                      opacity="0.6"
+                    />
+                  )}
+                  
+                  {/* PATH ANTARA LEVELS */}
+                  {materi.levels.map((_, lIdx) => {
+                    const levelY = startY + 80 + (lIdx % 2 === 0 ? 0 : 60);
+                    const nextLevelY = startY + 80 + ((lIdx + 1) % 2 === 0 ? 0 : 60);
                     return (
-                      <PathNode
-                        key={lvl.id}
-                        level={lvl}
-                        position={{ margin: '20px auto' }}
-                        unlocked={unlocked}
-                        completed={completed}
-                        onClick={() => {
-                          if (unlocked) {
-                            console.log("Nav to level:", lvl.id);
-                          }
-                        }}
+                      <path 
+                        key={lIdx}
+                        d={`M 300 ${levelY} Q 450 ${levelY + 30} 600 ${nextLevelY}`} 
+                        stroke="#fbbf24" 
+                        strokeWidth="16" 
+                        fill="none" 
+                        strokeLinecap="round"
+                        opacity="0.4"
                       />
                     );
-                  }) || []}
+                  })}
+                  
+                  {/* PATH KE MATERI BERIKUTNYA */}
+                  <path 
+                    d={`M 450 ${startY + 200} Q 450 ${startY + 250} 450 ${startY + 300}`} 
+                    stroke="#f59e0b" 
+                    strokeWidth="20" 
+                    fill="none" 
+                    strokeLinecap="round"
+                    opacity="0.6"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* LEVEL NODES */}
+          <div style={{position: 'relative', padding: '50px 20px'}}>
+            {levels.map((materi, mIdx) => {
+              const startY = mIdx * 250;
+              
+              return (
+                <div key={materi.materiId} style={{marginBottom: '200px'}}>
+                  {/* MATERI TITLE - MINIMAL */}
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '60px',
+                    position: 'relative',
+                    zIndex: 10
+                  }}>
+                    <h3 style={{
+                      fontSize: '1.8rem',
+                      background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      margin: 0,
+                      fontWeight: '700',
+                      textShadow: 'none'
+                    }}>
+                      {materi.materiName}
+                    </h3>
+                  </div>
+                  
+                  {/* LEVEL CIRCLES - POSISI SMOOTH */}
+                  <div style={{display: 'flex', justifyContent: 'center', gap: '80px'}}>
+                    {materi.levels?.map((lvl, lIdx) => {
+                      const unlocked = isUnlocked(mIdx, lIdx);
+                      const completed = isCompleted(lvl.id);
+                      const isEven = lIdx % 2 === 0;
+                      
+                      return (
+                        <LevelNode
+                          key={lvl.id}
+                          level={lvl}
+                          unlocked={unlocked}
+                          completed={completed}
+                          position={{
+                            position: 'relative',
+                            zIndex: 20,
+                            top: isEven ? '0px' : '30px'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-          }
-          @media (max-width: 768px) {
-            .map-container {
-              padding: 10px;
-            }
-          }
-        `}</style>
       </div>
     </Layout>
   );
