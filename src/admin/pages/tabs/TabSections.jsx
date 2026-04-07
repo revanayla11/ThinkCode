@@ -17,8 +17,15 @@ export default function TabSections({ materiId }) {
       ['bold', 'italic', 'underline'],
       [{ list: 'ordered' }, { list: 'bullet' }],
       ['image']
-    ]
+    ],
+    clipboard: {
+      matchVisual: false,
+    }
   };
+
+  const formats = [
+    'header', 'bold', 'italic', 'underline', 'list', 'bullet', 'image'
+  ];
 
   const loadSections = async () => {
     try {
@@ -40,11 +47,11 @@ export default function TabSections({ materiId }) {
     if (materiId) loadSections();
   }, [materiId]);
 
-  const handleContentChange = (sectionId, content) => {
-    setLocalContents(prev => ({ ...prev, [sectionId]: content }));
-    
-    if (saving[sectionId]) return;
-    setTimeout(async () => {
+  // 🔥 FIXED: Proper debounced save
+  const debouncedSave = useCallback((sectionId, content) => {
+    const timeoutId = setTimeout(async () => {
+      if (saving[sectionId]) return;
+      
       try {
         setSaving(prev => ({ ...prev, [sectionId]: true }));
         await apiPut(`/admin/materi/${materiId}/sections/${sectionId}`, { content });
@@ -53,8 +60,22 @@ export default function TabSections({ materiId }) {
       } finally {
         setSaving(prev => ({ ...prev, [sectionId]: false }));
       }
-    }, 1000);
-  };
+    }, 1500);
+
+    return () => clearTimeout(timeoutId);
+  }, [materiId, saving]);
+
+  const handleContentChange = useCallback((sectionId, content, delta, source, editor) => {
+    setLocalContents(prev => ({ ...prev, [sectionId]: content }));
+    
+    // Cancel previous timeout
+    if (quillRefs.current[sectionId]?.timeoutId) {
+      clearTimeout(quillRefs.current[sectionId].timeoutId);
+    }
+    
+    quillRefs.current[sectionId] = editor;
+    quillRefs.current[sectionId].timeoutId = debouncedSave(sectionId, content);
+  }, [debouncedSave]);
 
   const addSection = async () => {
     if (!newTitle.trim()) return alert("❌ Judul wajib diisi!");
@@ -117,7 +138,6 @@ export default function TabSections({ materiId }) {
     };
   };
 
-  // 🔥 CORRECT FILTERING
   const miniSections = sections.filter(s => s.type === "mini");
   const totalSections = miniSections.length;
 
@@ -194,7 +214,7 @@ export default function TabSections({ materiId }) {
         </div>
       </div>
 
-      {/* 🔥 EMPTY STATE - FIXED */}
+      {/* EMPTY STATE */}
       {totalSections === 0 ? (
         <div style={{
           padding: '80px 40px', textAlign: 'center',
@@ -249,13 +269,21 @@ export default function TabSections({ materiId }) {
               </label>
               <div style={{ borderRadius: 16, overflow: 'hidden', border: '2px solid #e5e7eb' }}>
                 <ReactQuill
-                  ref={(el) => el && (quillRefs.current[section.id] = el.getEditor())}
+                  ref={(el) => {
+                    if (el && el.getEditor) {
+                      quillRefs.current[section.id] = el.getEditor();
+                    }
+                  }}
                   theme="snow"
                   value={localContents[section.id] || ""}
                   modules={modules}
-                  onChange={(content) => handleContentChange(section.id, content)}
+                  formats={formats}
+                  onChange={(content, delta, source, editor) => 
+                    handleContentChange(section.id, content, delta, source, editor)
+                  }
                   style={{ height: 320 }}
                   placeholder="Mulai mengetik konten mini lesson di sini..."
+                  preserveWhitespace={true}
                 />
               </div>
 
@@ -273,7 +301,7 @@ export default function TabSections({ materiId }) {
         </div>
       )}
 
-      {/* 🔥 TIPS - FIXED CONDICION */}
+      {/* TIPS */}
       {totalSections > 0 && (
         <div style={{
           padding: 24,
@@ -295,12 +323,29 @@ export default function TabSections({ materiId }) {
         </div>
       )}
 
-      {/* CSS */}
+      {/* FIXED CSS */}
       <style jsx>{`
-        .ql-container { font-size: 15px !important; font-family: system-ui, sans-serif !important; }
-        .ql-editor { padding: 20px !important; color: #1f2937 !important; min-height: 280px !important; }
-        .ql-editor.ql-blank::before { color: #9ca3af !important; font-style: italic !important; }
-        .ql-toolbar { border-top-left-radius: 14px !important; border-top-right-radius: 14px !important; }
+        .ql-container { 
+          font-size: 15px !important; 
+          font-family: system-ui, sans-serif !important; 
+          height: 320px !important;
+        }
+        .ql-editor { 
+          padding: 20px !important; 
+          color: #1f2937 !important; 
+          min-height: 280px !important;
+          line-height: 1.6 !important;
+        }
+        .ql-editor.ql-blank::before { 
+          color: #9ca3af !important; 
+          font-style: italic !important; 
+          font-weight: 400 !important;
+        }
+        .ql-toolbar { 
+          border-top-left-radius: 14px !important; 
+          border-top-right-radius: 14px !important;
+          border-bottom: 1px solid #e5e7eb !important;
+        }
       `}</style>
     </div>
   );
