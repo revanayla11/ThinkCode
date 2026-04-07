@@ -41,44 +41,6 @@ export default function DiscussionRoom() {
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
 
-  /* 🔥 ================= FIX 1: CLUE FUNCTION DULU ================= */
-  const requestClue = useCallback(async () => {
-    if (usedClues.length >= clueMax) {
-      Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
-      return;
-    }
-
-    const nextClueIndex = usedClues.length;
-    const nextClue = clues[nextClueIndex];
-    if (!nextClue) {
-      Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: "🧩 Ambil Clue?",
-      html: `
-        <div style="text-align: left;">
-          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
-          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "💰 Bayar & Ambil",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
-        await loadClues();  // ✅ AWAIT
-        await loadPerformance();
-        Swal.fire("✅", "Clue berhasil diambil!", "success");
-      } catch (err) {
-        Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
-      }
-    }
-  }, [usedClues.length, clues, roomId, loadClues, loadPerformance]);
 
   /* 🔥 ================= FIX 2: LOAD FUNCTIONS useCallback ================= */
   const loadClues = useCallback(async () => {
@@ -138,6 +100,44 @@ export default function DiscussionRoom() {
       setPerformanceScore(100);
     }
   }, [roomId]);
+
+  const requestClue = useCallback(async () => {
+    if (usedClues.length >= clueMax) {
+      Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
+      return;
+    }
+
+    const nextClueIndex = usedClues.length;
+    const nextClue = clues[nextClueIndex];
+    if (!nextClue) {
+      Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "🧩 Ambil Clue?",
+      html: `
+        <div style="text-align: left;">
+          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
+          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "💰 Bayar & Ambil",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
+        await loadClues();  // ✅ AWAIT
+        await loadPerformance();
+        Swal.fire("✅", "Clue berhasil diambil!", "success");
+      } catch (err) {
+        Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
+      }
+    }
+  }, [usedClues.length, clues, roomId, loadClues, loadPerformance]);
 
   const loadTimerStatus = useCallback(async () => {
     try {
