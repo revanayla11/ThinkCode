@@ -9,28 +9,31 @@ export default function GameMap() {
   const [userStats, setUserStats] = useState({ xp: 0, streak: 0, hearts: 5 });
 
   useEffect(() => {
-    Promise.all([
-      apiGet("/game/map"),
-      apiGet("/user/stats")
-    ]).then(([mapRes, statsRes]) => {
-      if (mapRes.status) {
-        setLevels(mapRes.levels);
-        setProgress(mapRes.progress);
+    apiGet("/game/map").then((res) => {
+      console.log("GAME MAP DATA:", res); // Debug
+      if (res.status) {
+        setLevels(res.levels || []);
+        setProgress(res.progress || []);
+        setUserStats(res.userStats || {});
       }
-      if (statsRes.status) {
-        setUserStats(statsRes);
-      }
-    });
+    }).catch(err => console.error("Map load error:", err));
   }, []);
 
+  // ✅ FIXED: Unlock logic berdasarkan grouped data
   const isUnlocked = (mIdx, lIdx) => {
-    // Logic unlock: sequential + winding path
-    const totalPrevLevels = mIdx * 5 + lIdx;
+    // Hitung total levels SEBELUM materi ini
+    const prevMateriLevels = levels.slice(0, mIdx)
+      .reduce((sum, materi) => sum + (materi.levels?.length || 0), 0);
+    
+    // + level index di materi ini
+    const totalPrevLevels = prevMateriLevels + lIdx;
+    
+    // Unlock jika progress cukup
     return progress.filter(p => p.completed).length >= totalPrevLevels;
   };
 
   const isCompleted = (levelId) => {
-    return progress.some(p => p.levelId === levelId && p.completed);
+    return progress.some(p => p.levelId == levelId && p.completed);
   };
 
   const getStreakEmoji = (streak) => {
@@ -41,55 +44,82 @@ export default function GameMap() {
   };
 
   const PathNode = ({ level, position, unlocked, completed, onClick }) => (
-    <div 
-      style={{
-        ...position,
-        width: 80,
-        height: 80,
-        borderRadius: "50%",
-        background: completed 
-          ? "linear-gradient(135deg, #10b981, #059669)" 
-          : unlocked 
-          ? "linear-gradient(135deg, #f59e0b, #d97706)" 
-          : "linear-gradient(135deg, #6b7280, #4b5563)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: 700,
-        fontSize: '1.5rem',
-        color: 'white',
-        boxShadow: completed 
-          ? '0 0 30px rgba(16, 185, 129, 0.6)' 
-          : unlocked 
-          ? '0 0 25px rgba(245, 158, 11, 0.7)' 
-          : '0 8px 25px rgba(0,0,0,0.3)',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: unlocked ? 'pointer' : 'not-allowed',
-        transform: unlocked ? 'scale(1.1) rotate(5deg)' : 'scale(0.9)',
-        position: 'relative',
-        zIndex: 10
-      }}
-      onClick={onClick}
+    <Link 
+      to={unlocked ? `/game/play/${level.id}` : "#"}
+      style={{ textDecoration: 'none' }}
     >
-      {completed ? '⭐' : level.levelNumber}
-      {unlocked && (
-        <div style={{
-          position: 'absolute',
-          top: -10, right: -10,
-          width: 30, height: 30,
-          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-          borderRadius: '50%',
+      <div 
+        style={{
+          ...position,
+          width: 80,
+          height: 80,
+          borderRadius: "50%",
+          background: completed 
+            ? "linear-gradient(135deg, #10b981, #059669)" 
+            : unlocked 
+            ? "linear-gradient(135deg, #f59e0b, #d97706)" 
+            : "linear-gradient(135deg, #6b7280, #4b5563)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 700,
+          fontSize: '1.5rem',
+          color: 'white',
+          boxShadow: completed 
+            ? '0 0 30px rgba(16, 185, 129, 0.6)' 
+            : unlocked 
+            ? '0 0 25px rgba(245, 158, 11, 0.7)' 
+            : '0 8px 25px rgba(0,0,0,0.3)',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: unlocked ? 'pointer' : 'not-allowed',
+          transform: unlocked ? 'scale(1.1) rotate(5deg)' : 'scale(0.9)',
+          position: 'relative',
+          zIndex: 10
+        }}
+        onClick={onClick}
+      >
+        {completed ? '⭐' : level.levelNumber}
+        {unlocked && !completed && (
+          <div style={{
+            position: 'absolute',
+            top: -8, right: -8,
+            width: 28, height: 28,
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.9rem',
+            boxShadow: '0 4px 12px rgba(239,68,68,0.6)',
+            animation: 'pulse 2s infinite'
+          }}>
+            🔥
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+
+  // Loading state
+  if (levels.length === 0) {
+    return (
+      <Layout>
+        <div style={{ 
+          padding: 100, 
+          textAlign: 'center', 
+          color: 'white', 
+          fontSize: '1.8rem',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.8rem',
-          animation: 'pulse 2s infinite'
+          justifyContent: 'center'
         }}>
-          🔥
+          🤠 Loading petualangan Sheriff...
         </div>
-      )}
-    </div>
-  );
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -132,59 +162,88 @@ export default function GameMap() {
           position: 'relative',
           maxWidth: 1000,
           margin: '0 auto',
-          height: 800
+          height: 'auto',
+          minHeight: 800
         }}>
-          {/* Background path illustration */}
-          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, opacity: 0.3 }}>
+          {/* Background path SVG */}
+          <svg style={{ 
+            position: 'absolute', 
+            top: 0, left: 0, 
+            width: '100%', 
+            height: '100%', 
+            zIndex: 1, 
+            opacity: 0.3 
+          }}>
             <path d="M100 200 Q300 100 500 200 Q700 300 900 200 Q1100 300 1200 400" 
                   stroke="#fbbf24" strokeWidth="60" fill="none" strokeLinecap="round"/>
             <path d="M100 400 Q400 500 700 400 Q1000 500 1200 450" 
                   stroke="#f59e0b" strokeWidth="50" fill="none" strokeLinecap="round"/>
           </svg>
 
-          {/* LEVEL NODES - Winding pattern */}
-          <div style={{ position: 'relative', height: '100%' }}>
+          {/* LEVEL NODES */}
+          <div style={{ position: 'relative', padding: '50px 0' }}>
             {levels.map((materi, mIdx) => (
-              <div key={materi.materiId} style={{ marginBottom: 80 }}>
+              <div key={materi.materiId} style={{ marginBottom: 100 }}>
+                {/* MATERI TITLE */}
                 <h3 style={{ 
                   textAlign: "center", 
                   color: 'white', 
-                  marginBottom: '40px',
-                  fontSize: '2rem',
-                  textShadow: '0 0 20px rgba(255,255,255,0.5)'
+                  marginBottom: '50px',
+                  fontSize: '2.2rem',
+                  textShadow: '0 0 20px rgba(255,255,255,0.8)',
+                  background: 'linear-gradient(45deg, #fbbf24, #f59e0b)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
                 }}>
-                  {materi.materiName}
+                  📚 {materi.materiName}
                 </h3>
                 
-                {/* Zigzag level positions */}
-                <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                  {materi.levels.map((lvl, lIdx) => {
+                {/* LEVEL CIRCLES - Zigzag */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  position: 'relative',
+                  flexWrap: 'wrap',
+                  gap: 25
+                }}>
+                  {materi.levels?.map((lvl, lIdx) => {
                     const unlocked = isUnlocked(mIdx, lIdx);
                     const completed = isCompleted(lvl.id);
                     const positions = [
-                      { left: '10%', top: '20px' },
-                      { left: '40%', top: '-10px' },
-                      { left: '70%', top: '30px' },
-                      { left: '25%', top: '60px' },
-                      { left: '85%', top: '0px' }
+                      { left: '5%', top: '20px' },
+                      { left: '35%', top: '-15px' },
+                      { left: '65%', top: '25px' },
+                      { left: '20%', top: '55px' },
+                      { left: '80%', top: '5px' }
                     ];
                     
                     return (
                       <PathNode
                         key={lvl.id}
                         level={lvl}
-                        position={positions[lIdx]}
+                        position={positions[lIdx % positions.length]}
                         unlocked={unlocked}
                         completed={completed}
-                        onClick={() => unlocked && window.location.href = `/game/play/${lvl.id}`}
+                        onClick={() => {
+                          if (unlocked) {
+                            console.log("Nav to level:", lvl.id);
+                          }
+                        }}
                       />
                     );
-                  })}
+                  }) || []}
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        <style jsx>{`
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+          }
+        `}</style>
       </div>
     </Layout>
   );
