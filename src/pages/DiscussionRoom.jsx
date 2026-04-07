@@ -52,6 +52,122 @@ export default function DiscussionRoom() {
     }
   }, [roomId]);
 
+    /* ================= TEMPLATE FUNCTIONS ================= */
+  const updateBlank = (index, value) => {
+    const newBlanks = [...pseudocodeBlanks];
+    newBlanks[index] = value;
+    setPseudocodeBlanks(newBlanks);
+
+    // 🔥 GENERATE PSEUDOCODE dari template
+    let filled = templateData.template || "";
+    templateData.blanks?.forEach((_, i) => {
+      filled = filled.replaceAll(
+        `___BLANK_${i}___`,
+        newBlanks[i] || `[BLANK ${i + 1}]`
+      );
+    });
+    setPseudocode(filled);
+  };
+
+  // 🔥 INI YANG HILANG - TAMBAH INI!
+  const renderFilledTemplate = () => {
+    let filled = templateData.template || "";
+    templateData.blanks?.forEach((_, i) => {
+      const placeholder = `___BLANK_${i}___`;
+      const value = pseudocodeBlanks[i] || "";
+      filled = filled.replaceAll(placeholder, value || `[BLANK ${i+1}]`);
+    });
+    return filled;
+  };
+
+  /* ================= FLOWCHART FUNCTIONS ================= */
+  const addCondition = () => {
+    if (isSubmitted || conditions.length >= 5) return;
+    const newConditions = [...conditions, { condition: "", yes: "", no: "" }];
+    setConditions(newConditions);
+  };
+
+  const updateCondition = (index, field, value) => {
+    if (isSubmitted) return;
+    const newConditions = [...conditions];
+    newConditions[index][field] = value;
+    setConditions(newConditions);
+  };
+
+  const deleteCondition = (index) => {
+    if (isSubmitted) return;
+    const newConditions = conditions.filter((_, i) => i !== index);
+    setConditions(newConditions);
+  };
+
+  const toggleElse = () => {
+    if (isSubmitted || conditions.length === 0) return;
+    setShowElse(prev => !prev);
+    if (!showElse) {
+      setElseInstruction("");
+    }
+  };
+
+  const updateElseInstruction = (value) => {
+    if (isSubmitted) return;
+    setElseInstruction(value);
+  };
+
+  /* ================= TASK FUNCTIONS ================= */
+  const toggleTask = async (taskId, currentDone) => {
+    try {
+      await api.post(`/discussion/room/${roomId}/task/${taskId}/toggle`, { 
+        done: !currentDone 
+      });
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, done: !currentDone } : task
+      ));
+      loadPerformance();
+    } catch (err) {
+      console.error("Toggle task error:", err);
+      Swal.fire("Error", "Gagal update task", "error");
+    }
+  };
+
+  /* ================= CLUE FUNCTIONS ================= */
+  const requestClue = async () => {
+    if (usedClues.length >= clueMax) {
+      Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
+      return;
+    }
+
+    const nextClueIndex = usedClues.length;
+    const nextClue = clues[nextClueIndex];
+    if (!nextClue) {
+      Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "🧩 Ambil Clue?",
+      html: `
+        <div style="text-align: left;">
+          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
+          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "💰 Bayar & Ambil",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
+        loadClues();
+        loadPerformance();
+        Swal.fire("✅", "Clue berhasil diambil!", "success");
+      } catch (err) {
+        Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
+      }
+    }
+  };
+
   useEffect(() => {
     let interval;
     if (timerActive && timeLeft > 0) {
