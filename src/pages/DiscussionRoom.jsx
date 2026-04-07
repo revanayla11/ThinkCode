@@ -375,6 +375,41 @@ const saveFlowchart = async () => {
   }
 };
 
+// 🔥 DEBUG FUNCTION - TAMBAH INI
+const debugFlowchart = async () => {
+  try {
+    const res = await api.post(`/discussion/room/${roomId}/validate`);
+    console.log("🔍 FULL VALIDATION RESULT:", res.data);
+    
+    Swal.fire({
+      title: "🔍 Debug Flowchart",
+      html: `
+        <div style="font-family: monospace; font-size: 12px;">
+          <strong>Score:</strong> ${res.data.score}%<br><br>
+          
+          <strong>Pseudocode:</strong> ${res.data.details.pseudocodeSimilarity}%<br>
+          <strong>Flowchart:</strong> ${res.data.details.flowchartScore}%<br><br>
+          
+          <strong>Details:</strong>
+          <pre style="max-height: 200px; overflow: auto; background: #f8fafc; padding: 10px; border-radius: 8px;">
+${JSON.stringify(res.data.details, null, 2)}
+          </pre>
+          
+          <strong>Current Flowchart:</strong>
+          <pre style="max-height: 150px; overflow: auto;">
+${JSON.stringify({ conditions, elseInstruction, showElse }, null, 2)}
+          </pre>
+        </div>
+      `,
+      width: "700px",
+      icon: "info"
+    });
+  } catch (err) {
+    console.error("Debug error:", err.response?.data);
+    Swal.fire("Debug Error", JSON.stringify(err.response?.data, null, 2), "error");
+  }
+};
+
 // 🔥 TAMBAHKAN useEffect INI (SETELAH semua fungsi load)
 useEffect(() => {
   const initData = async () => {
@@ -931,6 +966,9 @@ Swal.fire({
                 <FlowBtn onClick={saveFlowchart} disabled={isSubmitted || conditions.length === 0}>
                                     💾 Save Flowchart
                 </FlowBtn>
+                  <DebugBtn onClick={debugFlowchart} disabled={isSubmitted}>
+    🔍 DEBUG
+  </DebugBtn>
               </FlowchartButtons>
             </FlowchartCard>
           </RightPanel>
