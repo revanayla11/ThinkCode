@@ -14,6 +14,9 @@ export default function DiscussionRoom() {
   const [miniContent, setMiniContent] = useState("");
   const [showMini, setShowMini] = useState(false);
   const [showCompilerGuide, setShowCompilerGuide] = useState(false);
+  const [showRules, setShowRules] = useState(false); // ✅ NEW: Rules popup
+  const [timeLeft, setTimeLeft] = useState(5400); // ✅ NEW: Timer
+  const [timerActive, setTimerActive] = useState(false);
   
   // Template System
   const [templateData, setTemplateData] = useState({ template: "", blanks: [] });
@@ -36,6 +39,35 @@ export default function DiscussionRoom() {
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
 
+  /* ================= TIMER FUNCTIONS ================= */
+  // ✅ FIXED TIMER - Persistent across page navigation
+  const loadTimerStatus = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/timer/${roomId}/check`);
+      setTimeLeft(res.data.timeLeft);
+      setTimerActive(res.data.timeLeft > 0 && !res.data.expired);
+    } catch (err) {
+      console.error("Load timer error:", err);
+    }
+  }, [roomId]);
+
+  // Timer countdown
+  useEffect(() => {
+    let interval;
+    if (timerActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive, timeLeft]);
+
   /* ================= FIXED LOAD FUNCTIONS ================= */
   const loadSubmissionStatus = async () => {
     try {
@@ -55,16 +87,13 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ✅ FIXED WORKSPACE LOAD - Gabung pseudocode + flowchart
   const loadWorkspaceData = useCallback(async () => {
     try {
       const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
       const data = res.data.data || {};
       
-      // Template pseudocode
       setPseudocode(data.pseudocode || "");
       
-      // Flowchart
       const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
       setElseInstruction(flowchart.elseInstruction || "");
@@ -73,7 +102,6 @@ export default function DiscussionRoom() {
     }
   }, [roomId]);
 
-  // ✅ FIXED TASKS - Dynamic text
   const loadTasks = async () => {
     try {
       const res = await api.get(`/discussion/room/${roomId}/tasks`);
@@ -88,7 +116,6 @@ export default function DiscussionRoom() {
       ];
       setTasks(dynamicTasks);
     } catch (err) {
-      // Fallback tasks
       setTasks([
         { id: 1, text: "📖 Baca Mini Lesson", done: false },
         { id: 2, text: "💬 Diskusi Problem", done: false },
@@ -99,7 +126,6 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ✅ FIXED CLUES
   const loadClues = async () => {
     try {
       const cluesRes = await api.get(`/discussion/clues/${materiId}`);
@@ -112,7 +138,6 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ✅ TEMPLATE SYSTEM
   const loadTemplateData = async () => {
     try {
       const res = await api.get(`/discussion/template/${roomId}`);
@@ -121,7 +146,6 @@ export default function DiscussionRoom() {
       setPseudocodeBlanks(Array(data.blanks?.length || 0).fill(""));
     } catch (err) {
       console.error("Load template error:", err);
-      // Default template
       setTemplateData({
         template: "IF (___BLANK_0___) THEN\n    ___BLANK_1___\nELSE\n    ___BLANK_2___\nENDIF",
         blanks: [
@@ -134,7 +158,7 @@ export default function DiscussionRoom() {
     }
   };
 
-  // ✅ INITIAL LOAD
+  // ✅ FIXED INITIAL LOAD + RULES POPUP + TIMER
   useEffect(() => {
     if (!roomId || !materiId) return;
     
@@ -144,9 +168,19 @@ export default function DiscussionRoom() {
       loadWorkspaceData(),
       loadTasks(),
       loadClues(),
-      loadTemplateData()
-    ]).catch(err => console.error("Initial load error:", err));
-  }, [roomId, materiId, loadWorkspaceData]);
+      loadTemplateData(),
+      loadTimerStatus() // ✅ ADD TIMER
+    ]).then(() => {
+      // ✅ SHOW RULES POPUP ON FIRST LOAD
+      const hasSeenRules = localStorage.getItem(`rules_${roomId}`);
+      if (!hasSeenRules && !isSubmitted) {
+        setTimeout(() => {
+          setShowRules(true);
+          localStorage.setItem(`rules_${roomId}`, 'true');
+        }, 500);
+      }
+    }).catch(err => console.error("Initial load error:", err));
+  }, [roomId, materiId, loadWorkspaceData, loadTimerStatus]);
 
   /* ================= TEMPLATE FUNCTIONS ================= */
   const updateBlank = (index, value) => {
@@ -198,13 +232,13 @@ export default function DiscussionRoom() {
       setTasks(tasks.map(task => 
         task.id === taskId ? { ...task, done: !currentDone } : task
       ));
-      loadPerformance(); // Refresh performance
+      loadPerformance();
     } catch (err) {
       console.error("Toggle task error:", err);
     }
   };
 
-  /* ================= CLUE FUNCTIONS ================= */
+  /* ================= FIXED CLUE FUNCTIONS ================= */
   const requestClue = async () => {
     if (usedClues.length >= clueMax) {
       Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
@@ -218,25 +252,26 @@ export default function DiscussionRoom() {
       return;
     }
 
+    // ✅ FIXED: Jangan tampilkan clue dulu, konfirmasi aja
     const result = await Swal.fire({
       title: "🧩 Ambil Clue?",
       html: `
         <div style="text-align: left;">
-          <strong>Clue ${nextClueIndex + 1}:</strong><br>
-          <em>${nextClue.content}</em><br><br>
-          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota
+          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
+          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
+          <em>(Clue akan ditampilkan setelah konfirmasi)</em>
         </div>
       `,
-      icon: "question",
+      icon: "question", // ✅ FIXED: Valid icon
       showCancelButton: true,
-      confirmButtonText: "Ambil Clue",
+      confirmButtonText: "💰 Bayar & Ambil",
       cancelButtonText: "Batal"
     });
 
     if (result.isConfirmed) {
       try {
         await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
-        loadClues(); // Reload clues & used clues
+        loadClues();
         loadPerformance();
         Swal.fire("✅", "Clue berhasil diambil!", "success");
       } catch (err) {
@@ -268,7 +303,7 @@ export default function DiscussionRoom() {
     }
   };
 
-  /* ================= FIXED FLOWCHART RENDER ================= */
+  /* ================= FLOWCHART RENDER ================= */
   const renderFlowchart = () => {
     const height = Math.max(400, 200 + conditions.length * 120);
     return (
@@ -280,16 +315,13 @@ export default function DiscussionRoom() {
           </marker>
         </defs>
         
-        {/* START */}
         <ellipse cx="100" cy="50" rx="60" ry="30" fill="#10b981" stroke="white" strokeWidth="3"/>
         <text x="100" y="55" textAnchor="middle" fill="white" fontWeight="bold" fontSize="14">START</text>
         
-        {/* CONDITIONS */}
         {conditions.map((item, index) => {
           const yBase = 100 + index * 120;
           return (
             <g key={index}>
-              {/* Diamond Decision */}
               <polygon 
                 points={`300,${yBase},360,${yBase+30},300,${yBase+60},240,${yBase+30}`} 
                 fill="#3b82f6" stroke="white" strokeWidth="3"
@@ -308,7 +340,6 @@ export default function DiscussionRoom() {
                 />
               </foreignObject>
               
-              {/* YES Path */}
               <rect x="380" y={yBase+10} width="140" height="40" rx="8" fill="#10b981" stroke="white" strokeWidth="2"/>
               <foreignObject x="385" y={yBase+20} width="130" height="30">
                 <input 
@@ -321,7 +352,6 @@ export default function DiscussionRoom() {
                 />
               </foreignObject>
               
-              {/* NO Path */}
               <rect x="200" y={yBase+70} width="140" height="40" rx="8" fill="#ef4444" stroke="white" strokeWidth="2"/>
               <foreignObject x="205" y={yBase+80} width="130" height="30">
                 <input 
@@ -334,7 +364,6 @@ export default function DiscussionRoom() {
                 />
               </foreignObject>
               
-              {/* Arrows */}
               <path d={`M160 ${index === 0 ? 50 : yBase-40} L240 ${yBase-40}`} stroke="#333" strokeWidth="3" markerEnd="url(#arrowhead)"/>
               <path d={`M360 ${yBase+30} L380 ${yBase+25}`} stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowhead)"/>
               <path d={`M360 ${yBase+40} L320 ${yBase+60}`} stroke="#ef4444" strokeWidth="2" markerEnd="url(#arrowhead)"/>
@@ -342,7 +371,6 @@ export default function DiscussionRoom() {
           );
         })}
         
-        {/* END */}
         <ellipse cx="500" cy={height - 50} rx="60" ry="30" fill="#8b5cf6" stroke="white" strokeWidth="3"/>
         <text x="500" y={height - 45} textAnchor="middle" fill="white" fontWeight="bold" fontSize="14">END</text>
       </svg>
@@ -387,48 +415,93 @@ export default function DiscussionRoom() {
     }
   };
 
-  /* ================= COMPILER GUIDE MODAL ================= */
+  /* ================= FIXED COMPILER GUIDE MODAL ================= */
   const CompilerGuideModal = () => {
     if (!showCompilerGuide) return null;
     
-    return Swal.fire({
+    // ✅ FIXED: Return promise properly, use valid icon
+    Swal.fire({
       title: "💻 C Compiler Guide",
       html: `
         <div style="text-align: left; font-size: 14px;">
           <ol style="line-height: 1.8;">
-            <li><strong>Copy</strong> pseudocode & flowchart logic</li>
-            <li><strong>Translate</strong> ke C code:</li>
+            <li><strong>Buat</strong> pseudocode & flowchart logic</li>
+            <li><strong>Ubahlah atau buatkan dalam </strong> kode C </li>
           </ol>
-          <pre style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-size: 12px; max-height: 250px; overflow: auto; white-space: pre-wrap;">
-#include <stdio.h>
-int main() {
-    int angka;
-    scanf("%d", &angka);
-    
-    if (angka > 0) {
-        printf("Angka %d adalah Positif\\n", angka);
-    } else {
-        printf("Angka %d adalah Negatif\\n", angka);
-    }
-    return 0;
-}
-          </pre>
           <ol start="3" style="line-height: 1.8;">
             <li><strong>Test</strong> di <a href="https://www.onlinegdb.com/" target="_blank" style="color: #3b82f6;">OnlineGDB</a></li>
-            <li><strong>Download</strong> .c → Upload!</li>
+            <li><strong>Download</strong> .c atau salin kode yang sudah dibuat lalu Upload!</li>
           </ol>
         </div>
       `,
-      icon: "code",
+      icon: "info", // ✅ FIXED: Valid icon
       confirmButtonText: "✅ Paham!",
       width: "700px"
-    }).then(() => setShowCompilerGuide(false));
+    }).then(() => {
+      setShowCompilerGuide(false); // ✅ FIXED: Close properly
+    });
+    
+    return null;
+  };
+
+  /* ================= RULES POPUP ================= */
+  // ✅ NEW: Rules popup
+  const RulesPopup = () => {
+    if (!showRules) return null;
+
+    return Swal.fire({
+      title: "📜 ROOM RULES",
+      html: `
+        <div style="text-align: left; font-size: 15px; line-height: 1.7;">
+          <h4>🎯 Tujuan:</h4>
+          <ul>
+            <li>Selesaikan <strong>5 Quest</strong> secara berurutan</li>
+            <li>Cek jawaban dan upload C code</li>
+            <li>Target: <strong>90%+ score</strong> untuk MASTER badge 🥇</li>
+          </ul>
+          
+          <h4>⏰ Timer: <strong>${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}</strong></h4>
+          <ul>
+            <li>90 menit total</li>
+            <li>Overtime = penalty XP</li>
+          </ul>
+          
+          <h4>🧩 Clue System:</h4>
+          <ul>
+            <li>Maksimal <strong>3 clue</strong></li>
+            <li>Biaya: <strong>50 XP per anggota</strong></li>
+            <li>Clue = -10% score</li>
+          </ul>
+          
+          <div style="background: #fef3c7; padding: 15px; border-radius: 10px; margin: 15px 0;">
+            <strong>⚠️ Attempt terbatas: 10x pseudocode + 10x flowchart</strong>
+          </div>
+        </div>
+      `,
+      icon: "info",
+      confirmButtonText: "🚀 MULAI QUEST!",
+      confirmButtonColor: "#10b981",
+      width: "650px",
+      backdrop: "rgba(0,0,0,0.7)"
+    }).then(() => {
+      setShowRules(false);
+    });
   };
 
   /* ================= MAIN RENDER ================= */
   return (
     <Layout>
       <Wrapper>
+        {/* TIMER DISPLAY ✅ NEW */}
+        {timerActive && (
+          <TimerBox>
+            <TimerEmoji>⏰</TimerEmoji>
+            <TimerText>
+              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </TimerText>
+          </TimerBox>
+        )}
+
         {/* HEADER */}
         <Header>
           <HeaderTop>
@@ -443,7 +516,6 @@ int main() {
             </HeaderRight>
           </HeaderTop>
           
-          {/* PERFORMANCE BAR - FIXED */}
           {performanceScore !== null && (
             <PerformanceBox>
               <Emoji>{getPerformanceEmoji(performanceScore)}</Emoji>
@@ -459,7 +531,6 @@ int main() {
         <Container>
           {/* LEFT PANEL */}
           <LeftPanel>
-            {/* CLUES */}
             <ClueCard>
               <ClueHeader>🧩 CLUE SYSTEM ({usedClues.length}/{clueMax})</ClueHeader>
               <ClueStatus>
@@ -478,7 +549,6 @@ int main() {
               </ClueList>
             </ClueCard>
 
-            {/* TASKS */}
             <TaskCard>
               <CardTitle>📋 QUEST LIST</CardTitle>
               {tasks.map(task => (
@@ -504,7 +574,6 @@ int main() {
 
           {/* RIGHT PANEL */}
           <RightPanel>
-            {/* PSEUDOCODE TEMPLATE - FIXED BLANKS */}
             <PseudocodeCard>
               <CardTitle>📝 Fill-in-Blank Pseudocode</CardTitle>
               <TemplatePreview>
@@ -534,7 +603,6 @@ int main() {
               </SaveButton>
             </PseudocodeCard>
 
-            {/* FLOWCHART - FIXED LAYOUT */}
             <FlowchartCard>
               <CardTitle>🔄 Flowchart Builder</CardTitle>
               <FlowchartContainer>
@@ -556,6 +624,7 @@ int main() {
       {/* MODALS */}
       <MiniLessonModal show={showMini} onClose={() => setShowMini(false)} content={miniContent} />
       <CompilerGuideModal />
+      <RulesPopup /> {/* ✅ NEW: Rules popup */}
     </Layout>
   );
 }
@@ -574,6 +643,29 @@ const getLevelName = (score) => {
   if (score >= 60) return "ADVANCED";
   return "LEARNER";
 };
+
+/* ================= NEW STYLED COMPONENTS ================= */
+const TimerBox = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 25px;
+  box-shadow: 0 10px 30px rgba(239,68,68,0.4);
+  z-index: 1000;
+  font-weight: 800;
+  font-size: 18px;
+  animation: pulse 2s infinite;
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+`;
+
+const TimerEmoji = styled.span`font-size: 24px; margin-right: 8px;`;
+const TimerText = styled.span``;
 
 /* ================= COMPLETE STYLED COMPONENTS ================= */
 const Wrapper = styled.div`padding: 20px 40px; max-width: 1600px; margin: 0 auto;`;
