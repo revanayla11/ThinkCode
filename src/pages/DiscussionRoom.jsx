@@ -208,26 +208,20 @@ const loadWorkspaceData = useCallback(async () => {
   try {
     const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
     const data = res.data.data || {};
-
-    console.log("🔄 Load workspace:", data);
-
-    // 🔥 PSEUDOCODE - Load kalau kosong
-    if (!pseudocode.trim()) {
-      setPseudocode(data.pseudocode || "");
-    }
-
-    // 🔥 FLOWCHART - JANGAN OVERWRITE kalau user lagi edit!
+    
+    // 🔥 LOAD HANYA KALAU LOCAL KOSONG
+    if (!pseudocode.trim()) setPseudocode(data.pseudocode || "");
+    
     const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
-    if (flowchart.conditions?.length === 0 && conditions.length === 0) {
+    if (conditions.length === 0) {  // Hanya load kalau belum ada edit
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
       setElseInstruction(flowchart.elseInstruction || "");
       setShowElse(!!flowchart.showElse);
     }
-
   } catch (err) {
-    console.error("Load workspace error:", err);
+    console.error("Load workspace:", err);
   }
-}, [roomId, pseudocode, conditions.length]); // Tambah dependencies
+}, [roomId, pseudocode, conditions.length]);
 
   const loadTasks = async () => {
     try {
@@ -333,24 +327,44 @@ END`,
 
   /* ================= SAVE FUNCTIONS ================= */
 // Update savePseudocode
-const savePseudocode = async () => {
-  if (!pseudocode?.trim()) return Swal.fire("⚠️", "Isi pseudocode!", "warning");
-  
+exports.savePseudocode = async (req, res) => {
+  const transaction = await Workspace.sequelize.transaction();
   try {
-    const res = await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      pseudocode: pseudocode.trim() 
+    const roomId = parseInt(req.params.roomId);
+    const { pseudocode } = req.body;
+
+    if (!pseudocode?.trim()) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Pseudocode kosong" });
+    }
+
+    // 🔥 APPLY PENALTY
+    await applyAttemptPenalty(roomId, "pseudocode", transaction);
+
+    // Save
+    const attemptCount = await WorkspaceAttempt.count({
+      where: { roomId, type: "pseudocode" }, transaction
     });
     
-    Swal.fire({
-      title: "✅ Saved!",
-      text: res.data.message,
-      icon: "success",
-      timer: 2000
-    });
+    await WorkspaceAttempt.create({
+      roomId, type: "pseudocode", attemptNumber: attemptCount + 1, content: pseudocode
+    }, { transaction });
+
+    await Workspace.upsert({ roomId, pseudocode: pseudocode.trim() }, { transaction });
+    await RoomTaskProgress.upsert({ roomId, taskId: 3, done: true }, { transaction });
+
+    await transaction.commit();
     
-    loadPerformance();
+    res.json({ 
+      status: true, 
+      attempt: attemptCount + 1,
+      penalty: attemptCount + 1 > 5 ? 10 : 0
+    });
+
   } catch (err) {
-    Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
+    await transaction.rollback();
+    console.error("savePseudocode:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -419,6 +433,22 @@ ${JSON.stringify({ conditions, elseInstruction, showElse }, null, 2)}
     console.error("Debug error:", err.response?.data);
     Swal.fire("Debug Error", JSON.stringify(err.response?.data, null, 2), "error");
   }
+
+  await applyAttemptPenalty(roomId, "flowchart", transaction);
+
+    // Save
+    const attemptCount = await WorkspaceAttempt.count({
+      where: { roomId, type: "flowchart" }, transaction
+    });
+    
+    await WorkspaceAttempt.create({
+      roomId, type: "flowchart", attemptNumber: attemptCount + 1, content: flowchart
+    }, { transaction });
+
+    await Workspace.upsert({ roomId, flowchart: flowchart.trim() }, { transaction });
+    await RoomTaskProgress.upsert({ roomId, taskId: 3, done: true }, { transaction });
+
+    await transaction.commit();
 };
 
 // 🔥 TAMBAHKAN useEffect INI (SETELAH semua fungsi load)
