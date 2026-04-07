@@ -937,13 +937,13 @@ Swal.fire({
         {templateData.blanks?.map((blank, index) => (
           <BlankRow key={index}>
             <BlankLabel>
-              📝 Blank {index + 1}: {blank.hint}
+              📝 Blank {index + 1}: 
             </BlankLabel>
             <InputGroup>
               <BlankInput
                 value={pseudocodeBlanks[index] || ""}
                 onChange={(e) => updateBlank(index, e.target.value)}
-                placeholder={`Contoh: ${blank.example || 'isi jawaban'}`}
+                placeholder={`isi disini || 'isi jawaban'}`}
               />
               <HintButton 
                 onClick={() => Swal.fire(`💡 Blank ${index + 1}`, blank.hint, "info")}
