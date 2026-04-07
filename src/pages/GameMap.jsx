@@ -48,8 +48,8 @@ const LevelsContainer = styled.div`
 
 const LevelNode = styled.div`
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -81,36 +81,31 @@ const LevelNode = styled.div`
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     `}
   }
-
-  &::after {
-    content: '${props => props.gameTypeIcon}';
-    font-size: 20px;
-    margin-bottom: 2px;
-  }
 `;
 
 const LevelNumber = styled.div`
-  font-size: 24px;
+  font-size: 26px;
   color: white;
   z-index: 2;
+  margin-bottom: 2px;
 `;
 
 const LevelLabel = styled.div`
   position: absolute;
-  bottom: -30px;
-  font-size: 12px;
+  bottom: -35px;
+  font-size: 11px;
   color: white;
   font-weight: 600;
   text-align: center;
-  width: 100px;
+  width: 110px;
 `;
 
 const LockIcon = styled.div`
   position: absolute;
   top: -5px;
   right: -5px;
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   background: #ef4444;
   border-radius: 50%;
   display: flex;
@@ -121,19 +116,37 @@ const LockIcon = styled.div`
   font-weight: bold;
 `;
 
+const gameTypeIcons = {
+  quiz: '🧠',
+  flashcard: '📝',
+  memory: '🧩',
+  typing: '⌨️',
+  sort: '🔄',
+  hangman: '😵'
+};
+
 export default function GameMap() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState([]);
   const [progress, setProgress] = useState([]);
 
   useEffect(() => {
-    apiGet("/game/map").then(res => {
-      if (res.status) {
-        setLevels(res.levels);
-        setProgress(res.progress);
-      }
-    });
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const [levelsRes, progressRes] = await Promise.all([
+        apiGet("/game/map"),
+        apiGet("/game/progress")
+      ]);
+      
+      if (levelsRes.status) setLevels(levelsRes.levels);
+      if (progressRes.status) setProgress(progressRes.progress);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const materiList = Object.values(
     levels.reduce((acc, lvl) => {
@@ -150,8 +163,7 @@ export default function GameMap() {
   ).sort((a, b) => a.materiId - b.materiId);
 
   const isCompleted = (levelId) => {
-    const found = progress.find(p => p.levelId === Number(levelId));
-    return found && Number(found.completed) === 1;
+    return progress.some(p => p.levelId === Number(levelId) && p.completed);
   };
 
   const isUnlocked = (materiIndex, levelIndex) => {
@@ -166,14 +178,6 @@ export default function GameMap() {
     return isCompleted(prevLevel.id);
   };
 
-  const gameTypeIcons = {
-    quiz: '🧠',
-    flashcard: '📝',
-    memory: '🧩',
-    typing: '⌨️',
-    sort: '🔄'
-  };
-
   const handleLevelClick = (levelId) => {
     navigate(`/game/play/${levelId}`);
   };
@@ -181,11 +185,11 @@ export default function GameMap() {
   return (
     <Layout>
       <Container>
-        <Header>🎮 Mini Games</Header>
+        <Header>🎮 Mini Games Collection</Header>
 
         {materiList.map((materi, mIdx) => (
           <MateriSection key={materi.materiId}>
-            <MateriTitle>{materi.materiName}</MateriTitle>
+            <MateriTitle>📚 {materi.materiName}</MateriTitle>
             
             <LevelsContainer>
               {materi.levels.map((lvl, lIdx) => {
@@ -194,16 +198,17 @@ export default function GameMap() {
 
                 return (
                   <div key={lvl.id} style={{ position: 'relative' }}>
-                    {!unlocked && (
-                      <LockIcon>🔒</LockIcon>
-                    )}
+                    {!unlocked && <LockIcon>🔒</LockIcon>}
                     <LevelNode
                       unlocked={unlocked}
                       completed={completed}
-                      gameTypeIcon={gameTypeIcons[lvl.type] || '🎮'}
                       onClick={unlocked ? () => handleLevelClick(lvl.id) : undefined}
+                      title={!unlocked ? "Selesaikan level sebelumnya" : lvl.title}
                     >
                       <LevelNumber>{lvl.levelNumber}</LevelNumber>
+                      <div style={{ fontSize: '14px', marginTop: '2px' }}>
+                        {gameTypeIcons[lvl.type] || '🎮'}
+                      </div>
                       <LevelLabel>{lvl.type?.toUpperCase()}</LevelLabel>
                     </LevelNode>
                   </div>

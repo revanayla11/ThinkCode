@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import { apiGet, apiPost } from "../services/api";
 import Sidebar from "../components/Sidebar";
 
@@ -86,7 +86,7 @@ const GameCard = styled.div`
   border-radius: 25px;
   padding: 40px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
 `;
 
@@ -123,7 +123,7 @@ const QuestionContent = styled.div`
 `;
 
 const GameArea = styled.div`
-  min-height: 400px;
+  min-height: 450px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -133,14 +133,14 @@ const GameArea = styled.div`
 
 const OptionsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
 `;
 
 const OptionButton = styled.button`
-  padding: 20px;
+  padding: 22px;
   border: 3px solid #e5e7eb;
   border-radius: 20px;
   background: white;
@@ -171,7 +171,7 @@ const OptionButton = styled.button`
 const TextInput = styled.input`
   width: 100%;
   max-width: 500px;
-  padding: 20px;
+  padding: 22px;
   border: 3px solid #e5e7eb;
   border-radius: 20px;
   font-size: 18px;
@@ -214,8 +214,8 @@ const ActionButton = styled.button`
 const Feedback = styled.div`
   font-size: 2rem;
   font-weight: bold;
-  padding: 20px;
-  border-radius: 20px;
+  padding: 25px 40px;
+  border-radius: 25px;
   text-align: center;
   animation: pulse 0.6s ease-out;
 
@@ -226,6 +226,50 @@ const Feedback = styled.div`
     background: linear-gradient(135deg, #fef2f2, #fecaca);
     color: #dc2626;
   `}
+`;
+
+const HangmanContainer = styled.div`
+  text-align: center;
+  max-width: 700px;
+`;
+
+const HangmanWord = styled.div`
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 30px 0;
+  letter-spacing: 8px;
+  min-height: 60px;
+`;
+
+const Keyboard = styled.div`
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const KeyboardKey = styled.button`
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  ${props => props.used && `
+    opacity: 0.4;
+    background: #e5e7eb;
+  `}
+
+  &:hover:not(:disabled):not(:used) {
+    transform: scale(1.05);
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+  }
 `;
 
 const ResultModal = styled.div`
@@ -261,6 +305,7 @@ export default function GamePlay() {
   const [feedback, setFeedback] = useState(null);
   const [result, setResult] = useState(null);
   const [userAnswer, setUserAnswer] = useState('');
+  const [usedLetters, setUsedLetters] = useState([]);
 
   const timeoutRef = useRef(null);
 
@@ -274,17 +319,10 @@ export default function GamePlay() {
       const res = await apiGet(`/game/level/${id}`);
       if (!res.status) throw new Error("Load gagal");
 
-      const fixedQuestions = (res.questions || []).map((q) => {
-        let meta = q.meta;
-        if (typeof meta === "string") {
-          try {
-            meta = JSON.parse(meta);
-          } catch {
-            meta = {};
-          }
-        }
-        return { ...q, meta };
-      });
+      const fixedQuestions = (res.questions || []).map((q) => ({
+        ...q,
+        meta: typeof q.meta === "string" ? JSON.parse(q.meta) : q.meta
+      }));
 
       setLevel(res.level);
       setQuestions(fixedQuestions);
@@ -292,6 +330,7 @@ export default function GamePlay() {
       setAnswers([]);
       setResult(null);
       setUserAnswer('');
+      setUsedLetters([]);
     } catch (err) {
       console.error(err);
       alert("Gagal memuat level");
@@ -303,7 +342,7 @@ export default function GamePlay() {
 
   const q = questions[index];
 
-  const submitAnswer = (answer) => {
+  const submitAnswer = useCallback((answer) => {
     const newAnswers = [...answers];
     newAnswers[index] = answer;
     setAnswers(newAnswers);
@@ -311,25 +350,41 @@ export default function GamePlay() {
 
     // Auto feedback untuk instant feedback
     let correct = false;
-    if (q.type === "mcq") {
-      correct = Number(answer) === Number(q.meta.answerIndex);
-    } else if (["essay", "typing"].includes(q.type)) {
-      correct = String(answer).trim().toLowerCase() === String(q.meta.answer).trim().toLowerCase();
-    } else if (q.type === "truefalse") {
-      correct = Boolean(answer) === Boolean(q.meta.isTrue);
+    const meta = q.meta;
+
+    switch (q.type) {
+      case "mcq":
+        correct = Number(answer) === Number(meta.answerIndex);
+        break;
+      case "truefalse":
+      case "dragdrop":
+        correct = String(answer).trim().toLowerCase() === String(meta.isTrue || meta.correctZone).toLowerCase();
+        break;
+      case "essay":
+      case "typing":
+        correct = String(answer).trim().toLowerCase() === String(meta.answer).trim().toLowerCase();
+        break;
+      case "sort":
+        correct = JSON.stringify(answer.sort()) === JSON.stringify(meta.correctOrder);
+        break;
+      case "memory":
+        correct = answer === meta.cardPair;
+        break;
     }
 
     setFeedback(correct ? "correct" : "wrong");
 
-       timeoutRef.current = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       if (index + 1 < questions.length) {
         setIndex((prev) => prev + 1);
+        setUserAnswer('');
+        setUsedLetters([]);
       } else {
         finish(newAnswers);
       }
-    }, 1200);
-  };
+    }, 1500);
+  }, [answers, index, questions.length, q]);
 
   const finish = async (finalAnswers) => {
     try {
@@ -356,6 +411,7 @@ export default function GamePlay() {
               <OptionButton
                 key={i}
                 selected={answers[index] === i}
+                disabled={!!feedback}
                 onClick={() => submitAnswer(i)}
               >
                 {opt}
@@ -367,54 +423,38 @@ export default function GamePlay() {
       case "truefalse":
         return (
           <OptionsGrid style={{ gridTemplateColumns: '1fr 1fr', maxWidth: '500px' }}>
-            <OptionButton onClick={() => submitAnswer(true)}>
+            <OptionButton 
+              selected={answers[index] === true}
+              disabled={!!feedback}
+              onClick={() => submitAnswer(true)}
+            >
               ✅ BENAR
             </OptionButton>
-            <OptionButton onClick={() => submitAnswer(false)}>
+            <OptionButton 
+              selected={answers[index] === false}
+              disabled={!!feedback}
+              onClick={() => submitAnswer(false)}
+            >
               ❌ SALAH
             </OptionButton>
           </OptionsGrid>
         );
 
-      case "essay":
-      case "typing":
-        return (
-          <>
-            <TextInput
-              type="text"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="Ketik jawaban Anda di sini..."
-              autoFocus
-            />
-            <ActionButton 
-              variant="submit"
-              onClick={() => submitAnswer(userAnswer)}
-              disabled={!userAnswer.trim()}
-            >
-              Submit Jawaban
-            </ActionButton>
-          </>
-        );
-
       case "dragdrop":
+      case "flashcard":
         return (
-          <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '900px' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '15px', color: '#059669' }}>✅ BENAR</div>
-              <div style={{
-                width: '200px',
-                height: '120px',
-                border: '4px dashed #10b981',
-                borderRadius: '15px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#d1fae5',
-                cursor: 'pointer',
-                fontSize: '1.1rem',
-                fontWeight: '500'
-              }}
+              <div style={{ fontSize: '1.3rem', marginBottom: '20px', color: '#059669' }}>✅ BENAR</div>
+              <div 
+                style={{
+                  width: '240px', height: '160px', border: '4px solid #10b981',
+                  borderRadius: '25px', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
+                  cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600',
+                  boxShadow: '0 10px 30px rgba(16,185,129,0.3)',
+                  transition: 'all 0.3s ease'
+                }}
                 onClick={() => submitAnswer('true')}
               >
                 Taruh di sini
@@ -422,38 +462,26 @@ export default function GamePlay() {
             </div>
             
             <div style={{
-              width: '300px',
-              height: '120px',
+              width: '320px', height: '160px', 
               background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              borderRadius: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '1.3rem',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              cursor: 'grab',
-              boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)'
+              borderRadius: '30px', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', color: 'white', fontSize: '1.3rem',
+              fontWeight: 'bold', textAlign: 'center', boxShadow: '0 15px 40px rgba(59,130,246,0.4)'
             }}>
               {q.content}
             </div>
             
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '15px', color: '#dc2626' }}>❌ SALAH</div>
-              <div style={{
-                width: '200px',
-                height: '120px',
-                border: '4px dashed #ef4444',
-                borderRadius: '15px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#fee2e2',
-                cursor: 'pointer',
-                fontSize: '1.1rem',
-                fontWeight: '500'
-              }}
+              <div style={{ fontSize: '1.3rem', marginBottom: '20px', color: '#dc2626' }}>❌ SALAH</div>
+              <div 
+                style={{
+                  width: '240px', height: '160px', border: '4px solid #ef4444',
+                  borderRadius: '25px', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                  cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600',
+                  boxShadow: '0 10px 30px rgba(239,68,68,0.3)',
+                  transition: 'all 0.3s ease'
+                }}
                 onClick={() => submitAnswer('false')}
               >
                 Taruh di sini
@@ -462,8 +490,84 @@ export default function GamePlay() {
           </div>
         );
 
+      case "typing":
+      case "essay":
+        return (
+          <>
+            <TextInput
+              type="text"
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              placeholder="Ketik jawaban Anda di sini..."
+              autoFocus
+              disabled={!!feedback}
+            />
+            <ActionButton 
+              variant="submit"
+              onClick={() => submitAnswer(userAnswer)}
+              disabled={!userAnswer.trim() || !!feedback}
+            >
+              Submit Jawaban
+            </ActionButton>
+          </>
+        );
+
+      case "sort":
+        return (
+          <div style={{ textAlign: 'center', maxWidth: '600px' }}>
+            <div style={{ fontSize: '1.2rem', marginBottom: '20px', color: '#64748b' }}>
+              Urutkan dengan benar:
+            </div>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center',
+              minHeight: '200px', padding: '20px', border: '3px dashed #e5e7eb',
+              borderRadius: '20px', background: '#f8fafc'
+            }}>
+              {q.meta.items?.map((item, i) => (
+                <div key={i} style={{
+                  padding: '15px 25px', background: 'white', borderRadius: '15px',
+                  fontWeight: '600', cursor: 'grab', boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                  minWidth: '120px', textAlign: 'center'
+                }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: '20px', fontSize: '0.9rem', color: '#9ca3af' }}>
+              Drag untuk mengurutkan (simulasi)
+            </div>
+            <ActionButton 
+              variant="submit"
+              onClick={() => submitAnswer(q.meta.items)}
+              style={{ marginTop: '20px' }}
+            >
+              Submit Urutan
+            </ActionButton>
+          </div>
+        );
+
+      case "memory":
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '30px' }}>
+              Temukan pasangan: {q.meta.cards?.[0]} - ?
+            </div>
+            <OptionsGrid style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+              {q.meta.options?.map((opt, i) => (
+                <OptionButton
+                  key={i}
+                  onClick={() => submitAnswer(i)}
+                  disabled={!!feedback}
+                >
+                  {opt}
+                </OptionButton>
+              ))}
+            </OptionsGrid>
+          </div>
+        );
+
       default:
-        return <div>Game type "{q.type}" belum didukung</div>;
+        return <div style={{ textAlign: 'center', color: '#9ca3af' }}>Game type "{q.type}" dalam pengembangan</div>;
     }
   };
 
@@ -504,43 +608,40 @@ export default function GamePlay() {
       </Main>
 
       {result && (
-        <ResultModal>
+        <ResultModal onClick={(e) => e.target === e.currentTarget && navigate("/game")}>
           <ResultCard>
             <h2 style={{ fontSize: '2.5rem', marginBottom: '20px' }}>🎉 Level Selesai!</h2>
-            <div style={{ fontSize: '3rem', marginBottom: '30px' }}>
-              {result.scorePercent >= 80 ? '🏆' : result.scorePercent >= 60 ? '🥈' : '🥉'}
+            <div style={{ fontSize: '4rem', marginBottom: '30px' }}>
+              {result.scorePercent >= 90 ? '🏆' : result.scorePercent >= 70 ? '🥈' : '🥉'}
             </div>
             
             <div style={{ 
-              fontSize: '1.8rem', 
+              fontSize: '2.5rem', 
               marginBottom: '20px',
-              color: result.scorePercent >= 80 ? '#059669' : result.scorePercent >= 60 ? '#d97706' : '#dc2626'
+              color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#d97706' : '#dc2626'
             }}>
               {result.scorePercent}%
             </div>
             
-            <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>
+            <p style={{ fontSize: '1.3rem', marginBottom: '10px' }}>
               Benar: <strong>{result.correct}/{result.total}</strong>
             </p>
-            <p style={{ fontSize: '1.2rem', marginBottom: '20px' }}>
+            <p style={{ fontSize: '1.3rem', marginBottom: '25px' }}>
               XP: <strong style={{ color: '#3b82f6' }}>+{result.gainedXp}</strong>
             </p>
 
             {result.badge && (
-              <div style={{ marginBottom: '30px' }}>
+              <div style={{ marginBottom: '35px' }}>
                 <h4 style={{ marginBottom: '15px', color: '#1e293b' }}>🏅 Badge Baru!</h4>
                 <img 
                   src={result.badge.image} 
                   alt={result.badge.badge_name}
                   style={{
-                    width: '100px',
-                    height: '100px',
-                    objectFit: 'contain',
-                    borderRadius: '15px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+                    width: '120px', height: '120px', objectFit: 'contain',
+                    borderRadius: '20px', boxShadow: '0 12px 35px rgba(0,0,0,0.2)'
                   }}
                 />
-                <div style={{ fontWeight: '600', marginTop: '10px' }}>
+                <div style={{ fontWeight: '700', marginTop: '12px', fontSize: '1.1rem' }}>
                   {result.badge.badge_name}
                 </div>
               </div>
@@ -549,7 +650,7 @@ export default function GamePlay() {
             <ActionButton 
               variant="next"
               onClick={() => navigate("/game")}
-              style={{ width: '100%', padding: '20px', fontSize: '1.2rem' }}
+              style={{ width: '100%', padding: '22px', fontSize: '1.2rem' }}
             >
               Kembali ke Peta Game
             </ActionButton>
