@@ -13,6 +13,7 @@ export default function DiscussionRoom() {
   /* ================= CORE STATES ================= */
   const [miniContent, setMiniContent] = useState("");
   const [showMini, setShowMini] = useState(false);
+  const [miniLessonData, setMiniLessonData] = useState(null);
   const [showCompilerGuide, setShowCompilerGuide] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5400);
@@ -125,6 +126,16 @@ export default function DiscussionRoom() {
       ]);
     }
   };
+  const loadMiniLesson = useCallback(async () => {
+  try {
+    const res = await api.get(`/discussion/mini-lesson/${materiId}`);
+    setMiniLessonData(res.data.data);
+    setMiniContent(res.data.data?.content || "Loading...");
+  } catch (err) {
+    console.error("Load mini lesson error:", err);
+    setMiniContent("Mini lesson tidak ditemukan 😢");
+  }
+}, [materiId]);
 
   const loadClues = async () => {
     try {
@@ -178,6 +189,7 @@ END`,
       loadPerformance(),
       loadWorkspaceData(),
       loadTasks(),
+      loadMiniLesson(),
       loadClues(),
       loadTemplateData(),
       loadTimerStatus()
@@ -190,7 +202,7 @@ END`,
         }, 500);
       }
     }).catch(err => console.error("Initial load error:", err));
-  }, [roomId, materiId]);
+  }, [roomId, materiId, loadMiniLesson]);
 
   /* ================= TEMPLATE FUNCTIONS ================= */
   const updateBlank = (index, value) => {
@@ -762,7 +774,7 @@ Swal.fire({
           </ul>
           
           <h4>⏰ Timer: <strong>${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}</strong></h4>
-          <ul><li>90 menit total</li><li>Overtime = penalty XP</li></ul>
+          <ul><li>60 menit total</li><li>Overtime = penalty XP</li></ul>
           
           <h4>🧩 Clue: Max 3 (-10% score/clue)</h4>
           <h4>⚠️ Attempt: Max 10x pseudocode + 10x flowchart</h4>
@@ -914,7 +926,12 @@ Swal.fire({
       </Wrapper>
 
       {/* MODALS */}
-      <MiniLessonModal show={showMini} onClose={() => setShowMini(false)} content={miniContent} />
+      <MiniLessonModal 
+  show={showMini} 
+  onClose={() => setShowMini(false)} 
+  content={miniLessonData?.content || miniContent}
+  title={miniLessonData?.title || "Mini Lesson"}
+/>
       <CompilerGuideModal />
       <RulesPopup />
     </Layout>
