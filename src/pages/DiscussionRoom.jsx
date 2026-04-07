@@ -349,10 +349,10 @@ const renderFlowchart = () => {
   
   return (
     <svg 
-      width="1200"   // 🔥 kasih lebar asli
-      height={totalHeight}
+      width="100%"
+      height="100%"
       viewBox={`0 0 1200 ${totalHeight}`}
-      style={{ minWidth: "100%" }}
+      preserveAspectRatio="xMidYMid meet"
     >
       <defs>
         <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
@@ -473,7 +473,7 @@ const renderFlowchart = () => {
       )}
 
       {/* END */}
-      <ellipse cx="920" cy={totalHeight-60} rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
+      <ellipse cx="600" cy={totalHeight-60} rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
       <text x="920" y={totalHeight-52} textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🏁 SELESAI</text>
     </svg>
   );
@@ -813,39 +813,11 @@ const FlowchartContainer = styled.div`
   height: 550px;
   border: 4px solid #f59e0b;
   border-radius: 20px;
-  overflow: auto; /* 🔥 penting */
+  overflow: hidden; /* tetap */
   background: #fefce8;
-  margin-bottom: 25px;
-`;
-
-const FlowchartButtons = styled.div`
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
 `;
-
-const FlowBtn = styled.button`
-  flex: 1;
-  padding: 16px 24px;
-  border: none;
-  border-radius: 15px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.3s;
-  min-width: 160px;
-  box-shadow: 0 8px 25px rgba(245,158,11,0.3);
-  &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(245,158,11,0.4);
-  }
-  &:disabled {
-    background: #d1d5db;
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
-    box-shadow: none;
-  }
-`;
+const FlowchartButtons = styled.div`display: flex; gap: 12px; flex-wrap: wrap;`;
+const FlowBtn = styled.button`flex: 1; padding: 14px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; min-width: 140px; &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); } &:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.6; }`;
