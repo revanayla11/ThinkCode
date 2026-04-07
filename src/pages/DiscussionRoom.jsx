@@ -343,7 +343,7 @@ END`,
   /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
 const renderFlowchart = () => {
   // Hitung height yang pas
-  const conditionHeight = 220;
+  const conditionHeight = 180;
   const elseHeight = showElse ? 200 : 0;
   const totalHeight = 300 + (conditions.length * conditionHeight) + elseHeight;
   
