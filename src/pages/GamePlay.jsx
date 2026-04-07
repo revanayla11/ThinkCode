@@ -5,14 +5,20 @@ import { apiGet, apiPost } from "../services/api";
 import Sidebar from "../components/Sidebar";
 
 const slideIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+`;
+
+const shake = keyframes`
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+`;
+
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 `;
 
 const Container = styled.div`
@@ -42,52 +48,34 @@ const Header = styled.div`
   box-shadow: 0 8px 32px rgba(0,0,0,0.1);
 `;
 
-const GameInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-`;
-
-const Title = styled.h2`
-  margin: 0;
-  font-size: 2rem;
-  background: linear-gradient(45deg, #1e40af, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-`;
-
-const GameType = styled.span`
-  font-size: 1.1rem;
-  color: #64748b;
-  font-weight: 500;
-`;
-
-const BackButton = styled.button`
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  border: none;
-  border-radius: 15px;
-  padding: 12px 24px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
-  }
-`;
-
 const GameCard = styled.div`
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20px);
   border-radius: 25px;
   padding: 40px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
+  position: relative;
+`;
+
+const TimerBar = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 25px 25px 0 0;
+  overflow: hidden;
+`;
+
+const TimerFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  width: ${props => props.progress}%;
+  transition: width ${props => props.time}ms linear;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
 `;
 
 const ProgressBar = styled.div`
@@ -131,167 +119,126 @@ const GameArea = styled.div`
   gap: 25px;
 `;
 
-const OptionsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  width: 100%;
-  max-width: 700px;
-`;
-
-const OptionButton = styled.button`
-  padding: 22px;
-  border: 3px solid #e5e7eb;
-  border-radius: 20px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  font-size: 16px;
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-
-  &:hover:not(:disabled) {
-    border-color: #3b82f6;
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
-  }
-
-  ${props => props.selected && `
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    color: white;
-    border-color: #2563eb;
-  `}
-
-  ${props => props.disabled && `
-    opacity: 0.5;
-    cursor: not-allowed;
-  `}
-`;
-
-const TextInput = styled.input`
-  width: 100%;
-  max-width: 500px;
-  padding: 22px;
-  border: 3px solid #e5e7eb;
-  border-radius: 20px;
-  font-size: 18px;
-  text-align: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-    transform: scale(1.02);
-  }
-`;
-
-const ActionButton = styled.button`
-  padding: 18px 40px;
-  border: none;
-  border-radius: 20px;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-
-  background: linear-gradient(135deg, ${props => props.variant === 'next' ? '#3b82f6, #1d4ed8' : '#10b981, #059669'});
-  color: white;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const Feedback = styled.div`
-  font-size: 2rem;
+const MotivationMessage = styled.div`
+  font-size: 1.8rem;
   font-weight: bold;
   padding: 25px 40px;
-  border-radius: 25px;
+  border-radius: 20px;
   text-align: center;
-  animation: pulse 0.6s ease-out;
-
-  ${props => props.correct ? `
-    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-    color: #166534;
-  ` : `
-    background: linear-gradient(135deg, #fef2f2, #fecaca);
-    color: #dc2626;
-  `}
-`;
-
-const HangmanContainer = styled.div`
-  text-align: center;
-  max-width: 700px;
-`;
-
-const HangmanWord = styled.div`
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin: 30px 0;
-  letter-spacing: 8px;
-  min-height: 60px;
-`;
-
-const Keyboard = styled.div`
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 8px;
+  animation: ${pulse} 0.8s ease-out;
   max-width: 500px;
   margin: 0 auto;
-  padding: 20px;
+
+  ${props => props.correct ? css`
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #166534;
+  ` : css`
+    background: linear-gradient(135deg, #fef2f2, #fecaca);
+    color: #dc2626;
+    animation: ${shake} 0.5s ease-in-out;
+  `}
 `;
 
-const KeyboardKey = styled.button`
-  aspect-ratio: 1;
-  border-radius: 12px;
-  border: 2px solid #e5e7eb;
-  background: white;
-  font-weight: bold;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+// FLASHCARD DRAG & DROP
+const FlashcardContainer = styled.div`
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+`;
 
-  ${props => props.used && `
-    opacity: 0.4;
-    background: #e5e7eb;
-  `}
+const Flashcard = styled.div`
+  width: 220px;
+  height: 120px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 20px;
+  cursor: grab;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+  user-select: none;
+  transition: all 0.3s ease;
 
-  &:hover:not(:disabled):not(:used) {
+  &:active {
+    cursor: grabbing;
     transform: scale(1.05);
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
   }
 `;
 
-const ResultModal = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
+const DropZone = styled.div`
+  width: 280px;
+  height: 140px;
+  border: 4px dashed ${props => props.isCorrect ? '#10b981' : props.isWrong ? '#ef4444' : '#e5e7eb'};
+  border-radius: 20px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
+  justify-content: center;
+  background: ${props => props.isCorrect ? '#d1fae5' : props.isWrong ? '#fee2e2' : '#f8fafc'};
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  ${props => props.droppable && `
+    &:hover { border-color: #3b82f6; background: #eff6ff; }
+  `}
 `;
 
-const ResultCard = styled.div`
-  background: linear-gradient(135deg, #ffffff, #f8fafc);
-  padding: 50px;
-  border-radius: 30px;
-  text-align: center;
-  box-shadow: 0 25px 80px rgba(0,0,0,0.4);
-  max-width: 500px;
-  width: 90%;
-  animation: ${slideIn} 0.8s ease-out;
+const DropZoneLabel = styled.div`
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+`;
+
+const DroppedItem = styled.div`
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 0.95rem;
+`;
+
+// MATCHING GAME
+const MatchingContainer = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  max-width: 700px;
+  width: 100%;
+`;
+
+const MatchingCard = styled.div`
+  height: 100px;
+  border: 3px solid #e5e7eb;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+
+  &:hover {
+    border-color: #3b82f6;
+    transform: translateY(-3px);
+  }
+
+  ${props => props.matched && `
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-color: #059669;
+  `}
 `;
 
 export default function GamePlay() {
@@ -305,13 +252,18 @@ export default function GamePlay() {
   const [feedback, setFeedback] = useState(null);
   const [result, setResult] = useState(null);
   const [userAnswer, setUserAnswer] = useState('');
-  const [usedLetters, setUsedLetters] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [dragData, setDragData] = useState(null);
 
   const timeoutRef = useRef(null);
+  const questionTimerRef = useRef(null);
 
   useEffect(() => {
     loadLevel();
-    return () => clearTimeout(timeoutRef.current);
+    return () => {
+      clearTimeout(timeoutRef.current);
+      clearInterval(questionTimerRef.current);
+    };
   }, [id]);
 
   const loadLevel = async () => {
@@ -319,10 +271,13 @@ export default function GamePlay() {
       const res = await apiGet(`/game/level/${id}`);
       if (!res.status) throw new Error("Load gagal");
 
-      const fixedQuestions = (res.questions || []).map((q) => ({
-        ...q,
-        meta: typeof q.meta === "string" ? JSON.parse(q.meta) : q.meta
-      }));
+      const fixedQuestions = (res.questions || []).map((q) => {
+        let meta = q.meta;
+        if (typeof meta === "string") {
+          try { meta = JSON.parse(meta); } catch { meta = {}; }
+        }
+        return { ...q, meta };
+      });
 
       setLevel(res.level);
       setQuestions(fixedQuestions);
@@ -330,46 +285,87 @@ export default function GamePlay() {
       setAnswers([]);
       setResult(null);
       setUserAnswer('');
-      setUsedLetters([]);
     } catch (err) {
       console.error(err);
       alert("Gagal memuat level");
     }
   };
 
-  if (!level) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Memuat level...</div>;
-  if (!questions.length) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Level belum memiliki soal</div>;
+  useEffect(() => {
+    if (index < questions.length) {
+      // Timer 20 detik per soal
+      setTimeLeft(20);
+      questionTimerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(questionTimerRef.current);
+            submitAnswer(null); // Auto submit jika kehabisan waktu
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [index]);
 
-  const q = questions[index];
+  const motivationMessages = {
+    correct: [
+      "Hebat! Kamu semakin jago! 🚀",
+      "Perfect! Terus semangat ya! 💪",
+      "Mantap! Kamu luar biasa! ⭐",
+      "Yes! Langkah menuju mastery! 🎯"
+    ],
+    wrong: [
+      "Tenang, kamu pasti bisa! Coba lagi! 💪",
+      "Belum apa-apa, masih banyak kesempatan! 🌟",
+      "Jangan menyerah! Kamu hebat! 🔥",
+      "Belajar dari kesalahan = menang besar! ⚡"
+    ],
+    greatResult: [
+      "🏆 PERFECT! Kamu jenius!",
+      "⭐ EXCELLENT! Level master tercapai!",
+      "🎉 INCREDIBLE! Semua benar!",
+      "🔥 LEGENDARY! Tak terkalahkan!"
+    ],
+    goodResult: [
+      "👍 BAGUS! Hampir sempurna!",
+      "✨ KEREN! Teruskan momentum ini!",
+      "🎯 TEPAT! Kamu on fire!",
+      "💎 HEBAT! Hasil luar biasa!"
+    ],
+    needPractice: [
+      "💪 Kamu bisa lebih baik lagi!",
+      "📚 Latihan lagi yuk, pasti bisa!",
+      "🌱 Masih proses, terus belajar!",
+      "⚡ Next time pasti lebih mantap!"
+    ]
+  };
 
-  const submitAnswer = useCallback((answer) => {
+  const getRandomMessage = (type) => {
+    const messages = motivationMessages[type];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+
+  const submitAnswer = (answer) => {
+    clearInterval(questionTimerRef.current);
     const newAnswers = [...answers];
     newAnswers[index] = answer;
     setAnswers(newAnswers);
     setUserAnswer('');
 
-    // Auto feedback untuk instant feedback
     let correct = false;
-    const meta = q.meta;
-
-    switch (q.type) {
-      case "mcq":
-        correct = Number(answer) === Number(meta.answerIndex);
-        break;
-      case "truefalse":
-      case "dragdrop":
-        correct = String(answer).trim().toLowerCase() === String(meta.isTrue || meta.correctZone).toLowerCase();
-        break;
-      case "essay":
-      case "typing":
-        correct = String(answer).trim().toLowerCase() === String(meta.answer).trim().toLowerCase();
-        break;
-      case "sort":
-        correct = JSON.stringify(answer.sort()) === JSON.stringify(meta.correctOrder);
-        break;
-      case "memory":
-        correct = answer === meta.cardPair;
-        break;
+    const q = questions[index];
+    
+    if (q.type === "mcq") {
+      correct = Number(answer) === Number(q.meta.answerIndex);
+    } else if (["essay", "typing"].includes(q.type)) {
+      correct = String(answer).trim().toLowerCase() === String(q.meta.answer).trim().toLowerCase();
+    } else if (q.type === "truefalse") {
+      correct = Boolean(answer) === Boolean(q.meta.isTrue);
+    } else if (q.type === "flashcard") {
+      correct = answer === 'correct';
+    } else if (q.type === "matching") {
+      correct = q.meta.pairs.every((pair, i) => answers[index]?.[i] === pair.answerIndex);
     }
 
     setFeedback(correct ? "correct" : "wrong");
@@ -378,13 +374,106 @@ export default function GamePlay() {
       setFeedback(null);
       if (index + 1 < questions.length) {
         setIndex((prev) => prev + 1);
-        setUserAnswer('');
-        setUsedLetters([]);
       } else {
         finish(newAnswers);
       }
-    }, 1500);
-  }, [answers, index, questions.length, q]);
+    }, 2000);
+  };
+
+  const renderFlashcardGame = () => {
+    const q = questions[index];
+    return (
+      <FlashcardContainer>
+        {q.meta.statements.map((statement, i) => (
+          <Flashcard
+            key={i}
+            draggable
+            onDragStart={(e) => setDragData({ statement, index: i })}
+          >
+            {statement.text}
+          </Flashcard>
+        ))}
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          <DropZone
+            droppable={true}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragData) {
+                const isCorrect = dragData.statement.isCorrect;
+                submitAnswer(isCorrect ? 'correct' : 'wrong');
+                setDragData(null);
+              }
+            }}
+          >
+            <DropZoneLabel>✅ BENAR</DropZoneLabel>
+            <div style={{ fontSize: '1.1rem', color: '#059669' }}>Taruh pernyataan benar</div>
+          </DropZone>
+
+          <DropZone
+            droppable={true}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragData) {
+                const isCorrect = dragData.statement.isCorrect;
+                submitAnswer(isCorrect ? 'correct' : 'wrong');
+                setDragData(null);
+              }
+            }}
+          >
+            <DropZoneLabel>❌ SALAH</DropZoneLabel>
+            <div style={{ fontSize: '1.1rem', color: '#dc2626' }}>Taruh pernyataan salah</div>
+          </DropZone>
+        </div>
+      </FlashcardContainer>
+    );
+  };
+
+  const renderMatchingGame = () => {
+    const q = questions[index];
+    const [selectedLeft, setSelectedLeft] = useState(null);
+    
+    return (
+      <MatchingContainer>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {q.meta.leftItems.map((item, i) => (
+            <MatchingCard
+              key={`left-${i}`}
+              onClick={() => {
+                if (!selectedLeft) setSelectedLeft(i);
+              }}
+              style={{ 
+                background: selectedLeft === i ? '#dbeafe' : 'white',
+                borderColor: selectedLeft === i ? '#3b82f6' : '#e5e7eb'
+              }}
+            >
+              {item}
+            </MatchingCard>
+          ))}
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {q.meta.rightItems.map((item, i) => (
+            <MatchingCard
+              key={`right-${i}`}
+              onClick={() => {
+                if (selectedLeft !== null) {
+                  const answer = Array(4).fill(null);
+                  answer[selectedLeft] = i;
+                  submitAnswer(answer);
+                  setSelectedLeft(null);
+                }
+              }}
+            >
+              {item}
+            </MatchingCard>
+          ))}
+        </div>
+      </MatchingContainer>
+    );
+  };
 
   const finish = async (finalAnswers) => {
     try {
@@ -403,203 +492,151 @@ export default function GamePlay() {
   };
 
   const renderGame = () => {
+    const q = questions[index];
     switch (q.type) {
       case "mcq":
         return (
-          <OptionsGrid>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', width: '100%', maxWidth: '600px' }}>
             {q.meta.options?.map((opt, i) => (
-              <OptionButton
+              <button
                 key={i}
-                selected={answers[index] === i}
-                disabled={!!feedback}
+                style={{
+                  padding: '20px',
+                  border: '3px solid #e5e7eb',
+                  borderRadius: '20px',
+                  background: answers[index] === i ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'white',
+                  color: answers[index] === i ? 'white' : '#1e293b',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                  transition: 'all 0.3s ease'
+                }}
                 onClick={() => submitAnswer(i)}
               >
                 {opt}
-              </OptionButton>
+              </button>
             ))}
-          </OptionsGrid>
+          </div>
         );
 
       case "truefalse":
         return (
-          <OptionsGrid style={{ gridTemplateColumns: '1fr 1fr', maxWidth: '500px' }}>
-            <OptionButton 
-              selected={answers[index] === true}
-              disabled={!!feedback}
-              onClick={() => submitAnswer(true)}
-            >
-              ✅ BENAR
-            </OptionButton>
-            <OptionButton 
-              selected={answers[index] === false}
-              disabled={!!feedback}
-              onClick={() => submitAnswer(false)}
-            >
-              ❌ SALAH
-            </OptionButton>
-          </OptionsGrid>
-        );
-
-      case "dragdrop":
-      case "flashcard":
-        return (
-          <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '900px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.3rem', marginBottom: '20px', color: '#059669' }}>✅ BENAR</div>
-              <div 
-                style={{
-                  width: '240px', height: '160px', border: '4px solid #10b981',
-                  borderRadius: '25px', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-                  cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600',
-                  boxShadow: '0 10px 30px rgba(16,185,129,0.3)',
-                  transition: 'all 0.3s ease'
-                }}
-                onClick={() => submitAnswer('true')}
-              >
-                Taruh di sini
-              </div>
-            </div>
-            
-            <div style={{
-              width: '320px', height: '160px', 
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              borderRadius: '30px', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: 'white', fontSize: '1.3rem',
-              fontWeight: 'bold', textAlign: 'center', boxShadow: '0 15px 40px rgba(59,130,246,0.4)'
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', maxWidth: '500px' }}>
+            <button onClick={() => submitAnswer(true)} style={{
+              padding: '25px', background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: 'white', border: 'none', borderRadius: '20px', fontSize: '1.2rem',
+              fontWeight: '700', cursor: 'pointer', boxShadow: '0 10px 30px rgba(16,185,129,0.4)'
             }}>
-              {q.content}
-            </div>
-            
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.3rem', marginBottom: '20px', color: '#dc2626' }}>❌ SALAH</div>
-              <div 
-                style={{
-                  width: '240px', height: '160px', border: '4px solid #ef4444',
-                  borderRadius: '25px', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
-                  cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600',
-                  boxShadow: '0 10px 30px rgba(239,68,68,0.3)',
-                  transition: 'all 0.3s ease'
-                }}
-                onClick={() => submitAnswer('false')}
-              >
-                Taruh di sini
-              </div>
-            </div>
+              ✅ BENAR
+            </button>
+            <button onClick={() => submitAnswer(false)} style={{
+              padding: '25px', background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+              color: 'white', border: 'none', borderRadius: '20px', fontSize: '1.2rem',
+              fontWeight: '700', cursor: 'pointer', boxShadow: '0 10px 30px rgba(239,68,68,0.4)'
+            }}>
+              ❌ SALAH
+            </button>
           </div>
         );
 
-      case "typing":
       case "essay":
+      case "typing":
         return (
           <>
-            <TextInput
+            <input
               type="text"
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="Ketik jawaban Anda di sini..."
+              style={{
+                width: '100%', maxWidth: '500px', padding: '25px', border: '3px solid #e5e7eb',
+                borderRadius: '25px', fontSize: '18px', textAlign: 'center', outline: 'none',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+              }}
               autoFocus
-              disabled={!!feedback}
             />
-            <ActionButton 
-              variant="submit"
+            <button 
               onClick={() => submitAnswer(userAnswer)}
-              disabled={!userAnswer.trim() || !!feedback}
+              disabled={!userAnswer.trim()}
+              style={{
+                padding: '20px 50px', border: 'none', borderRadius: '25px',
+                fontSize: '18px', fontWeight: '700', cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
+                background: userAnswer.trim() ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : '#ccc',
+                color: 'white', boxShadow: '0 10px 30px rgba(59,130,246,0.4)'
+              }}
             >
               Submit Jawaban
-            </ActionButton>
+            </button>
           </>
         );
 
-      case "sort":
-        return (
-          <div style={{ textAlign: 'center', maxWidth: '600px' }}>
-            <div style={{ fontSize: '1.2rem', marginBottom: '20px', color: '#64748b' }}>
-              Urutkan dengan benar:
-            </div>
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center',
-              minHeight: '200px', padding: '20px', border: '3px dashed #e5e7eb',
-              borderRadius: '20px', background: '#f8fafc'
-            }}>
-              {q.meta.items?.map((item, i) => (
-                <div key={i} style={{
-                  padding: '15px 25px', background: 'white', borderRadius: '15px',
-                  fontWeight: '600', cursor: 'grab', boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                  minWidth: '120px', textAlign: 'center'
-                }}>
-                  {item}
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: '20px', fontSize: '0.9rem', color: '#9ca3af' }}>
-              Drag untuk mengurutkan (simulasi)
-            </div>
-            <ActionButton 
-              variant="submit"
-              onClick={() => submitAnswer(q.meta.items)}
-              style={{ marginTop: '20px' }}
-            >
-              Submit Urutan
-            </ActionButton>
-          </div>
-        );
+      case "flashcard":
+        return renderFlashcardGame();
 
-      case "memory":
-        return (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '30px' }}>
-              Temukan pasangan: {q.meta.cards?.[0]} - ?
-            </div>
-            <OptionsGrid style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-              {q.meta.options?.map((opt, i) => (
-                <OptionButton
-                  key={i}
-                  onClick={() => submitAnswer(i)}
-                  disabled={!!feedback}
-                >
-                  {opt}
-                </OptionButton>
-              ))}
-            </OptionsGrid>
-          </div>
-        );
+      case "matching":
+        return renderMatchingGame();
 
       default:
-        return <div style={{ textAlign: 'center', color: '#9ca3af' }}>Game type "{q.type}" dalam pengembangan</div>;
+        return <div>Game type "{q.type}" belum didukung</div>;
     }
   };
+
+  if (!level) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Memuat level...</div>;
+  if (!questions.length) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Level belum memiliki soal</div>;
+
+  const q = questions[index];
 
   return (
     <Container>
       <Sidebar collapsed={collapsed} toggleSidebar={() => setCollapsed(!collapsed)} />
       
       <Main collapsed={collapsed}>
-        <Header>
-          <GameInfo>
-            <Title>{level.title}</Title>
-            <GameType>🎮 {level.type?.toUpperCase()} - Level {level.levelNumber}</GameType>
-          </GameInfo>
-          <BackButton onClick={() => navigate(-1)}>← Kembali</BackButton>
-        </Header>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ color: 'white', fontSize: '1.2rem', fontWeight: '600' }}>
+            ⏱️ {timeLeft}s
+          </div>
+          <button onClick={() => navigate(-1)} style={{
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white',
+            border: 'none', borderRadius: '15px', padding: '12px 24px', cursor: 'pointer',
+            fontWeight: '600', boxShadow: '0 4px 15px rgba(239,68,68,0.4)'
+          }}>
+            ← Kembali
+          </button>
+        </div>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)',
+          padding: '25px 35px', borderRadius: '20px', marginBottom: '25px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', background: 'linear-gradient(45deg, #1e40af, #3b82f6)', 
+                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            {level.title}
+          </h2>
+          <div style={{ color: '#64748b', fontWeight: '500' }}>
+            🎮 {level.type?.toUpperCase()} - Level {level.levelNumber} | Soal {index + 1}/{questions.length}
+          </div>
+        </div>
 
         <GameCard>
-          <ProgressBar>
+          <TimerBar>
+            <TimerFill progress={(timeLeft / 20) * 100} time={1000} />
+          </TimerBar>
+          
+          <ProgressBar style={{ marginBottom: '30px' }}>
             <ProgressFill progress={(index / questions.length) * 100} />
           </ProgressBar>
-          
-          <QuestionCounter>
-            Soal {index + 1} dari {questions.length}
-          </QuestionCounter>
 
           <QuestionContent>{q.content}</QuestionContent>
 
           <GameArea>
             {feedback && (
-              <Feedback correct={feedback === "correct"}>
-                {feedback === "correct" ? "✅ Jawaban Benar!" : "❌ Jawaban Salah!"}
-              </Feedback>
+              <MotivationMessage correct={feedback === "correct"}>
+                {feedback === "correct" 
+                  ? getRandomMessage("correct") 
+                  : getRandomMessage("wrong")
+                }
+              </MotivationMessage>
             )}
             
             {!feedback && renderGame()}
@@ -608,54 +645,71 @@ export default function GamePlay() {
       </Main>
 
       {result && (
-        <ResultModal onClick={(e) => e.target === e.currentTarget && navigate("/game")}>
-          <ResultCard>
-            <h2 style={{ fontSize: '2.5rem', marginBottom: '20px' }}>🎉 Level Selesai!</h2>
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, backdropFilter: 'blur(10px)'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff, #f8fafc)', padding: '60px 50px',
+            borderRadius: '30px', textAlign: 'center', boxShadow: '0 25px 80px rgba(0,0,0,0.4)',
+            maxWidth: '500px', width: '90%', animation: `${slideIn} 0.8s ease-out`
+          }}>
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '25px' }}>🎉 Level Selesai!</h2>
+            
             <div style={{ fontSize: '4rem', marginBottom: '30px' }}>
-              {result.scorePercent >= 90 ? '🏆' : result.scorePercent >= 70 ? '🥈' : '🥉'}
+              {result.scorePercent >= 90 ? '🏆' : result.scorePercent >= 70 ? '🥇' : '🥈'}
             </div>
             
             <div style={{ 
-              fontSize: '2.5rem', 
-              marginBottom: '20px',
-              color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#d97706' : '#dc2626'
+              fontSize: '2.5rem', marginBottom: '25px',
+              color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#d97706' : '#dc2626',
+              fontWeight: 'bold'
             }}>
               {result.scorePercent}%
             </div>
             
-            <p style={{ fontSize: '1.3rem', marginBottom: '10px' }}>
-              Benar: <strong>{result.correct}/{result.total}</strong>
-            </p>
-            <p style={{ fontSize: '1.3rem', marginBottom: '25px' }}>
-              XP: <strong style={{ color: '#3b82f6' }}>+{result.gainedXp}</strong>
-            </p>
+            <div style={{ fontSize: '1.3rem', marginBottom: '15px', color: '#374151' }}>
+              {result.scorePercent >= 90 && getRandomMessage("greatResult")}
+              {result.scorePercent >= 70 && result.scorePercent < 90 && getRandomMessage("goodResult")}
+              {result.scorePercent < 70 && getRandomMessage("needPractice")}
+            </div>
+
+            <div style={{ fontSize: '1.2rem', marginBottom: '30px' }}>
+              Benar: <strong style={{ color: '#3b82f6' }}>{result.correct}/{result.total}</strong> | 
+              XP: <strong style={{ color: '#10b981' }}>+{result.gainedXp}</strong>
+            </div>
 
             {result.badge && (
-              <div style={{ marginBottom: '35px' }}>
-                <h4 style={{ marginBottom: '15px', color: '#1e293b' }}>🏅 Badge Baru!</h4>
+              <div style={{ marginBottom: '40px' }}>
+                <h4 style={{ marginBottom: '20px', color: '#1e293b' }}>🏅 Badge Baru!</h4>
                 <img 
                   src={result.badge.image} 
                   alt={result.badge.badge_name}
                   style={{
                     width: '120px', height: '120px', objectFit: 'contain',
-                    borderRadius: '20px', boxShadow: '0 12px 35px rgba(0,0,0,0.2)'
+                    borderRadius: '20px', boxShadow: '0 15px 40px rgba(0,0,0,0.2)'
                   }}
                 />
-                <div style={{ fontWeight: '700', marginTop: '12px', fontSize: '1.1rem' }}>
+                <div style={{ fontWeight: '700', marginTop: '15px', fontSize: '1.1rem' }}>
                   {result.badge.badge_name}
                 </div>
               </div>
             )}
 
-            <ActionButton 
-              variant="next"
+            <button 
               onClick={() => navigate("/game")}
-              style={{ width: '100%', padding: '22px', fontSize: '1.2rem' }}
+              style={{
+                width: '100%', padding: '25px', fontSize: '1.3rem', fontWeight: '700',
+                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white',
+                border: 'none', borderRadius: '25px', cursor: 'pointer',
+                boxShadow: '0 15px 40px rgba(59,130,246,0.4)'
+              }}
             >
-              Kembali ke Peta Game
-            </ActionButton>
-          </ResultCard>
-        </ResultModal>
+              🎮 Kembali ke Peta Game
+            </button>
+          </div>
+        </div>
       )}
     </Container>
   );

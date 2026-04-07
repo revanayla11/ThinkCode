@@ -1,490 +1,573 @@
-// pages/admin/GameEditor.jsx
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import styled from 'styled-components';
-import { apiGet, apiPost, apiPut, apiDelete } from '../../services/api';
+import React, { useEffect, useState } from "react";
+import styled, { keyframes } from "styled-components";
+import { apiGet, apiPost, apiPut, apiDelete } from "../../services/api";
 
-const EditorContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 30px;
-  background: #f8fafc;
-  min-height: 100vh;
+// Keyframes for animations
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
-const Header = styled.div`
-  text-align: center;
+const pulse = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+`;
+
+// Styled Components
+const Container = styled.div`
+
+  color: #ffffff;
+`;
+
+const Header = styled.h1`
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #1E1E2F;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #1E1E2F;
+`;
+
+const MateriContainer = styled.div`
   margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 3px solid #e5e7eb;
 `;
 
-const LevelList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  margin-bottom: 40px;
-`;
-
-const LevelCard = styled.div`
-  background: white;
-  padding: 25px;
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-  border-left: 5px solid ${props => props.active ? '#3b82f6' : '#e5e7eb'};
+const MateriButton = styled.button`
+  margin-right: 10px;
+  margin-bottom: 10px;
+  padding: 10px 20px;
+  border: 2px solid ${props => props.active ? '#1E1E2F' : '#d1d5db'};
+  border-radius: 10px;
+  background: ${props => props.active ? '#1E1E2F' : '#ffffff'};
+  color: ${props => props.active ? '#ffffff' : '#1E1E2F'};
   cursor: pointer;
   transition: all 0.3s ease;
-
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(30, 30, 47, 0.3);
   }
 `;
 
-const QuestionForm = styled.div`
-  background: white;
+const FormCard = styled.div`
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
   padding: 30px;
   border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-  margin-bottom: 25px;
+  box-shadow: 0 10px 30px rgba(30, 30, 47, 0.2);
+  margin-bottom: 30px;
+  animation: ${fadeIn} 0.8s ease-out;
 `;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
 `;
 
-const Label = styled.label`
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #374151;
-`;
-
-const Input = styled.input`
+const InputField = styled.input`
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  transition: border-color 0.3s ease;
-
+  padding: 12px 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    border-color: #1E1E2F;
+    box-shadow: 0 0 0 3px rgba(30, 30, 47, 0.1);
   }
 `;
 
-const TextArea = styled.textarea`
+const TextareaField = styled.textarea`
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  font-family: inherit;
-  min-height: 100px;
-  resize: vertical;
-  transition: border-color 0.3s ease;
-
+  padding: 12px 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  min-height: 80px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    border-color: #1E1E2F;
+    box-shadow: 0 0 0 3px rgba(30, 30, 47, 0.1);
   }
 `;
 
-const Select = styled.select`
+const SelectField = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  background: white;
-  cursor: pointer;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  &:focus {
+    outline: none;
+    border-color: #1E1E2F;
+    box-shadow: 0 0 0 3px rgba(30, 30, 47, 0.1);
+  }
 `;
 
 const Button = styled.button`
-  padding: 14px 28px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
+  font-size: 1rem;
   font-weight: 600;
-  font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  margin-right: 10px;
-  margin-bottom: 10px;
-
-  ${props => props.variant === 'primary' && `
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    color: white;
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(59,130,246,0.4);
-    }
-  `}
-
-  ${props => props.variant === 'danger' && `
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(239,68,68,0.4);
-    }
-  `}
-
-  ${props => props.variant === 'success' && `
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(16,185,129,0.4);
-    }
-  `}
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: ${props => {
+    if (props.variant === 'success') return 'linear-gradient(135deg, #10b981, #059669)';
+    if (props.variant === 'danger') return 'linear-gradient(135deg, #ef4444, #dc2626)';
+    return 'linear-gradient(135deg, #1E1E2F, #3A3A4F)';
+  }};
+  color: white;
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(30, 30, 47, 0.3);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
-const QuestionsList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 `;
 
-const QuestionCard = styled.div`
-  background: #f9fafb;
-  padding: 20px;
-  border-radius: 15px;
-  border: 2px solid ${props => props.selected ? '#3b82f6' : '#e5e7eb'};
+const TableCard = styled.div`
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(30, 30, 47, 0.2);
+  overflow: hidden;
+  animation: ${fadeIn} 0.8s ease-out;
 `;
 
-export default function GameEditor() {
-  const { materiId } = useParams();
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+const TableHead = styled.thead`
+  background: #1E1E2F;
+  color: #ffffff;
+`;
+
+const TableHeader = styled.th`
+  padding: 15px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+`;
+
+const TableBody = styled.tbody``;
+
+const TableRow = styled.tr`
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.3s ease;
+  &:hover {
+    background: #f9fafb;
+  }
+`;
+
+const TableCell = styled.td`
+  padding: 15px;
+  font-size: 0.9rem;
+  color: #374151;
+`;
+
+export default function AdminMiniGame() {
+  const [materi, setMateri] = useState([]);
+  const [badges, setBadges] = useState([]);
+
+  const [selectedMateri, setSelectedMateri] = useState(null);
   const [levels, setLevels] = useState([]);
-  const [currentLevel, setCurrentLevel] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState(null);
   const [questions, setQuestions] = useState([]);
-  const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [formData, setFormData] = useState({
-    type: 'mcq',
-    content: '',
-    meta: {},
-    points: 10,
-    order: 0
+
+  const [levelForm, setLevelForm] = useState({
+    levelNumber: "",
+    title: "",
+    totalQuestions: "",
+    reward_xp: "",
+    reward_badge_id: "",
   });
+  const [editingLevelId, setEditingLevelId] = useState(null);
+
+  const [questionForm, setQuestionForm] = useState({
+    content: "",
+    type: "mcq",
+    options: ["", "", "", "", ""],
+    answerIndex: 0,
+    answer: "",
+  });
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
 
   useEffect(() => {
-    loadLevels();
-  }, [materiId]);
+    loadMateri();
+    loadBadges();
+  }, []);
 
-  const loadLevels = async () => {
-    try {
-      const res = await apiGet(`/admin/materi/${materiId}/game-levels`);
-      setLevels(res.data || []);
-    } catch (err) {
-      console.error(err);
+  const loadMateri = async () => {
+    const res = await apiGet("/admin/minigame/materi");
+    setMateri(res.data || []);
+  };
+
+  const loadBadges = async () => {
+    const res = await apiGet("/admin/minigame/badges");
+    setBadges(res.data || []);
+  };
+
+  const loadLevels = async (slug) => {
+    const res = await apiGet(`/admin/minigame/${slug}/levels`);
+    setLevels(res.data || []);
+    setSelectedLevel(null);
+    setQuestions([]);
+  };
+
+  const loadQuestions = async (slug, levelNumber) => {
+    const res = await apiGet(
+      `/admin/minigame/${slug}/levels/${levelNumber}`
+    );
+    setQuestions(res.data.questions || []);
+  };
+
+  const submitLevel = async () => {
+    if (!selectedMateri) return alert("Pilih materi dulu");
+
+    const payload = {
+      levelNumber: Number(levelForm.levelNumber),
+      title: levelForm.title,
+      totalQuestions: Number(levelForm.totalQuestions),
+      reward_xp: Number(levelForm.reward_xp),
+      reward_badge_id: levelForm.reward_badge_id || null,
+    };
+
+    if (editingLevelId) {
+      await apiPut(`/admin/minigame/level/${editingLevelId}`, payload);
+    } else {
+      await apiPost(
+        `/admin/minigame/${selectedMateri.slug}/levels`,
+        payload
+      );
     }
+
+    setLevelForm({
+      levelNumber: "",
+      title: "",
+      totalQuestions: "",
+      reward_xp: "",
+      reward_badge_id: "",
+    });
+    setEditingLevelId(null);
+    loadLevels(selectedMateri.slug);
   };
 
-  const loadQuestions = async (levelId) => {
-    try {
-      const res = await apiGet(`/admin/game/level/${levelId}/questions`);
-      setQuestions(res.questions || []);
-      const levelRes = await apiGet(`/admin/game/level/${levelId}`);
-      setCurrentLevel(levelRes.level);
-      setSelectedQuestion(null);
-    } catch (err) {
-      console.error(err);
+  const editLevel = (lvl) => {
+    setEditingLevelId(lvl.id);
+    setLevelForm({
+      levelNumber: lvl.levelNumber,
+      title: lvl.title,
+      totalQuestions: lvl.totalQuestions,
+      reward_xp: lvl.reward_xp,
+      reward_badge_id: lvl.reward_badge_id || "",
+    });
+  };
+
+  const deleteLevel = async (id) => {
+    if (!window.confirm("Hapus level?")) return;
+    await apiDelete(`/admin/minigame/level/${id}`);
+    loadLevels(selectedMateri.slug);
+  };
+
+  const submitQuestion = async () => {
+    if (!selectedMateri || !selectedLevel)
+      return alert("Pilih level dulu");
+
+    const meta =
+      questionForm.type === "mcq"
+        ? {
+            options: questionForm.options,
+            answerIndex: Number(questionForm.answerIndex),
+          }
+        : {
+            answer: questionForm.answer,
+          };
+
+    const payload = {
+      content: questionForm.content,
+      type: questionForm.type,
+      meta,
+    };
+
+    if (editingQuestionId) {
+      await apiPut(`/admin/minigame/question/${editingQuestionId}`, payload);
+    } else {
+      await apiPost(
+        `/admin/minigame/${selectedMateri.slug}/levels/${selectedLevel.levelNumber}/question`,
+        payload
+      );
     }
+
+    setQuestionForm({
+      content: "",
+      type: "mcq",
+      options: ["", "", "", "", ""],
+      answerIndex: 0,
+      answer: "",
+    });
+    setEditingQuestionId(null);
+    loadQuestions(selectedMateri.slug, selectedLevel.levelNumber);
   };
 
-  const handleLevelSelect = (level) => {
-    loadQuestions(level.id);
+  const editQuestion = (q) => {
+    const meta = JSON.parse(q.meta || "{}");
+    setEditingQuestionId(q.id);
+    setQuestionForm({
+      content: q.content,
+      type: q.type,
+      options: meta.options || ["", "", "", "", ""],
+      answerIndex: meta.answerIndex ?? 0,
+      answer: meta.answer || "",
+    });
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const deleteQuestion = async (id) => {
+    if (!window.confirm("Hapus soal?")) return;
+    await apiDelete(`/admin/minigame/question/${id}`);
+    loadQuestions(selectedMateri.slug, selectedLevel.levelNumber);
   };
-
-  const handleMetaChange = (key, value) => {
-    setFormData(prev => ({
-      ...prev,
-      meta: {
-        ...prev.meta,
-        [key]: value
-      }
-    }));
-  };
-
-  const handleAddQuestion = async () => {
-    try {
-      await apiPost(`/admin/game/${currentLevel.id}/question`, formData);
-      loadQuestions(currentLevel.id);
-      setFormData({ type: 'mcq', content: '', meta: {}, points: 10, order: 0 });
-    } catch (err) {
-      alert('Gagal menambah soal');
-    }
-  };
-
-  const handleEditQuestion = async () => {
-    if (!selectedQuestion) return;
-    try {
-      await apiPut(`/admin/game/question/${selectedQuestion.id}`, formData);
-      loadQuestions(currentLevel.id);
-      setSelectedQuestion(null);
-      setFormData({ type: 'mcq', content: '', meta: {}, points: 10, order: 0 });
-    } catch (err) {
-      alert('Gagal update soal');
-    }
-  };
-
-  const handleDeleteQuestion = async (questionId) => {
-    if (!confirm('Hapus soal ini?')) return;
-    try {
-      await apiDelete(`/admin/game/question/${questionId}`);
-      loadQuestions(currentLevel.id);
-    } catch (err) {
-      alert('Gagal hapus soal');
-    }
-  };
-
-  const gameTypeFields = {
-    mcq: [
-      { key: 'options', label: 'Opsi (pisahkan dengan koma)', type: 'text' },
-      { key: 'answerIndex', label: 'Indeks Jawaban (0,1,2...)', type: 'number' }
-    ],
-    truefalse: [
-      { key: 'isTrue', label: 'Benar?', type: 'boolean' }
-    ],
-    flashcard: [
-      { key: 'cards', label: 'Kartu (JSON array)', type: 'text' }
-    ],
-    typing: [
-      { key: 'answer', label: 'Jawaban Benar', type: 'text' }
-    ],
-    sort: [
-      { key: 'items', label: 'Items (JSON array)', type: 'text' },
-      { key: 'correctOrder', label: 'Urutan Benar (JSON array)', type: 'text' }
-    ],
-    memory: [
-      { key: 'cardPair', label: 'Pasangan Kartu', type: 'text' },
-      { key: 'options', label: 'Opsi (JSON array)', type: 'text' }
-    ]
-  };
-
-  useEffect(() => {
-    if (selectedQuestion) {
-      setFormData({
-        type: selectedQuestion.type,
-        content: selectedQuestion.content,
-        meta: selectedQuestion.meta || {},
-        points: selectedQuestion.points,
-        order: selectedQuestion.order
-      });
-    }
-  }, [selectedQuestion]);
 
   return (
-    <EditorContainer>
-      <Header>
-        <h1 style={{ fontSize: '2.5rem', margin: 0, color: '#1f2937' }}>
-          🎮 Editor Mini Game
-        </h1>
-        <p style={{ color: '#6b7280', margin: 0 }}>Kelola level dan soal game</p>
-      </Header>
+    <Container>
+      <Header>Mini Game Admin</Header>
 
-      <LevelList>
-        {levels.map(level => (
-          <LevelCard 
-            key={level.id}
-            active={currentLevel?.id === level.id}
-            onClick={() => handleLevelSelect(level)}
+      <SectionTitle>Pilih Materi</SectionTitle>
+      <MateriContainer>
+        {materi.map((m) => (
+          <MateriButton
+            key={m.id}
+            active={selectedMateri?.id === m.id}
+            onClick={() => {
+              setSelectedMateri(m);
+              loadLevels(m.slug);
+            }}
           >
-            <h3 style={{ margin: '0 0 10px 0', color: '#1f2937' }}>
-              Level {level.levelNumber}
-            </h3>
-            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '10px' }}>
-              {level.title}
-            </div>
-            <div style={{ 
-              fontSize: '0.85rem', 
-              color: currentLevel?.id === level.id ? '#3b82f6' : '#6b7280',
-              fontWeight: '600'
-            }}>
-              {level.type.toUpperCase()} • {level.totalQuestions || 0} soal
-            </div>
-          </LevelCard>
+            {m.title}
+          </MateriButton>
         ))}
-      </LevelList>
+      </MateriContainer>
 
-      {currentLevel && (
+      {selectedMateri && (
         <>
-          <QuestionForm>
-            <h3 style={{ marginBottom: '25px', color: '#1f2937' }}>
-              {selectedQuestion ? '✏️ Edit Soal' : '➕ Tambah Soal Baru'}
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <FormGroup>
-                <Label>Tipe Soal</Label>
-                <Select 
-                  name="type" 
-                  value={formData.type}
-                  onChange={handleInputChange}
-                >
-                  <option value="mcq">Multiple Choice (MCQ)</option>
-                  <option value="truefalse">Benar/Salah</option>
-                  <option value="dragdrop">Drag & Drop</option>
-                  <option value="flashcard">Flashcard</option>
-                  <option value="typing">Typing</option>
-                  <option value="sort">Sorting</option>
-                  <option value="memory">Memory Match</option>
-                </Select>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Poin</Label>
-                <Input 
-                  type="number" 
-                  name="points"
-                  value={formData.points}
-                  onChange={handleInputChange}
-                  min="1"
-                  max="100"
-                />
-              </FormGroup>
-            </div>
-
+          <SectionTitle>Form Level</SectionTitle>
+          <FormCard>
             <FormGroup>
-              <Label>Isi Soal</Label>
-              <TextArea 
-                name="content"
-                value={formData.content}
-                onChange={handleInputChange}
-                placeholder="Tulis pertanyaan atau instruksi soal..."
+              <InputField
+                type="number"
+                placeholder="Level"
+                value={levelForm.levelNumber}
+                onChange={(e) =>
+                  setLevelForm({ ...levelForm, levelNumber: e.target.value })
+                }
               />
-            </FormGroup>
+              <InputField
+                placeholder="Judul Level"
+                value={levelForm.title}
+                onChange={(e) =>
+                  setLevelForm({ ...levelForm, title: e.target.value })
+                }
+              />
+              <InputField
+                type="number"
+                placeholder="Total Soal"
+                value={levelForm.totalQuestions}
+                onChange={(e) =>
+                  setLevelForm({ ...levelForm, totalQuestions: e.target.value })
+                }
+              />
+              <InputField
+                type="number"
+                placeholder="XP"
+                value={levelForm.reward_xp}
+                onChange={(e) =>
+                  setLevelForm({ ...levelForm, reward_xp: e.target.value })
+                }
+              />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-              {gameTypeFields[formData.type]?.map(field => (
-                <FormGroup key={field.key}>
-                  <Label>{field.label}</Label>
-                  {field.type === 'boolean' ? (
-                    <Select
-                      value={formData.meta[field.key] || 'true'}
-                      onChange={(e) => handleMetaChange(field.key, e.target.value === 'true')}
-                    >
-                      <option value="true">Benar</option>
-                      <option value="false">Salah</option>
-                    </Select>
-                  ) : (
-                    <Input
-                      type={field.type === 'number' ? 'number' : 'text'}
-                      value={formData.meta[field.key] || ''}
-                      onChange={(e) => handleMetaChange(field.key, 
-                        field.type === 'number' ? Number(e.target.value) : e.target.value
-                      )}
-                      placeholder={field.placeholder || `Masukkan ${field.key}...`}
-                    />
-                  )}
-                </FormGroup>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-              {selectedQuestion ? (
-                <>
-                  <Button variant="primary" onClick={handleEditQuestion}>
-                    💾 Update Soal
-                  </Button>
-                  <Button 
-                    variant="danger" 
-                    onClick={() => {
-                      setSelectedQuestion(null);
-                      setFormData({ type: 'mcq', content: '', meta: {}, points: 10, order: 0 });
-                    }}
-                  >
-                    ❌ Batal
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="success" onClick={handleAddQuestion}>
-                    ➕ Tambah Soal
-                  </Button>
-                  <Button variant="primary" onClick={() => {}}>
-                    📋 Preview
-                  </Button>
-                </>
-              )}
-            </div>
-          </QuestionForm>
-
-          <QuestionsList>
-            <h3 style={{ gridColumn: '1 / -1', marginBottom: '20px', color: '#1f2937' }}>
-              📋 Daftar Soal ({questions.length})
-            </h3>
-            
-            {questions.map(question => (
-              <QuestionCard 
-                key={question.id}
-                selected={selectedQuestion?.id === question.id}
-                onClick={() => setSelectedQuestion(question)}
+              <SelectField
+                value={levelForm.reward_badge_id}
+                onChange={(e) =>
+                  setLevelForm({
+                    ...levelForm,
+                    reward_badge_id: e.target.value,
+                  })
+                }
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                  <div>
-                    <div style={{ fontWeight: '700', color: '#1f2937', marginBottom: '5px' }}>
-                      {question.type.toUpperCase()}
-                    </div>
-                    <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                      {question.points} poin • Urutan #{question.order + 1}
-                    </div>
-                  </div>
-                  <Button 
-                    variant="danger" 
-                    style={{ padding: '8px 12px', fontSize: '14px' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteQuestion(question.id);
-                    }}
-                  >
-                    🗑️
-                  </Button>
-                </div>
-                
-                <div style={{ 
-                  fontSize: '1rem', 
-                  lineHeight: '1.5', 
-                  color: '#374151',
-                  marginBottom: '15px',
-                  padding: '12px',
-                  background: 'white',
-                  borderRadius: '10px',
-                  borderLeft: '4px solid #3b82f6'
-                }}>
-                  {question.content.substring(0, 100)}{question.content.length > 100 ? '...' : ''}
-                </div>
-                
-                <details style={{ fontSize: '0.85rem' }}>
-                  <summary style={{ cursor: 'pointer', color: '#6b7280', marginBottom: '8px' }}>
-                    Meta Data
-                  </summary>
-                  <pre style={{ 
-                    background: '#f3f4f6', 
-                    padding: '12px', 
-                    borderRadius: '8px', 
-                    fontSize: '0.8rem',
-                    maxHeight: '100px',
-                    overflow: 'auto'
-                  }}>
-                    {JSON.stringify(question.meta, null, 2)}
-                  </pre>
-                </details>
-              </QuestionCard>
-            ))}
-          </QuestionsList>
+                <option value="">-- Tanpa Badge --</option>
+                {badges.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.badge_name}
+                  </option>
+                ))}
+              </SelectField>
+
+              <Button onClick={submitLevel}>
+                {editingLevelId ? "Update Level" : "Tambah Level"}
+              </Button>
+            </FormGroup>
+          </FormCard>
+
+          <TableCard>
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeader>Level</TableHeader>
+                  <TableHeader>Judul</TableHeader>
+                  <TableHeader>XP</TableHeader>
+                  <TableHeader>Aksi</TableHeader>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {levels.map((l) => (
+                  <TableRow key={l.id}>
+                    <TableCell>{l.levelNumber}</TableCell>
+                    <TableCell>{l.title}</TableCell>
+                    <TableCell>{l.reward_xp}</TableCell>
+                    <TableCell>
+                      <ButtonGroup>
+                        <Button onClick={() => editLevel(l)}>Edit</Button>
+                        <Button variant="danger" onClick={() => deleteLevel(l.id)}>Hapus</Button>
+                        <Button variant="success" onClick={() => {
+                          setSelectedLevel(l);
+                          loadQuestions(selectedMateri.slug, l.levelNumber);
+                        }}>Kelola Soal</Button>
+                      </ButtonGroup>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
         </>
       )}
-    </EditorContainer>
+
+      {selectedLevel && (
+        <>
+          <SectionTitle>Form Soal – Level {selectedLevel.levelNumber}</SectionTitle>
+
+          <FormCard>
+            <FormGroup>
+              <TextareaField
+                placeholder="Pertanyaan"
+                value={questionForm.content}
+                onChange={(e) =>
+                  setQuestionForm({ ...questionForm, content: e.target.value })
+                }
+              />
+
+              <SelectField
+                value={questionForm.type}
+                onChange={(e) =>
+                  setQuestionForm({ ...questionForm, type: e.target.value })
+                }
+              >
+                <option value="mcq">Pilihan Ganda</option>
+                <option value="essay">Essay</option>
+              </SelectField>
+
+              {questionForm.type === "mcq" &&
+                questionForm.options.map((opt, i) => (
+                  <InputField
+                    key={i}
+                    placeholder={`Opsi ${i + 1}`}
+                    value={opt}
+                    onChange={(e) => {
+                      const opts = [...questionForm.options];
+                      opts[i] = e.target.value;
+                      setQuestionForm({ ...questionForm, options: opts });
+                    }}
+                  />
+                ))}
+
+              {questionForm.type === "mcq" && (
+                <SelectField
+                  value={questionForm.answerIndex}
+                  onChange={(e) =>
+                    setQuestionForm({
+                      ...questionForm,
+                      answerIndex: e.target.value,
+                    })
+                  }
+                >
+                  {questionForm.options.map((_, i) => (
+                    <option key={i} value={i}>
+                      Opsi {i + 1}
+                    </option>
+                  ))}
+                </SelectField>
+              )}
+
+              {questionForm.type === "essay" && (
+                <InputField
+                  placeholder="Jawaban benar"
+                  value={questionForm.answer}
+                  onChange={(e) =>
+                    setQuestionForm({ ...questionForm, answer: e.target.value })
+                  }
+                />
+              )}
+
+              <Button onClick={submitQuestion}>
+                {editingQuestionId ? "Update Soal" : "Tambah Soal"}
+              </Button>
+            </FormGroup>
+          </FormCard>
+
+          <TableCard>
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeader>Soal</TableHeader>
+                  <TableHeader>Tipe</TableHeader>
+                  <TableHeader>Jawaban</TableHeader>
+                  <TableHeader>Aksi</TableHeader>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {questions.map((q) => {
+                  const meta = JSON.parse(q.meta || "{}");
+                  return (
+                    <TableRow key={q.id}>
+                      <TableCell>{q.content}</TableCell>
+                      <TableCell>{q.type}</TableCell>
+                      <TableCell>
+                        {q.type === "mcq"
+                          ? meta.options?.[meta.answerIndex]
+                          : meta.answer}
+                      </TableCell>
+                      <TableCell>
+                        <ButtonGroup>
+                          <Button onClick={() => editQuestion(q)}>Edit</Button>
+                          <Button variant="danger" onClick={() => deleteQuestion(q.id)}>Hapus</Button>
+                        </ButtonGroup>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableCard>
+        </>
+      )}
+    </Container>
   );
 }
