@@ -453,45 +453,6 @@ const renderFlowchart = () => {
   );
 };
 
-/* ================= CLUE FUNCTIONS ================= */
-const requestClue = async () => {  // ✅ INI YANG DIPAKAI
-  if (usedClues.length >= clueMax) {
-    Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
-    return;
-  }
-
-  const nextClueIndex = usedClues.length;
-  const nextClue = clues[nextClueIndex];
-  if (!nextClue) {
-    Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
-    return;
-  }
-
-  const result = await Swal.fire({
-    title: "🧩 Ambil Clue?",
-    html: `
-      <div style="text-align: left;">
-        <strong>Clue ${nextClueIndex + 1}</strong><br><br>
-        <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
-      </div>
-    `,
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonText: "💰 Bayar & Ambil",
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
-      loadClues();
-      loadPerformance();
-      Swal.fire("✅", "Clue berhasil diambil!", "success");
-    } catch (err) {
-      Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
-    }
-  }
-};
-
   /* ================= VALIDATE ================= */
   const validateBeforeUpload = async () => {
     setIsValidating(true);
