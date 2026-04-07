@@ -1,183 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import styled, { keyframes, css } from "styled-components";
-import { apiGet, apiPost } from "../services/api";
+import { apiGet } from "../services/api";
 import Sidebar from "../components/Sidebar";
-
-const slideIn = keyframes`
-  from { opacity: 0; transform: translateY(50px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const sheriffFall = keyframes`
-  0% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(20px) rotate(-5deg); }
-  50% { transform: translateY(40px) rotate(5deg); }
-  75% { transform: translateY(20px) rotate(-3deg); }
-  100% { transform: translateY(0) rotate(0deg); }
-`;
-
-const heartBeat = keyframes`
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-`;
-
-const explode = keyframes`
-  0% { transform: scale(0); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
-`;
-
-const Container = styled.div`
-  font-family: 'Roboto', sans-serif;
-  min-height: 100vh;
-  display: flex;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  overflow: hidden;
-`;
-
-const Main = styled.main`
-  padding: 30px;
-  margin-left: ${(props) => (props.collapsed ? "70px" : "280px")};
-  flex: 1;
-  transition: margin-left 0.3s;
-  animation: ${slideIn} 0.6s ease-out;
-`;
-
-const GameCard = styled.div`
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 30px;
-  padding: 40px;
-  box-shadow: 0 25px 80px rgba(0,0,0,0.3);
-  max-width: 1000px;
-  margin: 0 auto;
-  position: relative;
-  border: 4px solid transparent;
-  background-clip: padding-box;
-`;
-
-const SheriffContainer = styled.div`
-  position: relative;
-  height: 250px;
-  margin: 30px 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-`;
-
-const Sheriff = styled.div`
-  width: 200px;
-  height: 220px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  border-radius: 50% 50% 40% 40%;
-  position: relative;
-  animation: ${props => props.falling ? sheriffFall : 'none'} 0.8s ease-in-out;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 20%;
-    left: 25%;
-    width: 50%;
-    height: 40%;
-    background: #fef3c7;
-    border-radius: 50% 40% 30% 30%;
-  }
-  
-  &::after {
-    content: '🤠';
-    position: absolute;
-    top: 25%;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 3rem;
-    z-index: 2;
-  }
-`;
-
-// Body parts that disappear when wrong
-const BodyPart = styled.div`
-  position: absolute;
-  transition: all 0.5s ease;
-  opacity: ${props => props.visible ? 1 : 0};
-  transform: ${props => props.visible ? 'scale(1)' : 'scale(0) translateY(20px)'};
-  
-  ${props => !props.visible && css`
-    animation: ${explode} 0.6s ease-out forwards;
-  `}
-`;
-
-const Hat = styled(BodyPart)`
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 2.5rem;
-`;
-
-const Badge = styled(BodyPart)`
-  top: 10px;
-  right: 10px;
-  font-size: 2rem;
-`;
-
-const Gun = styled(BodyPart)`
-  bottom: 10px;
-  left: 10px;
-  font-size: 2rem;
-  transform: rotate(-20deg);
-`;
-
-const Boots = styled(BodyPart)`
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 2rem;
-`;
-
-const HeartsContainer = styled.div`
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 20px 0;
-`;
-
-const Heart = styled.div`
-  font-size: 2.5rem;
-  animation: ${heartBeat} 1.5s ease-in-out infinite;
-  color: ${props => props.active ? '#ef4444' : '#9ca3af'};
-`;
-
-const MotivationMessage = styled.div`
-  font-size: 2rem;
-  font-weight: bold;
-  padding: 30px 50px;
-  border-radius: 25px;
-  text-align: center;
-  margin: 30px 0;
-  animation: ${slideIn} 0.6s ease-out;
-  
-  ${props => props.correct ? css`
-    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-    color: #166534;
-    box-shadow: 0 15px 40px rgba(16,185,129,0.4);
-  ` : css`
-    background: linear-gradient(135deg, #fef2f2, #fecaca);
-    color: #dc2626;
-    box-shadow: 0 15px 40px rgba(239,68,68,0.4);
-    animation: shake 0.6s ease-in-out;
-  `}
-`;
-
-const VictoryModal = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(15px);
-`;
 
 export default function GamePlay() {
   const { id } = useParams();
@@ -193,17 +17,13 @@ export default function GamePlay() {
   const [showParts, setShowParts] = useState({
     hat: true, badge: true, gun: true, boots: true
   });
-  const [timeLeft, setTimeLeft] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(45); // ✅ WAKTU 45 DETIK
 
-  const timeoutRef = useRef(null);
   const questionTimerRef = useRef(null);
 
   useEffect(() => {
     loadLevel();
-    return () => {
-      clearTimeout(timeoutRef.current);
-      clearInterval(questionTimerRef.current);
-    };
+    return () => clearInterval(questionTimerRef.current);
   }, [id]);
 
   const loadLevel = async () => {
@@ -218,15 +38,17 @@ export default function GamePlay() {
       setScore(0);
       setResult(null);
       setShowParts({ hat: true, badge: true, gun: true, boots: true });
+      setTimeLeft(45);
     } catch (err) {
       console.error(err);
       alert("Gagal memuat level");
     }
   };
 
+  // ✅ TIMER YANG STABIL
   useEffect(() => {
-    if (index < questions.length && lives > 0) {
-      setTimeLeft(25);
+    if (index < questions.length && lives > 0 && !feedback) {
+      setTimeLeft(45);
       questionTimerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -238,7 +60,8 @@ export default function GamePlay() {
         });
       }, 1000);
     }
-  }, [index, lives]);
+    return () => clearInterval(questionTimerRef.current);
+  }, [index, lives, feedback]);
 
   const motivationMessages = {
     correct: [
@@ -262,6 +85,7 @@ export default function GamePlay() {
   };
 
   const handleCorrectAnswer = () => {
+    clearInterval(questionTimerRef.current);
     setFeedback("correct");
     setScore(prev => prev + 100);
     setTimeout(() => {
@@ -271,13 +95,14 @@ export default function GamePlay() {
       } else {
         finishGame();
       }
-    }, 2500);
+    }, 2000);
   };
 
   const handleWrongAnswer = () => {
+    clearInterval(questionTimerRef.current);
     setFeedback("wrong");
     const parts = ['hat', 'badge', 'gun', 'boots'];
-    const lostPart = parts[lives - 1]; // Lose parts sequentially
+    const lostPart = parts[lives - 1];
     setShowParts(prev => ({ ...prev, [lostPart]: false }));
     setLives(prev => {
       const newLives = prev - 1;
@@ -289,7 +114,7 @@ export default function GamePlay() {
           if (index + 1 < questions.length) {
             setIndex(prev => prev + 1);
           }
-        }, 2500);
+        }, 2000);
       }
       return newLives;
     });
@@ -300,10 +125,10 @@ export default function GamePlay() {
     return (
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
         gap: '25px', 
-        width: '100%', 
-        maxWidth: '700px',
+        width: '100%',
+        maxWidth: '800px',
         margin: '0 auto'
       }}>
         {q.meta.options?.map((opt, i) => (
@@ -314,48 +139,40 @@ export default function GamePlay() {
                 Number(i) === Number(q.meta.answerIndex) ? handleCorrectAnswer() : handleWrongAnswer();
               }
             }}
-            disabled={feedback !== null}
+            disabled={feedback !== null || timeLeft === 0}
             style={{
               padding: '25px 30px',
               border: '4px solid #f3f4f6',
               borderRadius: '25px',
               background: feedback === 'correct' ? 'linear-gradient(135deg, #10b981, #059669)' : 
-                         feedback === 'wrong' && i === Number(q.meta.answerIndex) ? 'linear-gradient(135deg, #10b981, #059669)' :
+                         (feedback === 'wrong' && i === Number(q.meta.answerIndex)) ? 'linear-gradient(135deg, #10b981, #059669)' :
+                         timeLeft === 0 ? 'linear-gradient(135deg, #6b7280, #4b5563)' :
                          'white',
               color: feedback === 'correct' || (feedback === 'wrong' && i === Number(q.meta.answerIndex)) ? 'white' : '#1e293b',
-              cursor: feedback ? 'not-allowed' : 'pointer',
+              cursor: (feedback || timeLeft === 0) ? 'not-allowed' : 'pointer',
               fontSize: '1.3rem',
               fontWeight: '700',
               boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: feedback ? 'scale(0.95)' : 'scale(1)',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              minHeight: '100px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
             {feedback === 'correct' && i === Number(q.meta.answerIndex) && (
-              <span style={{ position: 'absolute', top: 5, right: 5, fontSize: '1.5rem' }}>✅</span>
+              <span style={{ position: 'absolute', top: 10, right: 10, fontSize: '1.5rem' }}>✅</span>
+            )}
+            {feedback === 'wrong' && i !== Number(q.meta.answerIndex) && (
+              <span style={{ position: 'absolute', top: 10, right: 10, fontSize: '1.5rem', color: '#ef4444' }}>❌</span>
             )}
             {opt}
           </button>
         ))}
       </div>
     );
-  };
-
-  const finishGame = async () => {
-    try {
-      const finalScore = Math.round((score / (questions.length * 100)) * 100);
-      setResult({ 
-        scorePercent: finalScore, 
-        score: score, 
-        correct: Math.round(finalScore / 10), 
-        total: questions.length,
-        gainedXp: Math.round(score / 20)
-      });
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   const renderGame = () => {
@@ -381,12 +198,14 @@ export default function GamePlay() {
                 marginBottom: '25px'
               }}
               autoFocus
+              disabled={feedback !== null || timeLeft === 0}
             />
             <button 
+              disabled={feedback !== null || timeLeft === 0}
               style={{
                 padding: '20px 60px', border: 'none', borderRadius: '25px',
                 fontSize: '1.4rem', fontWeight: '700', cursor: 'pointer',
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                background: timeLeft === 0 ? 'linear-gradient(135deg, #6b7280, #4b5563)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
                 color: 'white', boxShadow: '0 15px 40px rgba(245,158,11,0.4)'
               }}
             >
@@ -396,62 +215,141 @@ export default function GamePlay() {
         );
       
       default:
-        return <div>Game type "{q.type}" belum didukung</div>;
+        return <div style={{textAlign: 'center', color: '#64748b', fontSize: '1.4rem'}}>Game type "{q.type}" belum didukung</div>;
     }
   };
 
-  if (!level) return (
-    <Container>
-      <div style={{ padding: '100px 30px', textAlign: 'center', color: 'white', fontSize: '1.8rem' }}>
+  const finishGame = () => {
+    const finalScore = Math.round((score / (questions.length * 100)) * 100);
+    setResult({ 
+      scorePercent: finalScore, 
+      score: score, 
+      correct: Math.round(finalScore / 10), 
+      total: questions.length,
+      gainedXp: Math.round(score / 20)
+    });
+  };
+
+  if (!level) {
+    return (
+      <div style={{ 
+        padding: '100px 30px', 
+        textAlign: 'center', 
+        color: 'white', 
+        fontSize: '1.8rem',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
         🤠 Loading petualangan Sheriff...
       </div>
-    </Container>
-  );
+    );
+  }
 
   const q = questions[index];
 
   return (
-    <Container>
+    <div style={{
+      fontFamily: 'Roboto, sans-serif',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px 0',
+      position: 'relative'
+    }}>
       <Sidebar collapsed={collapsed} toggleSidebar={() => setCollapsed(!collapsed)} />
       
-      <Main collapsed={collapsed}>
-        {/* TOP BAR */}
+      <div style={{
+        padding: '20px',
+        marginLeft: collapsed ? "70px" : "280px",
+        maxWidth: '1000px',
+        margin: '0 auto',
+        transition: 'margin-left 0.3s'
+      }}>
+        {/* ✅ STICKY TOP BAR */}
         <div style={{ 
+          position: 'sticky',
+          top: 20,
+          zIndex: 100,
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
           marginBottom: '30px',
           background: 'rgba(255,255,255,0.95)', 
-          padding: '20px 30px', 
-          borderRadius: '25px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+          padding: '25px 35px', 
+          borderRadius: '30px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          backdropFilter: 'blur(25px)'
         }}>
-          <div style={{ color: '#1e293b', fontSize: '1.5rem', fontWeight: '700' }}>
-            ⏱️ {timeLeft}s | ⭐ {score} XP
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 30,
+            color: '#1e293b', 
+            fontSize: '1.7rem', 
+            fontWeight: '700' 
+          }}>
+            <div style={{
+              width: 70,
+              height: 70,
+              borderRadius: '50%',
+              background: timeLeft > 20 ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                         timeLeft > 10 ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 
+                         'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+              fontWeight: 'bold'
+            }}>
+              ⏱️ {timeLeft}s
+            </div>
+            <div>⭐ {score} XP</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-            <div style={{ fontSize: '1.3rem', color: '#1e293b' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 25 }}>
+            <div style={{ fontSize: '1.5rem', color: '#1e293b', fontWeight: '600' }}>
               Soal {index + 1}/{questions.length}
             </div>
             <button onClick={() => navigate(-1)} style={{
               background: 'linear-gradient(135deg, #6b7280, #4b5563)', 
-              color: 'white', border: 'none', 
-              borderRadius: '20px', padding: '12px 25px', 
-              cursor: 'pointer', fontWeight: '600'
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '25px', 
+              padding: '15px 30px', 
+              cursor: 'pointer', 
+              fontWeight: '600',
+              fontSize: '1.1rem',
+              boxShadow: '0 8px 25px rgba(0,0,0,0.2)'
             }}>
               ← Kembali
             </button>
           </div>
         </div>
 
-        <GameCard>
+        {/* MAIN GAME CARD */}
+        <div style={{ 
+          background: 'rgba(255,255,255,0.97)',
+          backdropFilter: 'blur(30px)',
+          borderRadius: '40px',
+          padding: '50px',
+          boxShadow: '0 35px 120px rgba(0,0,0,0.35)',
+          border: '3px solid rgba(255,255,255,0.3)',
+          maxWidth: '950px',
+          margin: '0 auto'
+        }}>
+          {/* TITLE */}
           <h2 style={{ 
             textAlign: 'center', 
-            fontSize: '2.5rem', 
+            fontSize: '3rem', 
             background: 'linear-gradient(45deg, #1e40af, #3b82f6, #f59e0b)', 
             WebkitBackgroundClip: 'text', 
             WebkitTextFillColor: 'transparent',
-            marginBottom: '20px'
+            marginBottom: '15px',
+            fontWeight: '800',
+            textShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
             🤠 SAVE THE SHERIFF!
           </h2>
@@ -459,98 +357,264 @@ export default function GamePlay() {
           <div style={{ 
             textAlign: 'center', 
             color: '#64748b', 
-            fontSize: '1.3rem', 
-            marginBottom: '40px',
+            fontSize: '1.5rem', 
+            marginBottom: '45px',
             fontWeight: '600'
           }}>
             {level.title} - Level {level.levelNumber}
           </div>
 
           {/* HEARTS */}
-          <HeartsContainer>
+          <div style={{
+            display: 'flex',
+            gap: 18,
+            justifyContent: 'center',
+            marginBottom: '50px',
+            padding: '25px',
+            background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+            borderRadius: '30px',
+            boxShadow: '0 15px 45px rgba(0,0,0,0.12)'
+          }}>
             {Array(5).fill().map((_, i) => (
-              <Heart key={i} active={i < lives}>❤️</Heart>
+              <div key={i} style={{
+                fontSize: '3rem',
+                animation: i < lives ? 'heartBeat 1.5s ease-in-out infinite' : 'none',
+                color: i < lives ? '#ef4444' : '#9ca3af',
+                transition: 'all 0.4s ease',
+                transform: i < lives ? 'scale(1.15)' : 'scale(0.85)',
+                filter: i < lives ? 'drop-shadow(0 0 10px rgba(239,68,68,0.5))' : 'none'
+              }}>
+                ❤️
+              </div>
             ))}
-          </HeartsContainer>
+          </div>
 
           {/* QUESTION */}
           <div style={{ 
-            fontSize: '1.6rem', 
-            lineHeight: 1.6, 
-            marginBottom: '40px', 
+            fontSize: '1.8rem', 
+            lineHeight: 1.7, 
+            marginBottom: '60px', 
             color: '#1e293b', 
             textAlign: 'center',
-            padding: '30px',
+            padding: '40px',
             background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
-            borderRadius: '25px',
-            boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.05)'
+            borderRadius: '35px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
+            borderLeft: '8px solid #3b82f6',
+            position: 'relative'
           }}>
-            {q.content}
+            <div style={{
+              position: 'absolute',
+              top: 15,
+              left: 25,
+              background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+              color: 'white',
+              padding: '8px 20px',
+              borderRadius: '20px',
+              fontSize: '1rem',
+              fontWeight: '600'
+            }}>
+              Pertanyaan
+            </div>
+            <div style={{ marginTop: 25 }}>
+              {q.content}
+            </div>
           </div>
 
           {/* SHERIFF CHARACTER */}
-          <SheriffContainer falling={feedback === 'wrong'}>
-            <Sheriff falling={feedback === 'wrong'}>
-              <Hat visible={showParts.hat}>🤠</Hat>
-              <Badge visible={showParts.badge}>⭐</Badge>
-              <Gun visible={showParts.gun}>🔫</Gun>
-              <Boots visible={showParts.boots}>👢</Boots>
-            </Sheriff>
+          <div style={{ 
+            textAlign: 'center',
+            marginBottom: '50px'
+          }}>
+            <div style={{
+              position: 'relative',
+              height: 320,
+              margin: '0 auto 25px',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              maxWidth: 280
+            }}>
+              {/* BODY */}
+              <div style={{
+                width: 240,
+                height: 280,
+                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                borderRadius: '50% 50% 50% 50%',
+                position: 'relative',
+                boxShadow: '0 25px 70px rgba(251,191,36,0.5)',
+                animation: feedback === 'wrong' ? 'sheriffFall 0.8s ease-in-out' : 'none',
+                border: '5px solid rgba(255,255,255,0.4)'
+              }}>
+                {/* HEAD */}
+                <div style={{
+                  position: 'absolute',
+                  top: '18%',
+                  left: '28%',
+                  width: '44%',
+                  height: '36%',
+                  background: '#fef3c7',
+                borderRadius: '50% 42% 38% 38%',
+                  zIndex: 3,
+                  boxShadow: 'inset 0 3px 15px rgba(0,0,0,0.15)'
+                }}></div>
+                
+                {/* FACE - LEBIH BESAR & JELAS */}
+                <div style={{
+                  position: 'absolute',
+                  top: '24%',
+                  left: '48%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '4.5rem',
+                  zIndex: 4,
+                  filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))'
+                }}>
+                  🤠
+                </div>
+
+                {/* HAT */}
+                {showParts.hat && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '3rem',
+                    zIndex: 5,
+                    animation: 'heartBeat 2s ease-in-out infinite',
+                    textShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                  }}>🎩</div>
+                )}
+
+                {/* BADGE */}
+                {showParts.badge && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '18px',
+                    right: '18px',
+                    fontSize: '2.4rem',
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                    border: '3px solid rgba(255,255,255,0.8)'
+                  }}>⭐</div>
+                )}
+
+                {/* GUN */}
+                {showParts.gun && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '18px',
+                    left: '18px',
+                    fontSize: '2.4rem',
+                    transform: 'rotate(-20deg)',
+                    textShadow: '0 3px 12px rgba(0,0,0,0.6)'
+                  }}>🔫</div>
+                )}
+
+                {/* BOOTS */}
+                {showParts.boots && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-25px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '2.8rem',
+                    textShadow: '0 4px 15px rgba(0,0,0,0.4)'
+                  }}>👢👢</div>
+                )}
+              </div>
+            </div>
+            
             <div style={{ 
-              marginTop: '20px', 
-              fontSize: '1.4rem', 
-              color: '#64748b',
-              fontWeight: '600'
+              fontSize: '1.6rem', 
+              color: lives > 2 ? '#059669' : lives > 0 ? '#f59e0b' : '#dc2626',
+              fontWeight: '800',
+              textShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
               {lives > 0 ? 'Selamatkan Sheriff dari bandit!' : 'Game Over! Sheriff jatuh! 😱'}
             </div>
-          </SheriffContainer>
+          </div>
 
-          {/* FEEDBACK & GAME */}
+          {/* FEEDBACK */}
           {feedback && (
-            <MotivationMessage correct={feedback === "correct"}>
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              padding: '40px 60px',
+              borderRadius: '35px',
+              textAlign: 'center',
+              marginBottom: '50px',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.25)',
+              background: feedback === "correct" 
+                ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)'
+                : 'linear-gradient(135deg, #fef2f2, #fecaca)',
+              color: feedback === "correct" ? '#166534' : '#dc2626',
+              animation: feedback === "correct" ? 'slideIn 0.6s ease-out' : 'shake 0.6s ease-in-out'
+            }}>
               {feedback === "correct" 
                 ? motivationMessages.correct[Math.floor(Math.random() * motivationMessages.correct.length)]
                 : motivationMessages.wrong[Math.floor(Math.random() * motivationMessages.wrong.length)]
               }
-            </MotivationMessage>
+            </div>
           )}
           
+          {/* GAME CONTROLS */}
           {!feedback && renderGame()}
-        </GameCard>
-      </Main>
+        </div>
+      </div>
 
       {/* VICTORY MODAL */}
       {result && (
-        <VictoryModal>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.9)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(25px)'
+        }}>
           <div style={{
             background: 'linear-gradient(135deg, #ffffff, #f8fafc)', 
-            padding: '80px 60px', borderRadius: '40px', 
-            textAlign: 'center', boxShadow: '0 30px 100px rgba(0,0,0,0.5)',
-            maxWidth: '600px', width: '90%', animation: `${slideIn} 0.8s ease-out`
+            padding: '90px 70px', 
+            borderRadius: '45px', 
+            textAlign: 'center', 
+            boxShadow: '0 50px 150px rgba(0,0,0,0.7)',
+            maxWidth: '700px', 
+            width: '92%',
+            animation: 'slideIn 0.8s ease-out'
           }}>
-            <div style={{ fontSize: '5rem', marginBottom: '30px' }}>
+            <div style={{ fontSize: '7rem', marginBottom: '35px' }}>
               {result.scorePercent >= 90 ? '🤠🏆' : result.scorePercent >= 70 ? '🤠⭐' : '🤠💪'}
             </div>
             
-            <h2 style={{ fontSize: '3rem', marginBottom: '30px', color: '#1e293b' }}>
+            <h2 style={{ fontSize: '3.5rem', marginBottom: '35px', color: '#1e293b', fontWeight: '900' }}>
               SHERIFF SELAMAT!
             </h2>
             
             <div style={{ 
-              fontSize: '4rem', 
-              marginBottom: '30px',
+              fontSize: '5rem', 
+              marginBottom: '35px',
               color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#f59e0b' : '#dc2626',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              textShadow: '0 5px 20px rgba(0,0,0,0.2)'
             }}>
               {result.scorePercent}%
             </div>
             
             <div style={{ 
-              fontSize: '1.8rem', 
-              marginBottom: '40px', 
+              fontSize: '2rem', 
+              marginBottom: '60px', 
               color: '#374151',
-              lineHeight: 1.6
+              lineHeight: 1.6,
+              fontWeight: '600'
             }}>
               {result.scorePercent >= 90 && motivationMessages.victory[Math.floor(Math.random() * motivationMessages.victory.length)]}
               {result.scorePercent >= 70 && result.scorePercent < 90 && "Keren! Sheriff hampir sempurna! 🌟 Teruskan!"}
@@ -559,10 +623,10 @@ export default function GamePlay() {
 
             <div style={{ 
               display: 'flex', 
-              gap: '30px', 
+              gap: '50px', 
               justifyContent: 'center', 
-              marginBottom: '50px',
-              fontSize: '1.5rem'
+              marginBottom: '70px',
+              fontSize: '1.9rem'
             }}>
               <div>⭐ Score: <strong style={{ color: '#3b82f6' }}>{result.score}</strong></div>
               <div>XP: <strong style={{ color: '#10b981' }}>+{result.gainedXp}</strong></div>
@@ -571,20 +635,58 @@ export default function GamePlay() {
             <button 
               onClick={() => navigate("/game")}
               style={{
-                width: '100%', padding: '30px', fontSize: '1.6rem', 
-                fontWeight: '800', background: 'linear-gradient(135deg, #f59e0b, #d97706)', 
-                color: 'white', border: 'none', borderRadius: '30px', 
-                cursor: 'pointer', boxShadow: '0 20px 50px rgba(245,158,11,0.5)',
-                transition: 'all 0.3s ease'
+                width: '100%', 
+                padding: '35px', 
+                fontSize: '1.8rem', 
+                fontWeight: '900', 
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '35px', 
+                cursor: 'pointer', 
+                boxShadow: '0 30px 80px rgba(245,158,11,0.6)',
+                transition: 'all 0.4s ease',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+              onMouseOver={(e) => {
+                e.target.style.transform = 'scale(1.05)';
+                e.target.style.boxShadow = '0 35px 90px rgba(245,158,11,0.7)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.boxShadow = '0 30px 80px rgba(245,158,11,0.6)';
+              }}
             >
               🎮 Kembali ke Peta Petualangan
             </button>
           </div>
-        </VictoryModal>
+        </div>
       )}
-    </Container>
+
+      {/* CSS ANIMATIONS */}
+      <style>{`
+        @keyframes heartBeat {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.25); }
+        }
+        @keyframes sheriffFall {
+          0% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(25px) rotate(-8deg); }
+          50% { transform: translateY(50px) rotate(8deg); }
+          75% { transform: translateY(25px) rotate(-5deg); }
+          100% { transform: translateY(0) rotate(0deg); }
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(60px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          75% { transform: translateX(10px); }
+        }
+      `}</style>
+    </div>
   );
 }

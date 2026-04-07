@@ -10,7 +10,7 @@ export default function GameMap() {
 
   useEffect(() => {
     apiGet("/game/map").then((res) => {
-      console.log("GAME MAP DATA:", res); // Debug
+      console.log("GAME MAP DATA:", res);
       if (res.status) {
         setLevels(res.levels || []);
         setProgress(res.progress || []);
@@ -19,16 +19,10 @@ export default function GameMap() {
     }).catch(err => console.error("Map load error:", err));
   }, []);
 
-  // ✅ FIXED: Unlock logic berdasarkan grouped data
   const isUnlocked = (mIdx, lIdx) => {
-    // Hitung total levels SEBELUM materi ini
     const prevMateriLevels = levels.slice(0, mIdx)
       .reduce((sum, materi) => sum + (materi.levels?.length || 0), 0);
-    
-    // + level index di materi ini
     const totalPrevLevels = prevMateriLevels + lIdx;
-    
-    // Unlock jika progress cukup
     return progress.filter(p => p.completed).length >= totalPrevLevels;
   };
 
@@ -100,7 +94,6 @@ export default function GameMap() {
     </Link>
   );
 
-  // Loading state
   if (levels.length === 0) {
     return (
       <Layout>
@@ -124,46 +117,51 @@ export default function GameMap() {
   return (
     <Layout>
       <div style={{ 
-        padding: 40, 
+        padding: 20, 
         fontFamily: 'Roboto, sans-serif',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         minHeight: '100vh'
       }}>
-        {/* USER STATS HEADER */}
+        {/* ✅ FIXED: STICKY HEADER - SELALU TERLIHAT SAAT SCROLL */}
         <div style={{
+          position: 'sticky',
+          top: 20,
           background: 'linear-gradient(135deg, #10b981, #059669)',
-          padding: '30px 40px',
-          borderRadius: '30px',
-          marginBottom: '50px',
+          padding: '25px 35px',
+          borderRadius: '25px',
+          marginBottom: '30px',
           color: 'white',
           textAlign: 'center',
-          boxShadow: '0 25px 50px rgba(16,185,129,0.4)'
+          boxShadow: '0 20px 45px rgba(16,185,129,0.5)',
+          zIndex: 100,
+          backdropFilter: 'blur(20px)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 10 }}>
-            <div style={{ fontSize: '2.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
+            <div style={{ fontSize: '2.3rem' }}>
               {getStreakEmoji(userStats.streak)}
             </div>
             <div>
-              <h2 style={{ margin: '0 0 5px 0', fontSize: '2.2rem' }}>
+              <h2 style={{ margin: '0 0 3px 0', fontSize: '1.8rem' }}>
                 Streak: {userStats.streak} hari
               </h2>
-              <div style={{ fontSize: '1.4rem', opacity: 0.9 }}>
+              <div style={{ fontSize: '1.2rem', opacity: 0.95 }}>
                 ❤️ {userStats.hearts}/5 Hearts
               </div>
             </div>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>
-            XP: <span style={{ fontSize: '2rem', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>{userStats.xp}</span>
+          <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>
+            XP: <span style={{ fontSize: '1.7rem', textShadow: '0 0 15px rgba(255,255,255,0.9)' }}>{userStats.xp}</span>
           </div>
         </div>
 
-        {/* WINDING MAP PATH */}
+        {/* ✅ FIXED: MAP LAYOUT - LEBIH RAPI & RESPONSIF */}
         <div style={{ 
-          position: 'relative',
-          maxWidth: 1000,
+          maxWidth: 1100,
           margin: '0 auto',
           height: 'auto',
-          minHeight: 800
+          minHeight: 700,
+          overflowX: 'auto',
+          paddingBottom: 50
         }}>
           {/* Background path SVG */}
           <svg style={{ 
@@ -172,56 +170,53 @@ export default function GameMap() {
             width: '100%', 
             height: '100%', 
             zIndex: 1, 
-            opacity: 0.3 
-          }}>
+            opacity: 0.25,
+            pointerEvents: 'none'
+          }} viewBox="0 0 1200 800">
             <path d="M100 200 Q300 100 500 200 Q700 300 900 200 Q1100 300 1200 400" 
                   stroke="#fbbf24" strokeWidth="60" fill="none" strokeLinecap="round"/>
             <path d="M100 400 Q400 500 700 400 Q1000 500 1200 450" 
                   stroke="#f59e0b" strokeWidth="50" fill="none" strokeLinecap="round"/>
           </svg>
 
-          {/* LEVEL NODES */}
-          <div style={{ position: 'relative', padding: '50px 0' }}>
+          {/* LEVEL NODES - POSISI LEBIH RAPI */}
+          <div style={{ position: 'relative', padding: '40px 20px' }}>
             {levels.map((materi, mIdx) => (
-              <div key={materi.materiId} style={{ marginBottom: 100 }}>
+              <div key={materi.materiId} style={{ marginBottom: 120 }}>
                 {/* MATERI TITLE */}
                 <h3 style={{ 
                   textAlign: "center", 
                   color: 'white', 
-                  marginBottom: '50px',
-                  fontSize: '2.2rem',
+                  marginBottom: '60px',
+                  fontSize: '2rem',
                   textShadow: '0 0 20px rgba(255,255,255,0.8)',
                   background: 'linear-gradient(45deg, #fbbf24, #f59e0b)',
                   WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  WebkitTextFillColor: 'transparent',
+                  position: 'relative',
+                  zIndex: 20
                 }}>
                   📚 {materi.materiName}
                 </h3>
                 
-                {/* LEVEL CIRCLES - Zigzag */}
+                {/* LEVEL CIRCLES - GRID LAYOUT */}
                 <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  position: 'relative',
-                  flexWrap: 'wrap',
-                  gap: 25
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                  gap: 40,
+                  maxWidth: 900,
+                  margin: '0 auto',
+                  position: 'relative'
                 }}>
                   {materi.levels?.map((lvl, lIdx) => {
                     const unlocked = isUnlocked(mIdx, lIdx);
                     const completed = isCompleted(lvl.id);
-                    const positions = [
-                      { left: '5%', top: '20px' },
-                      { left: '35%', top: '-15px' },
-                      { left: '65%', top: '25px' },
-                      { left: '20%', top: '55px' },
-                      { left: '80%', top: '5px' }
-                    ];
                     
                     return (
                       <PathNode
                         key={lvl.id}
                         level={lvl}
-                        position={positions[lIdx % positions.length]}
+                        position={{ margin: '20px auto' }}
                         unlocked={unlocked}
                         completed={completed}
                         onClick={() => {
@@ -238,10 +233,15 @@ export default function GameMap() {
           </div>
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
+          }
+          @media (max-width: 768px) {
+            .map-container {
+              padding: 10px;
+            }
           }
         `}</style>
       </div>
