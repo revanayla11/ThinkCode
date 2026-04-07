@@ -41,7 +41,104 @@ export default function DiscussionRoom() {
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
 
-  /* ================= TIMER FUNCTIONS ================= */
+  /* 🔥 ================= FIX 1: CLUE FUNCTION DULU ================= */
+  const requestClue = useCallback(async () => {
+    if (usedClues.length >= clueMax) {
+      Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
+      return;
+    }
+
+    const nextClueIndex = usedClues.length;
+    const nextClue = clues[nextClueIndex];
+    if (!nextClue) {
+      Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "🧩 Ambil Clue?",
+      html: `
+        <div style="text-align: left;">
+          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
+          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "💰 Bayar & Ambil",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
+        await loadClues();  // ✅ AWAIT
+        await loadPerformance();
+        Swal.fire("✅", "Clue berhasil diambil!", "success");
+      } catch (err) {
+        Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
+      }
+    }
+  }, [usedClues.length, clues, roomId, loadClues, loadPerformance]);
+
+  /* 🔥 ================= FIX 2: LOAD FUNCTIONS useCallback ================= */
+  const loadClues = useCallback(async () => {
+    try {
+      const cluesRes = await api.get(`/discussion/clues/${materiId}`);
+      setClues(cluesRes.data.data || []);
+      
+      const usedRes = await api.get(`/discussion/clue/used/${roomId}`);
+      setUsedClues(usedRes.data.data || []);
+    } catch (err) {
+      console.error("Load clues error:", err);
+    }
+  }, [materiId, roomId]);
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/room/${roomId}/tasks`);
+      const taskMap = res.data.data || {};
+      
+      const dynamicTasks = [
+        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
+        { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
+        { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
+        { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
+        { id: 5, text: "Buat kode c", done: !!taskMap[5] }
+      ];
+      setTasks(dynamicTasks);
+    } catch (err) {
+      console.error("Load tasks error:", err);
+      setTasks([
+        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: false },
+        { id: 2, text: "Lengkapi LKPD", done: false },
+        { id: 3, text: "Lengkapi Pseudocode", done: false },
+        { id: 4, text: "Buat Flowchart", done: false },
+        { id: 5, text: "Buat kode c", done: false }
+      ]);
+    }
+  }, [roomId]);
+
+  const loadTemplateData = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/template-dynamic/${materiId}`);
+      const data = res.data.data;
+      setTemplateData(data);
+      setPseudocodeBlanks(Array(data.blanks?.length || 3).fill(""));
+    } catch (err) {
+      console.error("Template error:", err);
+    }
+  }, [materiId]);
+
+  const loadPerformance = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/room/${roomId}/performance`);
+      setPerformanceScore(res.data.score || 100);
+    } catch (err) {
+      console.error("Load performance error:", err);
+      setPerformanceScore(100);
+    }
+  }, [roomId]);
+
   const loadTimerStatus = useCallback(async () => {
     try {
       const res = await api.get(`/discussion/timer/${roomId}/check`);
@@ -52,13 +149,85 @@ export default function DiscussionRoom() {
     }
   }, [roomId]);
 
-    /* ================= TEMPLATE FUNCTIONS ================= */
+  const loadSubmissionStatus = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/submission/status/${roomId}`);
+      setIsSubmitted(res.data.submitted || false);
+    } catch (err) {
+      console.error("Load submission status error:", err);
+    }
+  }, [roomId]);
+
+  const loadWorkspaceData = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
+      const data = res.data.data || {};
+      setPseudocode(data.pseudocode || "");
+      const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
+      setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
+      setElseInstruction(flowchart.elseInstruction || "");
+      setShowElse(!!flowchart.elseInstruction);
+    } catch (err) {
+      console.error("Load workspace error:", err);
+    }
+  }, [roomId]);
+
+  const loadMiniLesson = useCallback(async () => {
+    try {
+      const res = await api.get(`/discussion/mini-lesson/${materiId}`);
+      setMiniLessonData(res.data.data);
+      setMiniContent(res.data.data?.content || "Loading...");
+    } catch (err) {
+      console.error("Load mini lesson error:", err);
+      setMiniContent("Mini lesson tidak ditemukan 😢");
+    }
+  }, [materiId]);
+
+  /* 🔥 ================= FIX 3: MAIN LOAD useEffect ================= */
+  useEffect(() => {
+    const initData = async () => {
+      console.log("🚀 Loading all data...");
+      await Promise.all([
+        loadTimerStatus(),
+        loadSubmissionStatus(),
+        loadPerformance(),
+        loadWorkspaceData(),
+        loadTasks(),
+        loadMiniLesson(),
+        loadClues(),
+        loadTemplateData()
+      ]);
+      console.log("✅ All data loaded!");
+      setShowRules(true);
+    };
+    if (roomId && materiId) {
+      initData();
+    }
+  }, [roomId, materiId, loadTimerStatus, loadSubmissionStatus, loadPerformance, loadWorkspaceData, loadTasks, loadMiniLesson, loadClues, loadTemplateData]);
+
+  /* 🔥 ================= TIMER useEffect ================= */
+  useEffect(() => {
+    let interval;
+    if (timerActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive, timeLeft]);
+
+  /* ================= TEMPLATE FUNCTIONS ================= */
   const updateBlank = (index, value) => {
     const newBlanks = [...pseudocodeBlanks];
     newBlanks[index] = value;
     setPseudocodeBlanks(newBlanks);
 
-    // 🔥 GENERATE PSEUDOCODE dari template
     let filled = templateData.template || "";
     templateData.blanks?.forEach((_, i) => {
       filled = filled.replaceAll(
@@ -69,7 +238,6 @@ export default function DiscussionRoom() {
     setPseudocode(filled);
   };
 
-  // 🔥 INI YANG HILANG - TAMBAH INI!
   const renderFilledTemplate = () => {
     let filled = templateData.template || "";
     templateData.blanks?.forEach((_, i) => {
@@ -91,12 +259,6 @@ export default function DiscussionRoom() {
     if (isSubmitted) return;
     const newConditions = [...conditions];
     newConditions[index][field] = value;
-    setConditions(newConditions);
-  };
-
-  const deleteCondition = (index) => {
-    if (isSubmitted) return;
-    const newConditions = conditions.filter((_, i) => i !== index);
     setConditions(newConditions);
   };
 
@@ -129,445 +291,56 @@ export default function DiscussionRoom() {
     }
   };
 
-  /* ================= CLUE FUNCTIONS ================= */
-  const requestClue = async () => {
-    if (usedClues.length >= clueMax) {
-      Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
-      return;
-    }
-
-    const nextClueIndex = usedClues.length;
-    const nextClue = clues[nextClueIndex];
-    if (!nextClue) {
-      Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: "🧩 Ambil Clue?",
-      html: `
-        <div style="text-align: left;">
-          <strong>Clue ${nextClueIndex + 1}</strong><br><br>
-          <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "💰 Bayar & Ambil",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
-        loadClues();
-        loadPerformance();
-        Swal.fire("✅", "Clue berhasil diambil!", "success");
-      } catch (err) {
-        Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
-      }
-    }
-  };
-
-  useEffect(() => {
-    let interval;
-    if (timerActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setTimerActive(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive, timeLeft]);
-
-  /* ================= LOAD FUNCTIONS ================= */
-  const loadSubmissionStatus = async () => {
-    try {
-      const res = await api.get(`/discussion/submission/status/${roomId}`);
-      setIsSubmitted(res.data.submitted || false);
-    } catch (err) {
-      console.error("Load submission status error:", err);
-    }
-  };
-
-  const loadPerformance = async () => {
-    try {
-      const res = await api.get(`/discussion/room/${roomId}/performance`);
-      setPerformanceScore(res.data.score || 100); // ✅ START 100%
-    } catch (err) {
-      console.error("Load performance error:", err);
-      setPerformanceScore(100); // ✅ DEFAULT 100%
-    }
-  };
-
-  const loadWorkspaceData = useCallback(async () => {
-    try {
-      const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
-      const data = res.data.data || {};
-
-      setPseudocode(data.pseudocode || "");
-      const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
-      setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
-      setElseInstruction(flowchart.elseInstruction || "");
-      setShowElse(!!flowchart.elseInstruction);
-    } catch (err) {
-      console.error("Load workspace error:", err);
-    }
-  }, [roomId]);
-
-  const loadTasks = async () => {
-    try {
-      const res = await api.get(`/discussion/room/${roomId}/tasks`);
-      const taskMap = res.data.data || {};
-      
-      const dynamicTasks = [
-        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
-        { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
-        { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
-        { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
-        { id: 5, text: "Buat kode c", done: !!taskMap[5] }
-      ];
-      setTasks(dynamicTasks);
-    } catch (err) {
-      setTasks([
-        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
-        { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
-        { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
-        { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
-        { id: 5, text: "Buat kode c", done: !!taskMap[5] }
-      ]);
-    }
-  };
-  const loadMiniLesson = useCallback(async () => {
-  try {
-    const res = await api.get(`/discussion/mini-lesson/${materiId}`);
-    setMiniLessonData(res.data.data);
-    setMiniContent(res.data.data?.content || "Loading...");
-  } catch (err) {
-    console.error("Load mini lesson error:", err);
-    setMiniContent("Mini lesson tidak ditemukan 😢");
-  }
-}, [materiId]);
-
-  const loadClues = async () => {
-    try {
-      const cluesRes = await api.get(`/discussion/clues/${materiId}`);
-      setClues(cluesRes.data.data || []);
-      
-      const usedRes = await api.get(`/discussion/clue/used/${roomId}`);
-      setUsedClues(usedRes.data.data || []);
-    } catch (err) {
-      console.error("Load clues error:", err);
-    }
-  };
-
-  // ✅ NEW TEMPLATE SESUAI REQUEST
-  // Ganti loadTemplateData
-const loadTemplateData = async () => {
-  try {
-    const res = await api.get(`/discussion/template-dynamic/${materiId}`); // Baru!
-    const data = res.data.data;
-    setTemplateData(data);
-    setPseudocodeBlanks(Array(data.blanks?.length || 3).fill(""));
-  } catch (err) {
-    console.error("Template error:", err);
-  }
-};
-
   /* ================= SAVE FUNCTIONS ================= */
-// Update savePseudocode
-const savePseudocode = async () => {
-  if (!pseudocode.trim()) {
-    Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
-    return;
-  }
-  
-  // 🔥 FORMAT EXACTLY LIKE TEACHER
-  const formattedPseudo = pseudocode
-    .trim()
-    .replace(/\r\n/g, '\n')  // Unix line endings
-    .replace(/[^\S\n]{2,}/g, ' ') // Multiple whitespace → single space
-    .replace(/\n\s*\n/g, '\n');   // Multiple newlines → single
-  
-  try {
-    await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      pseudocode: formattedPseudo 
-    });
-    Swal.fire("✅", "Pseudocode tersimpan!", "success");
-    loadPerformance();
-  } catch (err) {
-    Swal.fire("❌", "Gagal simpan", "error");
-  }
-};
-
-// Update saveFlowchart
-const saveFlowchart = async () => {
-  if (conditions.length === 0) {
-    Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
-    return;
-  }
-  
-  // 🔥 NORMALIZE BEFORE SAVE
-  const normalizedFlowchart = {
-    conditions: conditions.map(cond => ({
-      condition: cond.condition.trim().toLowerCase(),
-      yes: cond.yes.trim().toLowerCase(),
-      no: cond.no || ''
-    })),
-    elseInstruction: elseInstruction.trim().toLowerCase(),
-    showElse
+  const savePseudocode = async () => {
+    if (!pseudocode.trim()) {
+      Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
+      return;
+    }
+    
+    const formattedPseudo = pseudocode
+      .trim()
+      .replace(/\r\n/g, '\n')
+      .replace(/[^\S\n]{2,}/g, ' ')
+      .replace(/\n\s*\n/g, '\n');
+    
+    try {
+      await api.post(`/discussion/room/${roomId}/pseudocode`, { 
+        pseudocode: formattedPseudo 
+      });
+      Swal.fire("✅", "Pseudocode tersimpan!", "success");
+      loadPerformance();
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan", "error");
+    }
   };
-  
-  try {
-    await api.post(`/discussion/room/${roomId}/flowchart`, {
-      flowchart: normalizedFlowchart
-    });
-    Swal.fire("✅", "Flowchart tersimpan!", "success");
-    loadPerformance();
-  } catch (err) {
-    Swal.fire("❌", "Gagal simpan", "error");
-  }
-};
 
-
-  /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
-  /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
-const renderFlowchart = () => {
-  // 🔥 GRID SYSTEM (KUNCI UTAMA BIAR RAPI)
-  const centerX = 500;
-  const leftX = 280;
-  const rightX = 780;
-  const endX = 780;
-
-  const conditionHeight = 180;
-  const elseHeight = showElse ? 200 : 0;
-  const totalHeight = 300 + (conditions.length * conditionHeight) + elseHeight;
-
-  return (
-    <svg
-      width="100%"
-      height="100%"
-      viewBox={`0 0 1200 ${totalHeight}`}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <defs>
-        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-          <path d="M0,0 L0,10 L10,5 z" fill="#374151" />
-        </marker>
-
-        <linearGradient id="startGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#10b981"/>
-          <stop offset="100%" stopColor="#059669"/>
-        </linearGradient>
-
-        <linearGradient id="yesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#d1fae5"/>
-          <stop offset="100%" stopColor="#a7f3d0"/>
-        </linearGradient>
-
-        <linearGradient id="noGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fee2e2"/>
-          <stop offset="100%" stopColor="#fecaca"/>
-        </linearGradient>
-      </defs>
-
-      {/* START */}
-      <ellipse cx={centerX} cy="80" rx="85" ry="45"
-        fill="url(#startGrad)" stroke="#059669" strokeWidth="4" />
-      <text x={centerX} y="88" textAnchor="middle"
-        fontWeight="bold" fontSize="20" fill="white">
-        🟢 MULAI
-      </text>
-
-      {/* CONDITIONS */}
-      {conditions.map((item, index) => {
-        const startY = 200 + (index * conditionHeight);
-        const prevEndY = index === 0 ? 125 : (200 + ((index - 1) * conditionHeight) + 180);
-
-        return (
-          <g key={index}>
-            {/* LINE FROM PREV */}
-            <line
-              x1={centerX}
-              y1={prevEndY}
-              x2={centerX}
-              y2={startY - 70}
-              stroke="#374151"
-              strokeWidth="4"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* DIAMOND */}
-            <polygon
-              points={`${centerX},${startY-70} ${centerX+105},${startY} ${centerX},${startY+70} ${centerX-105},${startY}`}
-              fill="#dbeafe"
-              stroke="#3b82f6"
-              strokeWidth="5"
-            />
-
-            <text x={centerX} y={startY+5} textAnchor="middle"
-              fontWeight="bold" fontSize="14" fill="#1e40af">
-              IF ?
-            </text>
-
-            <foreignObject x={centerX-85} y={startY-25} width="170" height="50">
-              <input
-                value={item.condition}
-                onChange={(e) => updateCondition(index, "condition", e.target.value)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "3px solid #3b82f6",
-                  borderRadius: "8px",
-                  textAlign: "center",
-                  fontSize: "14px",
-                  fontWeight: "600"
-                }}
-                disabled={isSubmitted}
-              />
-            </foreignObject>
-
-            {/* YES */}
-            <text x={centerX + 140} y={startY-5}
-              fontWeight="bold" fill="#059669">YA</text>
-
-            <line
-              x1={centerX + 105}
-              y1={startY}
-              x2={rightX}
-              y2={startY}
-              stroke="#059669"
-              strokeWidth="4"
-              markerEnd="url(#arrow)"
-            />
-
-            <rect
-              x={rightX}
-              y={startY-50}
-              width="200"
-              height="100"
-              rx="15"
-              fill="url(#yesGrad)"
-              stroke="#10b981"
-              strokeWidth="4"
-            />
-
-            <foreignObject x={rightX+10} y={startY-20} width="180" height="60">
-              <input
-                value={item.yes}
-                onChange={(e) => updateCondition(index, "yes", e.target.value)}
-                style={{ width: "100%", height: "100%", border: "none" }}
-                disabled={isSubmitted}
-              />
-            </foreignObject>
-
-            {/* YES → END */}
-            <line
-              x1={rightX + 100}
-              y1={startY + 50}
-              x2={endX}
-              y2={totalHeight - 80}
-              stroke="#059669"
-              strokeWidth="3"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* NO LABEL */}
-            <text x={centerX - 30} y={startY + 90}
-              fontWeight="bold" fill="#dc2626">
-              TIDAK
-            </text>
-          </g>
-        );
-      })}
-
-      {/* ELSE */}
-      {conditions.length > 0 && showElse && (() => {
-        const lastY = 200 + ((conditions.length - 1) * conditionHeight) + 70;
-        const elseY = 200 + (conditions.length * conditionHeight);
-
-        return (
-          <g>
-            {/* turun */}
-            <line
-              x1={centerX - 105}
-              y1={lastY}
-              x2={leftX}
-              y2={elseY}
-              stroke="#dc2626"
-              strokeWidth="4"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* box */}
-            <rect
-              x={leftX - 120}
-              y={elseY}
-              width="240"
-              height="110"
-              rx="15"
-              fill="url(#noGrad)"
-              stroke="#dc2626"
-              strokeWidth="4"
-            />
-
-            <text x={leftX} y={elseY + 25}
-              textAnchor="middle"
-              fontWeight="bold"
-              fill="#dc2626">
-              ELSE
-            </text>
-
-            <foreignObject x={leftX - 110} y={elseY + 40} width="220" height="60">
-              <input
-                value={elseInstruction}
-                onChange={(e) => updateElseInstruction(e.target.value)}
-                style={{ width: "100%", height: "100%", border: "none" }}
-                disabled={isSubmitted}
-              />
-            </foreignObject>
-
-            {/* ke END */}
-            <line
-              x1={leftX}
-              y1={elseY + 110}
-              x2={endX}
-              y2={totalHeight - 80}
-              stroke="#dc2626"
-              strokeWidth="3"
-              markerEnd="url(#arrow)"
-            />
-          </g>
-        );
-      })()}
-
-      {/* END */}
-      <ellipse
-        cx={endX}
-        cy={totalHeight - 60}
-        rx="85"
-        ry="45"
-        fill="url(#startGrad)"
-        stroke="#059669"
-        strokeWidth="4"
-      />
-      <text
-        x={endX}
-        y={totalHeight - 52}
-        textAnchor="middle"
-        fontWeight="bold"
-        fontSize="20"
-        fill="white"
-      >
-        SELESAI
-      </text>
-    </svg>
-  );
-};
+  const saveFlowchart = async () => {
+    if (conditions.length === 0) {
+      Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
+      return;
+    }
+    
+    const normalizedFlowchart = {
+      conditions: conditions.map(cond => ({
+        condition: cond.condition.trim().toLowerCase(),
+        yes: cond.yes.trim().toLowerCase(),
+        no: cond.no || ''
+      })),
+      elseInstruction: elseInstruction.trim().toLowerCase(),
+      showElse
+    };
+    
+    try {
+      await api.post(`/discussion/room/${roomId}/flowchart`, {
+        flowchart: normalizedFlowchart
+      });
+      Swal.fire("✅", "Flowchart tersimpan!", "success");
+      loadPerformance();
+    } catch (err) {
+      Swal.fire("❌", "Gagal simpan", "error");
+    }
+  };
 
   /* ================= VALIDATE ================= */
   const validateBeforeUpload = async () => {
@@ -588,83 +361,193 @@ const renderFlowchart = () => {
           }
         });
       } else {
-Swal.fire({
-  title: "⚠️ Hampir Berhasil!",
-  html: `
-    <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-      
-      <div style="margin-bottom: 15px;">
-        <strong>💯 Skor Kamu:</strong> 
-        <span style="color:${res.data.score >= 80 ? '#10b981' : '#f59e0b'}; font-size:16px;">
-          ${res.data.score}%
-        </span>
-      </div>
-
-      <hr/>
-
-      <div style="margin-top: 10px;">
-        <strong>📝 Pseudocode:</strong><br/>
-        ${res.data.details.pseudocodeMatch 
-          ? "✅ Sudah benar!"
-          : "❌ Masih ada yang perlu diperbaiki"}
-      </div>
-
-      ${
-        !res.data.details.pseudocodeMatch
-          ? `
-        <div style="margin-top:8px; padding:10px; background:#fef2f2; border-radius:8px;">
-          <strong>💡 Perbaiki di bagian:</strong><br/>
-          ${res.data.details.pseudocodeFeedback || "Periksa kondisi / output"}
-        </div>
-
-        <div style="margin-top:8px;">
-          <strong>📘 Jawaban Kamu:</strong>
-          <pre style="background:#f8fafc; padding:8px; border-radius:6px;">${pseudocode}</pre>
-        </div>
-      `
-          : ""
-      }
-
-      <hr/>
-
-      <div style="margin-top: 10px;">
-        <strong>🔄 Flowchart:</strong><br/>
-        ${res.data.details.flowchartMatch 
-          ? "✅ Sudah benar!"
-          : "❌ Masih belum sesuai"}
-      </div>
-
-      ${
-        !res.data.details.flowchartMatch
-          ? `
-        <div style="margin-top:8px; padding:10px; background:#fef2f2; border-radius:8px;">
-          <strong>💡 Perbaiki:</strong><br/>
-          ${res.data.details.flowchartFeedback || "Cek alur kondisi dan ELSE"}
-        </div>
-
-        <div style="margin-top:8px;">
-      `
-          : ""
-      }
-
-      <hr/>
-
-      <div style="margin-top: 15px; color:#6b7280;">
-        💪 Sedikit lagi! Coba perbaiki dan ulangi lagi ya!
-      </div>
-
-    </div>
-  `,
-  icon: "warning",
-  confirmButtonText: "🔄 Perbaiki Lagi",
-  confirmButtonColor: "#3b82f6"
-});
+        Swal.fire({
+          title: "⚠️ Hampir Berhasil!",
+          html: `
+            <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+              <div style="margin-bottom: 15px;">
+                <strong>💯 Skor Kamu:</strong> 
+                <span style="color:${res.data.score >= 80 ? '#10b981' : '#f59e0b'}; font-size:16px;">
+                  ${res.data.score}%
+                </span>
+              </div>
+              <hr/>
+              <div style="margin-top: 10px;">
+                <strong>📝 Pseudocode:</strong><br/>
+                ${res.data.details.pseudocodeMatch 
+                  ? "✅ Sudah benar!"
+                  : "❌ Masih ada yang perlu diperbaiki"}
+              </div>
+              <hr/>
+              <div style="margin-top: 10px;">
+                <strong>🔄 Flowchart:</strong><br/>
+                ${res.data.details.flowchartMatch 
+                  ? "✅ Sudah benar!"
+                  : "❌ Masih belum sesuai"}
+              </div>
+              <hr/>
+              <div style="margin-top: 15px; color:#6b7280;">
+                💪 Sedikit lagi! Coba perbaiki dan ulangi lagi ya!
+              </div>
+            </div>
+          `,
+          icon: "warning",
+          confirmButtonText: "🔄 Perbaiki Lagi",
+          confirmButtonColor: "#3b82f6"
+        });
       }
     } catch (err) {
       Swal.fire("Error", "Validasi gagal", "error");
     } finally {
       setIsValidating(false);
     }
+  };
+
+  /* ================= FLOWCHART RENDER (SAMA) ================= */
+  const renderFlowchart = () => {
+    const centerX = 500;
+    const leftX = 280;
+    const rightX = 780;
+    const endX = 780;
+    const conditionHeight = 180;
+    const elseHeight = showElse ? 200 : 0;
+    const totalHeight = 300 + (conditions.length * conditionHeight) + elseHeight;
+
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 1200 ${totalHeight}`} preserveAspectRatio="xMidYMid meet">
+        {/* ... SVG content sama persis seperti sebelumnya ... */}
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L0,10 L10,5 z" fill="#374151" />
+          </marker>
+          <linearGradient id="startGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#10b981"/>
+            <stop offset="100%" stopColor="#059669"/>
+          </linearGradient>
+                    <linearGradient id="yesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#d1fae5"/>
+            <stop offset="100%" stopColor="#a7f3d0"/>
+          </linearGradient>
+          <linearGradient id="noGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fee2e2"/>
+            <stop offset="100%" stopColor="#fecaca"/>
+          </linearGradient>
+        </defs>
+
+        {/* START */}
+        <ellipse cx={centerX} cy="80" rx="85" ry="45"
+          fill="url(#startGrad)" stroke="#059669" strokeWidth="4" />
+        <text x={centerX} y="88" textAnchor="middle"
+          fontWeight="bold" fontSize="20" fill="white">
+          🟢 MULAI
+        </text>
+
+        {/* CONDITIONS */}
+        {conditions.map((item, index) => {
+          const startY = 200 + (index * conditionHeight);
+          const prevEndY = index === 0 ? 125 : (200 + ((index - 1) * conditionHeight) + 180);
+
+          return (
+            <g key={index}>
+              <line
+                x1={centerX} y1={prevEndY} x2={centerX} y2={startY - 70}
+                stroke="#374151" strokeWidth="4" markerEnd="url(#arrow)"
+              />
+              <polygon
+                points={`${centerX},${startY-70} ${centerX+105},${startY} ${centerX},${startY+70} ${centerX-105},${startY}`}
+                fill="#dbeafe" stroke="#3b82f6" strokeWidth="5"
+              />
+              <text x={centerX} y={startY+5} textAnchor="middle"
+                fontWeight="bold" fontSize="14" fill="#1e40af">
+                IF ?
+              </text>
+              <foreignObject x={centerX-85} y={startY-25} width="170" height="50">
+                <input
+                  value={item.condition}
+                  onChange={(e) => updateCondition(index, "condition", e.target.value)}
+                  style={{
+                    width: "100%", height: "100%", border: "3px solid #3b82f6",
+                    borderRadius: "8px", textAlign: "center", fontSize: "14px", fontWeight: "600"
+                  }}
+                  disabled={isSubmitted}
+                />
+              </foreignObject>
+              <text x={centerX + 140} y={startY-5} fontWeight="bold" fill="#059669">YA</text>
+              <line
+                x1={centerX + 105} y1={startY} x2={rightX} y2={startY}
+                stroke="#059669" strokeWidth="4" markerEnd="url(#arrow)"
+              />
+              <rect
+                x={rightX} y={startY-50} width="200" height="100" rx="15"
+                fill="url(#yesGrad)" stroke="#10b981" strokeWidth="4"
+              />
+              <foreignObject x={rightX+10} y={startY-20} width="180" height="60">
+                <input
+                  value={item.yes}
+                  onChange={(e) => updateCondition(index, "yes", e.target.value)}
+                  style={{ width: "100%", height: "100%", border: "none" }}
+                  disabled={isSubmitted}
+                />
+              </foreignObject>
+              <line
+                x1={rightX + 100} y1={startY + 50} x2={endX} y2={totalHeight - 80}
+                stroke="#059669" strokeWidth="3" markerEnd="url(#arrow)"
+              />
+              <text x={centerX - 30} y={startY + 90} fontWeight="bold" fill="#dc2626">
+                TIDAK
+              </text>
+            </g>
+          );
+        })}
+
+        {/* ELSE */}
+        {conditions.length > 0 && showElse && (() => {
+          const lastY = 200 + ((conditions.length - 1) * conditionHeight) + 70;
+          const elseY = 200 + (conditions.length * conditionHeight);
+
+          return (
+            <g>
+              <line
+                x1={centerX - 105} y1={lastY} x2={leftX} y2={elseY}
+                stroke="#dc2626" strokeWidth="4" markerEnd="url(#arrow)"
+              />
+              <rect
+                x={leftX - 120} y={elseY} width="240" height="110" rx="15"
+                fill="url(#noGrad)" stroke="#dc2626" strokeWidth="4"
+              />
+              <text x={leftX} y={elseY + 25} textAnchor="middle"
+                fontWeight="bold" fill="#dc2626">
+                ELSE
+              </text>
+              <foreignObject x={leftX - 110} y={elseY + 40} width="220" height="60">
+                <input
+                  value={elseInstruction}
+                  onChange={(e) => updateElseInstruction(e.target.value)}
+                  style={{ width: "100%", height: "100%", border: "none" }}
+                  disabled={isSubmitted}
+                />
+              </foreignObject>
+              <line
+                x1={leftX} y1={elseY + 110} x2={endX} y2={totalHeight - 80}
+                stroke="#dc2626" strokeWidth="3" markerEnd="url(#arrow)"
+              />
+            </g>
+          );
+        })()}
+
+        {/* END */}
+        <ellipse
+          cx={endX} cy={totalHeight - 60} rx="85" ry="45"
+          fill="url(#startGrad)" stroke="#059669" strokeWidth="4"
+        />
+        <text
+          x={endX} y={totalHeight - 52} textAnchor="middle"
+          fontWeight="bold" fontSize="20" fill="white"
+        >
+          SELESAI
+        </text>
+      </svg>
+    );
   };
 
   /* ================= MODALS ================= */
@@ -693,7 +576,7 @@ Swal.fire({
   const RulesPopup = () => {
     if (!showRules) return null;
 
-    return Swal.fire({
+    Swal.fire({
       title: "📜 ROOM RULES",
       html: `
         <div style="text-align: left; font-size: 15px; line-height: 1.7;">
@@ -702,10 +585,8 @@ Swal.fire({
             <li>Selesaikan <strong>5 Quest</strong> secara berurutan</li>
             <li>Target: <strong>90%+ score</strong> untuk 🥇 MASTER</li>
           </ul>
-          
           <h4>⏰ Timer: <strong>${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}</strong></h4>
           <ul><li>60 menit total</li><li>Overtime = penalty XP</li></ul>
-          
           <h4>🧩 Clue: Max 3 (-10% score/clue)</h4>
           <h4>⚠️ Attempt: Max 10x pseudocode + 10x flowchart</h4>
         </div>
@@ -715,13 +596,13 @@ Swal.fire({
       confirmButtonColor: "#10b981",
       width: "650px"
     }).then(() => setShowRules(false));
+    return null;
   };
 
   /* ================= MAIN RENDER ================= */
   return (
     <Layout>
       <Wrapper>
-        {/* TIMER */}
         {timerActive && (
           <TimerBox>
             <TimerEmoji>⏰</TimerEmoji>
@@ -731,7 +612,6 @@ Swal.fire({
           </TimerBox>
         )}
 
-        {/* HEADER */}
         <Header>
           <HeaderTop>
             <HeaderLeft>
@@ -758,7 +638,6 @@ Swal.fire({
         </Header>
 
         <Container>
-          {/* LEFT PANEL */}
           <LeftPanel>
             <ClueCard>
               <ClueHeader>🧩 CLUE SYSTEM ({usedClues.length}/{clueMax})</ClueHeader>
@@ -801,7 +680,6 @@ Swal.fire({
             </ProveMasteryButton>
           </LeftPanel>
 
-          {/* RIGHT PANEL */}
           <RightPanel>
             <PseudocodeCard>
               <CardTitle>📝 Fill-in-Blank Pseudocode</CardTitle>
@@ -812,9 +690,7 @@ Swal.fire({
               <BlanksContainer>
                 {templateData.blanks?.map((blank, index) => (
                   <BlankRow key={index}>
-                    <BlankLabel>
-                      📝 Blank {index + 1}: 
-                    </BlankLabel>
+                    <BlankLabel>📝 Blank {index + 1}:</BlankLabel>
                     <InputGroup>
                       <BlankInput
                         value={pseudocodeBlanks[index] || ""}
@@ -847,7 +723,7 @@ Swal.fire({
                   {showElse ? "❌ Remove ELSE" : "➕ Add ELSE"}
                 </FlowBtn>
                 <FlowBtn onClick={saveFlowchart} disabled={isSubmitted || conditions.length === 0}>
-                                    💾 Save Flowchart
+                  💾 Save Flowchart
                 </FlowBtn>
               </FlowchartButtons>
             </FlowchartCard>
@@ -855,13 +731,12 @@ Swal.fire({
         </Container>
       </Wrapper>
 
-      {/* MODALS */}
       <MiniLessonModal 
-  show={showMini} 
-  onClose={() => setShowMini(false)} 
-  content={miniLessonData?.content || miniContent}
-  title={miniLessonData?.title || "Mini Lesson"}
-/>
+        show={showMini} 
+        onClose={() => setShowMini(false)} 
+        content={miniLessonData?.content || miniContent}
+        title={miniLessonData?.title || "Mini Lesson"}
+      />
       <CompilerGuideModal />
       <RulesPopup />
     </Layout>
