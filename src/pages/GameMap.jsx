@@ -8,16 +8,17 @@ export default function GameMap() {
   const [progress, setProgress] = useState([]);
   const [userStats, setUserStats] = useState({ xp: 0, streak: 0, hearts: 5 });
 
-  useEffect(() => {
-    apiGet("/game/map").then((res) => {
-      console.log("GAME MAP DATA:", res); // Debug
-      if (res.status) {
-        setLevels(res.levels || []);
-        setProgress(res.progress || []);
-        setUserStats(res.userStats || {});
-      }
-    }).catch(err => console.error("Map load error:", err));
-  }, []);
+useEffect(() => {
+  apiGet("/game/map")
+    .then((res) => {
+      console.log("GAME MAP DATA:", res);
+      console.log("LEVELS:", res.levels); // 🔥 TAMBAH INI
+      setLevels(res.levels || []);
+      setProgress(res.progress || []);
+      setUserStats(res.userStats || {});
+    })
+    .catch(err => console.error("Map load error:", err));
+}, []);
 
   // ✅ FIXED: Unlock logic berdasarkan grouped data
   const isUnlocked = (mIdx, lIdx) => {
