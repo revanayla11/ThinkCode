@@ -341,18 +341,19 @@ END`,
 
   /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
   /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
-  const centerX = 500;
-const leftX = 300;
-const rightX = 800;
-const endX = 800;
 const renderFlowchart = () => {
-  // Hitung height yang pas
+  // 🔥 GRID SYSTEM (KUNCI UTAMA BIAR RAPI)
+  const centerX = 500;
+  const leftX = 280;
+  const rightX = 780;
+  const endX = 780;
+
   const conditionHeight = 180;
   const elseHeight = showElse ? 200 : 0;
   const totalHeight = 300 + (conditions.length * conditionHeight) + elseHeight;
-  
+
   return (
-    <svg 
+    <svg
       width="100%"
       height="100%"
       viewBox={`0 0 1200 ${totalHeight}`}
@@ -362,14 +363,17 @@ const renderFlowchart = () => {
         <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
           <path d="M0,0 L0,10 L10,5 z" fill="#374151" />
         </marker>
+
         <linearGradient id="startGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#10b981"/>
           <stop offset="100%" stopColor="#059669"/>
         </linearGradient>
+
         <linearGradient id="yesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#d1fae5"/>
           <stop offset="100%" stopColor="#a7f3d0"/>
         </linearGradient>
+
         <linearGradient id="noGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#fee2e2"/>
           <stop offset="100%" stopColor="#fecaca"/>
@@ -377,108 +381,195 @@ const renderFlowchart = () => {
       </defs>
 
       {/* START */}
-      <ellipse cx={centerX} cy="80" rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
-      <text x="475" y="88" textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🟢 MULAI</text>
+      <ellipse cx={centerX} cy="80" rx="85" ry="45"
+        fill="url(#startGrad)" stroke="#059669" strokeWidth="4" />
+      <text x={centerX} y="88" textAnchor="middle"
+        fontWeight="bold" fontSize="20" fill="white">
+        🟢 MULAI
+      </text>
 
-      {/* CONDITIONS LOOP */}
+      {/* CONDITIONS */}
       {conditions.map((item, index) => {
         const startY = 200 + (index * conditionHeight);
         const prevEndY = index === 0 ? 125 : (200 + ((index - 1) * conditionHeight) + 180);
 
         return (
           <g key={index}>
-            {/* CONNECTION FROM PREV */}
+            {/* LINE FROM PREV */}
             <line
-              x1="475" y1={prevEndY}
-              x2="475" y2={startY - 70}
-              stroke="#374151" strokeWidth="4" strokeDasharray={index > 0 ? "10,5" : "none"}
+              x1={centerX}
+              y1={prevEndY}
+              x2={centerX}
+              y2={startY - 70}
+              stroke="#374151"
+              strokeWidth="4"
               markerEnd="url(#arrow)"
             />
 
-            {/* DECISION DIAMOND */}
+            {/* DIAMOND */}
             <polygon
               points={`${centerX},${startY-70} ${centerX+105},${startY} ${centerX},${startY+70} ${centerX-105},${startY}`}
-              fill="#dbeafe" stroke="#3b82f6" strokeWidth="5" strokeLinejoin="round"
+              fill="#dbeafe"
+              stroke="#3b82f6"
+              strokeWidth="5"
             />
-            <text x="475" y={startY+5} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#1e40af">IF ?</text>
-            <foreignObject x="385" y={startY-25} width="170" height="50">
+
+            <text x={centerX} y={startY+5} textAnchor="middle"
+              fontWeight="bold" fontSize="14" fill="#1e40af">
+              IF ?
+            </text>
+
+            <foreignObject x={centerX-85} y={startY-25} width="170" height="50">
               <input
                 value={item.condition}
                 onChange={(e) => updateCondition(index, "condition", e.target.value)}
                 style={{
-                  width: "100%", height: "100%",
-                  border: "3px solid #3b82f6", borderRadius: "8px",
-                  textAlign: "center", fontSize: "14px", fontWeight: "600",
-                  background: "white", padding: "4px"
+                  width: "100%",
+                  height: "100%",
+                  border: "3px solid #3b82f6",
+                  borderRadius: "8px",
+                  textAlign: "center",
+                  fontSize: "14px",
+                  fontWeight: "600"
                 }}
                 disabled={isSubmitted}
-                placeholder="Kondisi (contoh: angka > 0)"
               />
             </foreignObject>
 
-            {/* YES BRANCH */}
-            <text x="615" y={startY-5} fontWeight="bold" fontSize="16" fill="#059669">✅ YA</text>
-            <path d={`M580 ${startY} L820 ${startY}`} fill="none" stroke="#059669" strokeWidth="5" markerEnd="url(#arrow)"/>
-            
-            <rect x={rightX} y={startY-50} width="200" height="100" rx="15" fill="url(#yesGrad)" stroke="#10b981" strokeWidth="4"/>
-            <text x="rightX + 100" y={startY-30} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#059669">AKSI YA</text>
-            <foreignObject x="830" y={startY-20} width="180" height="60">
+            {/* YES */}
+            <text x={centerX + 140} y={startY-5}
+              fontWeight="bold" fill="#059669">YA</text>
+
+            <line
+              x1={centerX + 105}
+              y1={startY}
+              x2={rightX}
+              y2={startY}
+              stroke="#059669"
+              strokeWidth="4"
+              markerEnd="url(#arrow)"
+            />
+
+            <rect
+              x={rightX}
+              y={startY-50}
+              width="200"
+              height="100"
+              rx="15"
+              fill="url(#yesGrad)"
+              stroke="#10b981"
+              strokeWidth="4"
+            />
+
+            <foreignObject x={rightX+10} y={startY-20} width="180" height="60">
               <input
                 value={item.yes}
                 onChange={(e) => updateCondition(index, "yes", e.target.value)}
-                style={{ width: "100%", height: "100%", border: "none", padding: "8px", fontSize: "13px", fontWeight: "500" }}
+                style={{ width: "100%", height: "100%", border: "none" }}
                 disabled={isSubmitted}
-                placeholder="Jika benar lakukan ini..."
               />
             </foreignObject>
 
-            {/* YES TO END */}
-            <line x1="rightX + 100" y1={startY+50} x2="rightX + 100" y2={totalHeight-80} stroke="#059669" strokeWidth="4" markerEnd="url(#arrow)"/>
+            {/* YES → END */}
+            <line
+              x1={rightX + 100}
+              y1={startY + 50}
+              x2={endX}
+              y2={totalHeight - 80}
+              stroke="#059669"
+              strokeWidth="3"
+              markerEnd="url(#arrow)"
+            />
 
-            {/* NO BRANCH SETUP */}
-            <text x="440" y={startY+90} fontWeight="bold" fontSize="16" fill="#dc2626">❌ TIDAK</text>
+            {/* NO LABEL */}
+            <text x={centerX - 30} y={startY + 90}
+              fontWeight="bold" fill="#dc2626">
+              TIDAK
+            </text>
           </g>
         );
       })}
 
-      {/* ELSE BLOCK - ONLY LAST CONDITION */}
-      {conditions.length > 0 && showElse && (
-        <g>
-          <line 
-            x1="370" y1={200 + ((conditions.length - 1) * conditionHeight) + 70}
-            x2="370" y2={200 + (conditions.length * conditionHeight) + 20}
-            stroke="#dc2626" strokeWidth="5" markerEnd="url(#arrow)"
-          />
-          
-          {/* ELSE BOX */}
-          <rect 
-            x="250" y={200 + (conditions.length * conditionHeight) + 30} 
-            width="240" height="110" 
-            rx="15" fill="url(#noGrad)" stroke="#dc2626" strokeWidth="5"
-          />
-          <text x="370" y={200 + (conditions.length * conditionHeight) + 55} textAnchor="middle" fontWeight="bold" fontSize="16" fill="#dc2626">🔴 ELSE</text>
-          <foreignObject x="260" y={200 + (conditions.length * conditionHeight) + 70} width="220" height="60">
-            <input
-              value={elseInstruction}
-              onChange={(e) => updateElseInstruction(e.target.value)}
-              style={{ width: "100%", height: "100%", border: "none", padding: "10px", fontSize: "14px", fontWeight: "500" }}
-              disabled={isSubmitted}
-              placeholder="Jika salah lakukan ini..."
+      {/* ELSE */}
+      {conditions.length > 0 && showElse && (() => {
+        const lastY = 200 + ((conditions.length - 1) * conditionHeight) + 70;
+        const elseY = 200 + (conditions.length * conditionHeight);
+
+        return (
+          <g>
+            {/* turun */}
+            <line
+              x1={centerX - 105}
+              y1={lastY}
+              x2={leftX}
+              y2={elseY}
+              stroke="#dc2626"
+              strokeWidth="4"
+              markerEnd="url(#arrow)"
             />
-          </foreignObject>
-          
-          {/* ELSE TO END */}
-          <line 
-            x1="370" y1={200 + (conditions.length * conditionHeight) + 140}
-            x2="rightX + 100" y2={totalHeight-80}
-            stroke="#dc2626" strokeWidth="4" markerEnd="url(#arrow)"
-          />
-        </g>
-      )}
+
+            {/* box */}
+            <rect
+              x={leftX - 120}
+              y={elseY}
+              width="240"
+              height="110"
+              rx="15"
+              fill="url(#noGrad)"
+              stroke="#dc2626"
+              strokeWidth="4"
+            />
+
+            <text x={leftX} y={elseY + 25}
+              textAnchor="middle"
+              fontWeight="bold"
+              fill="#dc2626">
+              ELSE
+            </text>
+
+            <foreignObject x={leftX - 110} y={elseY + 40} width="220" height="60">
+              <input
+                value={elseInstruction}
+                onChange={(e) => updateElseInstruction(e.target.value)}
+                style={{ width: "100%", height: "100%", border: "none" }}
+                disabled={isSubmitted}
+              />
+            </foreignObject>
+
+            {/* ke END */}
+            <line
+              x1={leftX}
+              y1={elseY + 110}
+              x2={endX}
+              y2={totalHeight - 80}
+              stroke="#dc2626"
+              strokeWidth="3"
+              markerEnd="url(#arrow)"
+            />
+          </g>
+        );
+      })()}
 
       {/* END */}
-      <ellipse cx="600" cy={totalHeight-60} rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
-      <text x="rightX + 100" y={totalHeight-52} textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🏁 SELESAI</text>
+      <ellipse
+        cx={endX}
+        cy={totalHeight - 60}
+        rx="85"
+        ry="45"
+        fill="url(#startGrad)"
+        stroke="#059669"
+        strokeWidth="4"
+      />
+      <text
+        x={endX}
+        y={totalHeight - 52}
+        textAnchor="middle"
+        fontWeight="bold"
+        fontSize="20"
+        fill="white"
+      >
+        SELESAI
+      </text>
     </svg>
   );
 };
