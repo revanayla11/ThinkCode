@@ -453,55 +453,41 @@ const renderFlowchart = () => {
   );
 };
 
-const handleOpenClue = async () => {
-  try {
-    const res = await api.post("/clue/open", {
-      clueId,
-    });
+/* ================= CLUE FUNCTIONS ================= */
+const requestClue = async () => {  // ✅ INI YANG DIPAKAI
+  if (usedClues.length >= clueMax) {
+    Swal.fire("Maksimal!", "Sudah pakai 3 clue", "info");
+    return;
+  }
 
-    // ✅ kalau berhasil
-    Swal.fire({
-      icon: "success",
-      title: "Clue Terbuka!",
-      text: "Berhasil membuka clue 🎉",
-    });
+  const nextClueIndex = usedClues.length;
+  const nextClue = clues[nextClueIndex];
+  if (!nextClue) {
+    Swal.fire("Clue habis!", "Tidak ada clue lagi", "info");
+    return;
+  }
 
-  } catch (err) {
-    const error = err.response?.data;
+  const result = await Swal.fire({
+    title: "🧩 Ambil Clue?",
+    html: `
+      <div style="text-align: left;">
+        <strong>Clue ${nextClueIndex + 1}</strong><br><br>
+        <strong>Biaya:</strong> ${nextClue.cost} XP per anggota<br>
+      </div>
+    `,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "💰 Bayar & Ambil",
+  });
 
-    // ❌ kalau XP tidak cukup → tampilkan popup kamu
-    if (error?.message === "XP tidak mencukupi untuk membuka clue") {
-      Swal.fire({
-        icon: "warning",
-        title: "⚠️ XP Tidak Cukup",
-        html: `
-          <div style="text-align:left">
-            <p>Beberapa anggota belum memiliki XP yang cukup.</p>
-
-            <p><strong>XP Dibutuhkan:</strong> ${error.detail.requiredXp}</p>
-            <p><strong>XP Saat Ini:</strong> ${error.detail.currentXp}</p>
-
-            <hr/>
-
-            <p style="color:#3b82f6;">
-              🎮 Kamu bisa mendapatkan XP dengan bermain <b>Mini Game</b>
-            </p>
-          </div>
-        `,
-        confirmButtonText: "🎮 Ke Mini Game",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.location.href = "/mini-game";
-        }
-      });
-
-    } else {
-      // ❗ fallback error lain
-      Swal.fire({
-        icon: "error",
-        title: "Terjadi Kesalahan",
-        text: error?.message || "Coba lagi nanti",
-      });
+  if (result.isConfirmed) {
+    try {
+      await api.post(`/discussion/clue/use/${roomId}/${nextClue.id}`);
+      loadClues();
+      loadPerformance();
+      Swal.fire("✅", "Clue berhasil diambil!", "success");
+    } catch (err) {
+      Swal.fire("❌", err.response?.data?.message || "Gagal ambil clue", "error");
     }
   }
 };
