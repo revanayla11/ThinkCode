@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || "https://thinkcode-backend11-production.up.railway.app/api";  // Default dengan /api untuk API calls
+const API_BASE = import.meta.env.VITE_API_URL || "https://thinkcode-backend11-production.up.railway.app/api" || "http://localhost:5000/api"; // Default dengan /api untuk API calls
 const BASE_URL = API_BASE.replace('/api', '');
 
 function getHeaders(isForm = false) {

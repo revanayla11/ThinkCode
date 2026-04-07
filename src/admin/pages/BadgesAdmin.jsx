@@ -300,7 +300,7 @@ const saveBadge = async () => {
     setForm({ badge_name: "", description: "", icon: "", file: null });
   };
 
-  const baseUrl = import.meta.env.VITE_API_URL.replace('/api', ''); 
+  const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '') || "http://localhost:5000/api"; 
   
 
   return (

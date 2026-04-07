@@ -66,7 +66,7 @@ export default function AdminRooms() {
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/discussion/rooms/by-materi/${materiId}`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/admin/discussion/rooms/by-materi/${materiId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -121,7 +121,7 @@ export default function AdminRooms() {
   const toggleRoom = async (id) => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/discussion/rooms/${id}/toggle`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/admin/discussion/rooms/${id}/toggle`,
         {
           method: "PUT",
           headers: {
