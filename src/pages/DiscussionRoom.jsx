@@ -321,35 +321,60 @@ END`,
   };
 
   /* ================= SAVE FUNCTIONS ================= */
-  const savePseudocode = async () => {
-    if (!pseudocode.trim()) {
-      Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
-      return;
-    }
-    try {
-      await api.post(`/discussion/room/${roomId}/pseudocode`, { pseudocode });
-      Swal.fire("✅", "Pseudocode tersimpan!", "success");
-      loadPerformance();
-    } catch (err) {
-      Swal.fire("❌", "Gagal simpan", "error");
-    }
-  };
+// Update savePseudocode
+const savePseudocode = async () => {
+  if (!pseudocode.trim()) {
+    Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
+    return;
+  }
+  
+  // 🔥 FORMAT EXACTLY LIKE TEACHER
+  const formattedPseudo = pseudocode
+    .trim()
+    .replace(/\r\n/g, '\n')  // Unix line endings
+    .replace(/[^\S\n]{2,}/g, ' ') // Multiple whitespace → single space
+    .replace(/\n\s*\n/g, '\n');   // Multiple newlines → single
+  
+  try {
+    await api.post(`/discussion/room/${roomId}/pseudocode`, { 
+      pseudocode: formattedPseudo 
+    });
+    Swal.fire("✅", "Pseudocode tersimpan!", "success");
+    loadPerformance();
+  } catch (err) {
+    Swal.fire("❌", "Gagal simpan", "error");
+  }
+};
 
-  const saveFlowchart = async () => {
-    if (conditions.length === 0) {
-      Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
-      return;
-    }
-    try {
-      await api.post(`/discussion/room/${roomId}/flowchart`, {
-        flowchart: { conditions, elseInstruction, showElse }
-      });
-      Swal.fire("✅", "Flowchart tersimpan!", "success");
-      loadPerformance();
-    } catch (err) {
-      Swal.fire("❌", "Gagal simpan", "error");
-    }
+// Update saveFlowchart
+const saveFlowchart = async () => {
+  if (conditions.length === 0) {
+    Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
+    return;
+  }
+  
+  // 🔥 NORMALIZE BEFORE SAVE
+  const normalizedFlowchart = {
+    conditions: conditions.map(cond => ({
+      condition: cond.condition.trim().toLowerCase(),
+      yes: cond.yes.trim().toLowerCase(),
+      no: cond.no || ''
+    })),
+    elseInstruction: elseInstruction.trim().toLowerCase(),
+    showElse
   };
+  
+  try {
+    await api.post(`/discussion/room/${roomId}/flowchart`, {
+      flowchart: normalizedFlowchart
+    });
+    Swal.fire("✅", "Flowchart tersimpan!", "success");
+    loadPerformance();
+  } catch (err) {
+    Swal.fire("❌", "Gagal simpan", "error");
+  }
+};
+
 
   /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
   /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
