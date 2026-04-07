@@ -341,6 +341,10 @@ END`,
 
   /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
   /* ================= FLOWCHART BUILDER - CLEAN & FIXED ELSE ================= */
+  const centerX = 500;
+const leftX = 300;
+const rightX = 800;
+const endX = 800;
 const renderFlowchart = () => {
   // Hitung height yang pas
   const conditionHeight = 180;
@@ -373,7 +377,7 @@ const renderFlowchart = () => {
       </defs>
 
       {/* START */}
-      <ellipse cx="475" cy="80" rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
+      <ellipse cx={centerX} cy="80" rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
       <text x="475" y="88" textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🟢 MULAI</text>
 
       {/* CONDITIONS LOOP */}
@@ -393,7 +397,7 @@ const renderFlowchart = () => {
 
             {/* DECISION DIAMOND */}
             <polygon
-              points={`475,${startY-70} 580,${startY} 475,${startY+70} 370,${startY}`}
+              points={`${centerX},${startY-70} ${centerX+105},${startY} ${centerX},${startY+70} ${centerX-105},${startY}`}
               fill="#dbeafe" stroke="#3b82f6" strokeWidth="5" strokeLinejoin="round"
             />
             <text x="475" y={startY+5} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#1e40af">IF ?</text>
@@ -416,8 +420,8 @@ const renderFlowchart = () => {
             <text x="615" y={startY-5} fontWeight="bold" fontSize="16" fill="#059669">✅ YA</text>
             <path d={`M580 ${startY} L820 ${startY}`} fill="none" stroke="#059669" strokeWidth="5" markerEnd="url(#arrow)"/>
             
-            <rect x="820" y={startY-50} width="200" height="100" rx="15" fill="url(#yesGrad)" stroke="#10b981" strokeWidth="4"/>
-            <text x="920" y={startY-30} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#059669">AKSI YA</text>
+            <rect x={rightX} y={startY-50} width="200" height="100" rx="15" fill="url(#yesGrad)" stroke="#10b981" strokeWidth="4"/>
+            <text x="rightX + 100" y={startY-30} textAnchor="middle" fontWeight="bold" fontSize="14" fill="#059669">AKSI YA</text>
             <foreignObject x="830" y={startY-20} width="180" height="60">
               <input
                 value={item.yes}
@@ -429,7 +433,7 @@ const renderFlowchart = () => {
             </foreignObject>
 
             {/* YES TO END */}
-            <line x1="920" y1={startY+50} x2="920" y2={totalHeight-80} stroke="#059669" strokeWidth="4" markerEnd="url(#arrow)"/>
+            <line x1="rightX + 100" y1={startY+50} x2="rightX + 100" y2={totalHeight-80} stroke="#059669" strokeWidth="4" markerEnd="url(#arrow)"/>
 
             {/* NO BRANCH SETUP */}
             <text x="440" y={startY+90} fontWeight="bold" fontSize="16" fill="#dc2626">❌ TIDAK</text>
@@ -466,7 +470,7 @@ const renderFlowchart = () => {
           {/* ELSE TO END */}
           <line 
             x1="370" y1={200 + (conditions.length * conditionHeight) + 140}
-            x2="920" y2={totalHeight-80}
+            x2="rightX + 100" y2={totalHeight-80}
             stroke="#dc2626" strokeWidth="4" markerEnd="url(#arrow)"
           />
         </g>
@@ -474,7 +478,7 @@ const renderFlowchart = () => {
 
       {/* END */}
       <ellipse cx="600" cy={totalHeight-60} rx="85" ry="45" fill="url(#startGrad)" stroke="#059669" strokeWidth="4"/>
-      <text x="920" y={totalHeight-52} textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🏁 SELESAI</text>
+      <text x="rightX + 100" y={totalHeight-52} textAnchor="middle" fontWeight="bold" fontSize="20" fill="white">🏁 SELESAI</text>
     </svg>
   );
 };
