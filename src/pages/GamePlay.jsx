@@ -5,20 +5,26 @@ import { apiGet, apiPost } from "../services/api";
 import Sidebar from "../components/Sidebar";
 
 const slideIn = keyframes`
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
-const shake = keyframes`
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+const sheriffFall = keyframes`
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(20px) rotate(-5deg); }
+  50% { transform: translateY(40px) rotate(5deg); }
+  75% { transform: translateY(20px) rotate(-3deg); }
+  100% { transform: translateY(0) rotate(0deg); }
 `;
 
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+const heartBeat = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+`;
+
+const explode = keyframes`
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
 `;
 
 const Container = styled.div`
@@ -26,6 +32,7 @@ const Container = styled.div`
   min-height: 100vh;
   display: flex;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
 `;
 
 const Main = styled.main`
@@ -36,209 +43,140 @@ const Main = styled.main`
   animation: ${slideIn} 0.6s ease-out;
 `;
 
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(10px);
-  padding: 20px 30px;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-`;
-
 const GameCard = styled.div`
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20px);
-  border-radius: 25px;
+  border-radius: 30px;
   padding: 40px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-  max-width: 900px;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+  max-width: 1000px;
   margin: 0 auto;
   position: relative;
+  border: 4px solid transparent;
+  background-clip: padding-box;
 `;
 
-const TimerBar = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 25px 25px 0 0;
-  overflow: hidden;
-`;
-
-const TimerFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
-  width: ${props => props.progress}%;
-  transition: width ${props => props.time}ms linear;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
-`;
-
-const ProgressBar = styled.div`
-  width: 100%;
-  height: 12px;
-  background: #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 20px;
-`;
-
-const ProgressFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
-  width: ${props => props.progress}%;
-  transition: width 0.5s ease;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
-`;
-
-const QuestionCounter = styled.div`
-  font-size: 16px;
-  color: #64748b;
-  margin-bottom: 20px;
-  font-weight: 500;
-`;
-
-const QuestionContent = styled.div`
-  font-size: 1.4rem;
-  line-height: 1.6;
-  margin-bottom: 30px;
-  color: #1e293b;
-  text-align: center;
-`;
-
-const GameArea = styled.div`
-  min-height: 450px;
+const SheriffContainer = styled.div`
+  position: relative;
+  height: 250px;
+  margin: 30px 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  gap: 25px;
+`;
+
+const Sheriff = styled.div`
+  width: 200px;
+  height: 220px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-radius: 50% 50% 40% 40%;
+  position: relative;
+  animation: ${props => props.falling ? sheriffFall : 'none'} 0.8s ease-in-out;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 25%;
+    width: 50%;
+    height: 40%;
+    background: #fef3c7;
+    border-radius: 50% 40% 30% 30%;
+  }
+  
+  &::after {
+    content: '🤠';
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 3rem;
+    z-index: 2;
+  }
+`;
+
+// Body parts that disappear when wrong
+const BodyPart = styled.div`
+  position: absolute;
+  transition: all 0.5s ease;
+  opacity: ${props => props.visible ? 1 : 0};
+  transform: ${props => props.visible ? 'scale(1)' : 'scale(0) translateY(20px)'};
+  
+  ${props => !props.visible && css`
+    animation: ${explode} 0.6s ease-out forwards;
+  `}
+`;
+
+const Hat = styled(BodyPart)`
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2.5rem;
+`;
+
+const Badge = styled(BodyPart)`
+  top: 10px;
+  right: 10px;
+  font-size: 2rem;
+`;
+
+const Gun = styled(BodyPart)`
+  bottom: 10px;
+  left: 10px;
+  font-size: 2rem;
+  transform: rotate(-20deg);
+`;
+
+const Boots = styled(BodyPart)`
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+`;
+
+const HeartsContainer = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+`;
+
+const Heart = styled.div`
+  font-size: 2.5rem;
+  animation: ${heartBeat} 1.5s ease-in-out infinite;
+  color: ${props => props.active ? '#ef4444' : '#9ca3af'};
 `;
 
 const MotivationMessage = styled.div`
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: bold;
-  padding: 25px 40px;
-  border-radius: 20px;
+  padding: 30px 50px;
+  border-radius: 25px;
   text-align: center;
-  animation: ${pulse} 0.8s ease-out;
-  max-width: 500px;
-  margin: 0 auto;
-
+  margin: 30px 0;
+  animation: ${slideIn} 0.6s ease-out;
+  
   ${props => props.correct ? css`
     background: linear-gradient(135deg, #dcfce7, #bbf7d0);
     color: #166534;
+    box-shadow: 0 15px 40px rgba(16,185,129,0.4);
   ` : css`
     background: linear-gradient(135deg, #fef2f2, #fecaca);
     color: #dc2626;
-    animation: ${shake} 0.5s ease-in-out;
+    box-shadow: 0 15px 40px rgba(239,68,68,0.4);
+    animation: shake 0.6s ease-in-out;
   `}
 `;
 
-// FLASHCARD DRAG & DROP
-const FlashcardContainer = styled.div`
+const VictoryModal = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
   display: flex;
-  gap: 40px;
-  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-`;
-
-const Flashcard = styled.div`
-  width: 220px;
-  height: 120px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  border-radius: 20px;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-align: center;
-  padding: 20px;
-  cursor: grab;
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
-  user-select: none;
-  transition: all 0.3s ease;
-
-  &:active {
-    cursor: grabbing;
-    transform: scale(1.05);
-  }
-`;
-
-const DropZone = styled.div`
-  width: 280px;
-  height: 140px;
-  border: 4px dashed ${props => props.isCorrect ? '#10b981' : props.isWrong ? '#ef4444' : '#e5e7eb'};
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: ${props => props.isCorrect ? '#d1fae5' : props.isWrong ? '#fee2e2' : '#f8fafc'};
-  transition: all 0.3s ease;
-  cursor: pointer;
-  
-  ${props => props.droppable && `
-    &:hover { border-color: #3b82f6; background: #eff6ff; }
-  `}
-`;
-
-const DropZoneLabel = styled.div`
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 10px;
-`;
-
-const DroppedItem = styled.div`
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 15px;
-  font-weight: 600;
-  font-size: 0.95rem;
-`;
-
-// MATCHING GAME
-const MatchingContainer = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  max-width: 700px;
-  width: 100%;
-`;
-
-const MatchingCard = styled.div`
-  height: 100px;
-  border: 3px solid #e5e7eb;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-
-  &:hover {
-    border-color: #3b82f6;
-    transform: translateY(-3px);
-  }
-
-  ${props => props.matched && `
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    border-color: #059669;
-  `}
+  z-index: 1000;
+  backdrop-filter: blur(15px);
 `;
 
 export default function GamePlay() {
@@ -248,12 +186,14 @@ export default function GamePlay() {
   const [level, setLevel] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState([]);
+  const [lives, setLives] = useState(5);
+  const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState(null);
   const [result, setResult] = useState(null);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [dragData, setDragData] = useState(null);
+  const [showParts, setShowParts] = useState({
+    hat: true, badge: true, gun: true, boots: true
+  });
+  const [timeLeft, setTimeLeft] = useState(25);
 
   const timeoutRef = useRef(null);
   const questionTimerRef = useRef(null);
@@ -271,20 +211,13 @@ export default function GamePlay() {
       const res = await apiGet(`/game/level/${id}`);
       if (!res.status) throw new Error("Load gagal");
 
-      const fixedQuestions = (res.questions || []).map((q) => {
-        let meta = q.meta;
-        if (typeof meta === "string") {
-          try { meta = JSON.parse(meta); } catch { meta = {}; }
-        }
-        return { ...q, meta };
-      });
-
       setLevel(res.level);
-      setQuestions(fixedQuestions);
+      setQuestions(res.questions || []);
       setIndex(0);
-      setAnswers([]);
+      setLives(5);
+      setScore(0);
       setResult(null);
-      setUserAnswer('');
+      setShowParts({ hat: true, badge: true, gun: true, boots: true });
     } catch (err) {
       console.error(err);
       alert("Gagal memuat level");
@@ -292,298 +225,188 @@ export default function GamePlay() {
   };
 
   useEffect(() => {
-    if (index < questions.length) {
-      // Timer 20 detik per soal
-      setTimeLeft(20);
+    if (index < questions.length && lives > 0) {
+      setTimeLeft(25);
       questionTimerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(questionTimerRef.current);
-            submitAnswer(null); // Auto submit jika kehabisan waktu
+            handleWrongAnswer();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
-  }, [index]);
+  }, [index, lives]);
 
   const motivationMessages = {
     correct: [
-      "Hebat! Kamu semakin jago! 🚀",
-      "Perfect! Terus semangat ya! 💪",
-      "Mantap! Kamu luar biasa! ⭐",
-      "Yes! Langkah menuju mastery! 🎯"
+      "🤠 Sheriff selamat! Mantap banget! 🚀",
+      "💥 Perfect shot! Kamu penutup bandit! 🎯",
+      "⭐ Hebat! Sheriff makin gagah! 🔥",
+      "⚡ Yes! Bandit kabur ketakutan! 💪"
     ],
     wrong: [
-      "Tenang, kamu pasti bisa! Coba lagi! 💪",
-      "Belum apa-apa, masih banyak kesempatan! 🌟",
-      "Jangan menyerah! Kamu hebat! 🔥",
-      "Belajar dari kesalahan = menang besar! ⚡"
+      "💔 Sheriff kehilangan aksesoris! Coba lagi! 💪",
+      "😱 Bandit nyaris menang! Lawan balik! ⚔️",
+      "❌ Sheriff masih kuat! Jangan menyerah! 🌟",
+      "⚠️ Satu bagian hilang! Selamatkan dia! 🛡️"
     ],
-    greatResult: [
-      "🏆 PERFECT! Kamu jenius!",
-      "⭐ EXCELLENT! Level master tercapai!",
-      "🎉 INCREDIBLE! Semua benar!",
-      "🔥 LEGENDARY! Tak terkalahkan!"
-    ],
-    goodResult: [
-      "👍 BAGUS! Hampir sempurna!",
-      "✨ KEREN! Teruskan momentum ini!",
-      "🎯 TEPAT! Kamu on fire!",
-      "💎 HEBAT! Hasil luar biasa!"
-    ],
-    needPractice: [
-      "💪 Kamu bisa lebih baik lagi!",
-      "📚 Latihan lagi yuk, pasti bisa!",
-      "🌱 Masih proses, terus belajar!",
-      "⚡ Next time pasti lebih mantap!"
+    victory: [
+      "🏆 SHERIFF SELAMAT 100%! KAMU LEGENDA! 🔥",
+      "⭐ PERFECT RESCUE! Bandit hancur total! 🎉",
+      "💎 HERO OF THE WEST! Tak ada tandingan! 🤠",
+      "⚡ ULTIMATE COWBOY! Sheriff abadi! 🌟"
     ]
   };
 
-  const getRandomMessage = (type) => {
-    const messages = motivationMessages[type];
-    return messages[Math.floor(Math.random() * messages.length)];
-  };
-
-  const submitAnswer = (answer) => {
-    clearInterval(questionTimerRef.current);
-    const newAnswers = [...answers];
-    newAnswers[index] = answer;
-    setAnswers(newAnswers);
-    setUserAnswer('');
-
-    let correct = false;
-    const q = questions[index];
-    
-    if (q.type === "mcq") {
-      correct = Number(answer) === Number(q.meta.answerIndex);
-    } else if (["essay", "typing"].includes(q.type)) {
-      correct = String(answer).trim().toLowerCase() === String(q.meta.answer).trim().toLowerCase();
-    } else if (q.type === "truefalse") {
-      correct = Boolean(answer) === Boolean(q.meta.isTrue);
-    } else if (q.type === "flashcard") {
-      correct = answer === 'correct';
-    } else if (q.type === "matching") {
-      correct = q.meta.pairs.every((pair, i) => answers[index]?.[i] === pair.answerIndex);
-    }
-
-    setFeedback(correct ? "correct" : "wrong");
-
-    timeoutRef.current = setTimeout(() => {
+  const handleCorrectAnswer = () => {
+    setFeedback("correct");
+    setScore(prev => prev + 100);
+    setTimeout(() => {
       setFeedback(null);
       if (index + 1 < questions.length) {
-        setIndex((prev) => prev + 1);
+        setIndex(prev => prev + 1);
       } else {
-        finish(newAnswers);
+        finishGame();
       }
-    }, 2000);
+    }, 2500);
   };
 
-  const renderFlashcardGame = () => {
+  const handleWrongAnswer = () => {
+    setFeedback("wrong");
+    const parts = ['hat', 'badge', 'gun', 'boots'];
+    const lostPart = parts[lives - 1]; // Lose parts sequentially
+    setShowParts(prev => ({ ...prev, [lostPart]: false }));
+    setLives(prev => {
+      const newLives = prev - 1;
+      if (newLives <= 0) {
+        setTimeout(() => finishGame(), 2000);
+      } else {
+        setTimeout(() => {
+          setFeedback(null);
+          if (index + 1 < questions.length) {
+            setIndex(prev => prev + 1);
+          }
+        }, 2500);
+      }
+      return newLives;
+    });
+  };
+
+  const renderAnswerButtons = () => {
     const q = questions[index];
     return (
-      <FlashcardContainer>
-        {q.meta.statements.map((statement, i) => (
-          <Flashcard
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+        gap: '25px', 
+        width: '100%', 
+        maxWidth: '700px',
+        margin: '0 auto'
+      }}>
+        {q.meta.options?.map((opt, i) => (
+          <button
             key={i}
-            draggable
-            onDragStart={(e) => setDragData({ statement, index: i })}
+            onClick={() => {
+              if (q.type === "mcq") {
+                Number(i) === Number(q.meta.answerIndex) ? handleCorrectAnswer() : handleWrongAnswer();
+              }
+            }}
+            disabled={feedback !== null}
+            style={{
+              padding: '25px 30px',
+              border: '4px solid #f3f4f6',
+              borderRadius: '25px',
+              background: feedback === 'correct' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                         feedback === 'wrong' && i === Number(q.meta.answerIndex) ? 'linear-gradient(135deg, #10b981, #059669)' :
+                         'white',
+              color: feedback === 'correct' || (feedback === 'wrong' && i === Number(q.meta.answerIndex)) ? 'white' : '#1e293b',
+              cursor: feedback ? 'not-allowed' : 'pointer',
+              fontSize: '1.3rem',
+              fontWeight: '700',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: feedback ? 'scale(0.95)' : 'scale(1)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
           >
-            {statement.text}
-          </Flashcard>
+            {feedback === 'correct' && i === Number(q.meta.answerIndex) && (
+              <span style={{ position: 'absolute', top: 5, right: 5, fontSize: '1.5rem' }}>✅</span>
+            )}
+            {opt}
+          </button>
         ))}
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-          <DropZone
-            droppable={true}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragData) {
-                const isCorrect = dragData.statement.isCorrect;
-                submitAnswer(isCorrect ? 'correct' : 'wrong');
-                setDragData(null);
-              }
-            }}
-          >
-            <DropZoneLabel>✅ BENAR</DropZoneLabel>
-            <div style={{ fontSize: '1.1rem', color: '#059669' }}>Taruh pernyataan benar</div>
-          </DropZone>
-
-          <DropZone
-            droppable={true}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragData) {
-                const isCorrect = dragData.statement.isCorrect;
-                submitAnswer(isCorrect ? 'correct' : 'wrong');
-                setDragData(null);
-              }
-            }}
-          >
-            <DropZoneLabel>❌ SALAH</DropZoneLabel>
-            <div style={{ fontSize: '1.1rem', color: '#dc2626' }}>Taruh pernyataan salah</div>
-          </DropZone>
-        </div>
-      </FlashcardContainer>
+      </div>
     );
   };
 
-  const renderMatchingGame = () => {
-    const q = questions[index];
-    const [selectedLeft, setSelectedLeft] = useState(null);
-    
-    return (
-      <MatchingContainer>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {q.meta.leftItems.map((item, i) => (
-            <MatchingCard
-              key={`left-${i}`}
-              onClick={() => {
-                if (!selectedLeft) setSelectedLeft(i);
-              }}
-              style={{ 
-                background: selectedLeft === i ? '#dbeafe' : 'white',
-                borderColor: selectedLeft === i ? '#3b82f6' : '#e5e7eb'
-              }}
-            >
-              {item}
-            </MatchingCard>
-          ))}
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {q.meta.rightItems.map((item, i) => (
-            <MatchingCard
-              key={`right-${i}`}
-              onClick={() => {
-                if (selectedLeft !== null) {
-                  const answer = Array(4).fill(null);
-                  answer[selectedLeft] = i;
-                  submitAnswer(answer);
-                  setSelectedLeft(null);
-                }
-              }}
-            >
-              {item}
-            </MatchingCard>
-          ))}
-        </div>
-      </MatchingContainer>
-    );
-  };
-
-  const finish = async (finalAnswers) => {
+  const finishGame = async () => {
     try {
-      const payload = finalAnswers.map((a, i) => ({
-        questionId: questions[i].id,
-        answer: a,
-      }));
-
-      const res = await apiPost(`/game/submit/${level.id}`, { answers: payload });
-      if (!res.status) throw new Error("Submit gagal");
-      setResult(res);
+      const finalScore = Math.round((score / (questions.length * 100)) * 100);
+      setResult({ 
+        scorePercent: finalScore, 
+        score: score, 
+        correct: Math.round(finalScore / 10), 
+        total: questions.length,
+        gainedXp: Math.round(score / 20)
+      });
     } catch (err) {
       console.error(err);
-      alert("Gagal submit hasil");
     }
   };
 
   const renderGame = () => {
     const q = questions[index];
+    
     switch (q.type) {
       case "mcq":
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', width: '100%', maxWidth: '600px' }}>
-            {q.meta.options?.map((opt, i) => (
-              <button
-                key={i}
-                style={{
-                  padding: '20px',
-                  border: '3px solid #e5e7eb',
-                  borderRadius: '20px',
-                  background: answers[index] === i ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'white',
-                  color: answers[index] === i ? 'white' : '#1e293b',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                  transition: 'all 0.3s ease'
-                }}
-                onClick={() => submitAnswer(i)}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        );
-
       case "truefalse":
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', maxWidth: '500px' }}>
-            <button onClick={() => submitAnswer(true)} style={{
-              padding: '25px', background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: 'white', border: 'none', borderRadius: '20px', fontSize: '1.2rem',
-              fontWeight: '700', cursor: 'pointer', boxShadow: '0 10px 30px rgba(16,185,129,0.4)'
-            }}>
-              ✅ BENAR
-            </button>
-            <button onClick={() => submitAnswer(false)} style={{
-              padding: '25px', background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-              color: 'white', border: 'none', borderRadius: '20px', fontSize: '1.2rem',
-              fontWeight: '700', cursor: 'pointer', boxShadow: '0 10px 30px rgba(239,68,68,0.4)'
-            }}>
-              ❌ SALAH
-            </button>
-          </div>
-        );
-
+        return renderAnswerButtons();
+      
       case "essay":
       case "typing":
         return (
           <>
             <input
               type="text"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="Ketik jawaban Anda di sini..."
+              placeholder="Ketik jawaban untuk selamatkan Sheriff! 🤠"
               style={{
-                width: '100%', maxWidth: '500px', padding: '25px', border: '3px solid #e5e7eb',
-                borderRadius: '25px', fontSize: '18px', textAlign: 'center', outline: 'none',
-                boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+                width: '100%', maxWidth: '600px', padding: '25px', 
+                border: '4px solid #e5e7eb', borderRadius: '25px', 
+                fontSize: '1.4rem', textAlign: 'center', outline: 'none',
+                boxShadow: '0 12px 35px rgba(0,0,0,0.15)',
+                marginBottom: '25px'
               }}
               autoFocus
             />
             <button 
-              onClick={() => submitAnswer(userAnswer)}
-              disabled={!userAnswer.trim()}
               style={{
-                padding: '20px 50px', border: 'none', borderRadius: '25px',
-                fontSize: '18px', fontWeight: '700', cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
-                background: userAnswer.trim() ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : '#ccc',
-                color: 'white', boxShadow: '0 10px 30px rgba(59,130,246,0.4)'
+                padding: '20px 60px', border: 'none', borderRadius: '25px',
+                fontSize: '1.4rem', fontWeight: '700', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: 'white', boxShadow: '0 15px 40px rgba(245,158,11,0.4)'
               }}
             >
-              Submit Jawaban
+              🚀 Selamatkan Sheriff!
             </button>
           </>
         );
-
-      case "flashcard":
-        return renderFlashcardGame();
-
-      case "matching":
-        return renderMatchingGame();
-
+      
       default:
         return <div>Game type "{q.type}" belum didukung</div>;
     }
   };
 
-  if (!level) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Memuat level...</div>;
-  if (!questions.length) return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Level belum memiliki soal</div>;
+  if (!level) return (
+    <Container>
+      <div style={{ padding: '100px 30px', textAlign: 'center', color: 'white', fontSize: '1.8rem' }}>
+        🤠 Loading petualangan Sheriff...
+      </div>
+    </Container>
+  );
 
   const q = questions[index];
 
@@ -592,124 +415,175 @@ export default function GamePlay() {
       <Sidebar collapsed={collapsed} toggleSidebar={() => setCollapsed(!collapsed)} />
       
       <Main collapsed={collapsed}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ color: 'white', fontSize: '1.2rem', fontWeight: '600' }}>
-            ⏱️ {timeLeft}s
-          </div>
-          <button onClick={() => navigate(-1)} style={{
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white',
-            border: 'none', borderRadius: '15px', padding: '12px 24px', cursor: 'pointer',
-            fontWeight: '600', boxShadow: '0 4px 15px rgba(239,68,68,0.4)'
-          }}>
-            ← Kembali
-          </button>
-        </div>
-
-        <div style={{
-          background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)',
-          padding: '25px 35px', borderRadius: '20px', marginBottom: '25px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+        {/* TOP BAR */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '30px',
+          background: 'rgba(255,255,255,0.95)', 
+          padding: '20px 30px', 
+          borderRadius: '25px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', background: 'linear-gradient(45deg, #1e40af, #3b82f6)', 
-                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {level.title}
-          </h2>
-          <div style={{ color: '#64748b', fontWeight: '500' }}>
-            🎮 {level.type?.toUpperCase()} - Level {level.levelNumber} | Soal {index + 1}/{questions.length}
+          <div style={{ color: '#1e293b', fontSize: '1.5rem', fontWeight: '700' }}>
+            ⏱️ {timeLeft}s | ⭐ {score} XP
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+            <div style={{ fontSize: '1.3rem', color: '#1e293b' }}>
+              Soal {index + 1}/{questions.length}
+            </div>
+            <button onClick={() => navigate(-1)} style={{
+              background: 'linear-gradient(135deg, #6b7280, #4b5563)', 
+              color: 'white', border: 'none', 
+              borderRadius: '20px', padding: '12px 25px', 
+              cursor: 'pointer', fontWeight: '600'
+            }}>
+              ← Kembali
+            </button>
           </div>
         </div>
 
         <GameCard>
-          <TimerBar>
-            <TimerFill progress={(timeLeft / 20) * 100} time={1000} />
-          </TimerBar>
+          <h2 style={{ 
+            textAlign: 'center', 
+            fontSize: '2.5rem', 
+            background: 'linear-gradient(45deg, #1e40af, #3b82f6, #f59e0b)', 
+            WebkitBackgroundClip: 'text', 
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '20px'
+          }}>
+            🤠 SAVE THE SHERIFF!
+          </h2>
+
+          <div style={{ 
+            textAlign: 'center', 
+            color: '#64748b', 
+            fontSize: '1.3rem', 
+            marginBottom: '40px',
+            fontWeight: '600'
+          }}>
+            {level.title} - Level {level.levelNumber}
+          </div>
+
+          {/* HEARTS */}
+          <HeartsContainer>
+            {Array(5).fill().map((_, i) => (
+              <Heart key={i} active={i < lives}>❤️</Heart>
+            ))}
+          </HeartsContainer>
+
+          {/* QUESTION */}
+          <div style={{ 
+            fontSize: '1.6rem', 
+            lineHeight: 1.6, 
+            marginBottom: '40px', 
+            color: '#1e293b', 
+            textAlign: 'center',
+            padding: '30px',
+            background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+            borderRadius: '25px',
+            boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.05)'
+          }}>
+            {q.content}
+          </div>
+
+          {/* SHERIFF CHARACTER */}
+          <SheriffContainer falling={feedback === 'wrong'}>
+            <Sheriff falling={feedback === 'wrong'}>
+              <Hat visible={showParts.hat}>🤠</Hat>
+              <Badge visible={showParts.badge}>⭐</Badge>
+              <Gun visible={showParts.gun}>🔫</Gun>
+              <Boots visible={showParts.boots}>👢</Boots>
+            </Sheriff>
+            <div style={{ 
+              marginTop: '20px', 
+              fontSize: '1.4rem', 
+              color: '#64748b',
+              fontWeight: '600'
+            }}>
+              {lives > 0 ? 'Selamatkan Sheriff dari bandit!' : 'Game Over! Sheriff jatuh! 😱'}
+            </div>
+          </SheriffContainer>
+
+          {/* FEEDBACK & GAME */}
+          {feedback && (
+            <MotivationMessage correct={feedback === "correct"}>
+              {feedback === "correct" 
+                ? motivationMessages.correct[Math.floor(Math.random() * motivationMessages.correct.length)]
+                : motivationMessages.wrong[Math.floor(Math.random() * motivationMessages.wrong.length)]
+              }
+            </MotivationMessage>
+          )}
           
-          <ProgressBar style={{ marginBottom: '30px' }}>
-            <ProgressFill progress={(index / questions.length) * 100} />
-          </ProgressBar>
-
-          <QuestionContent>{q.content}</QuestionContent>
-
-          <GameArea>
-            {feedback && (
-              <MotivationMessage correct={feedback === "correct"}>
-                {feedback === "correct" 
-                  ? getRandomMessage("correct") 
-                  : getRandomMessage("wrong")
-                }
-              </MotivationMessage>
-            )}
-            
-            {!feedback && renderGame()}
-          </GameArea>
+          {!feedback && renderGame()}
         </GameCard>
       </Main>
 
+      {/* VICTORY MODAL */}
       {result && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 1000, backdropFilter: 'blur(10px)'
-        }}>
+        <VictoryModal>
           <div style={{
-            background: 'linear-gradient(135deg, #ffffff, #f8fafc)', padding: '60px 50px',
-            borderRadius: '30px', textAlign: 'center', boxShadow: '0 25px 80px rgba(0,0,0,0.4)',
-            maxWidth: '500px', width: '90%', animation: `${slideIn} 0.8s ease-out`
+            background: 'linear-gradient(135deg, #ffffff, #f8fafc)', 
+            padding: '80px 60px', borderRadius: '40px', 
+            textAlign: 'center', boxShadow: '0 30px 100px rgba(0,0,0,0.5)',
+            maxWidth: '600px', width: '90%', animation: `${slideIn} 0.8s ease-out`
           }}>
-            <h2 style={{ fontSize: '2.5rem', marginBottom: '25px' }}>🎉 Level Selesai!</h2>
-            
-            <div style={{ fontSize: '4rem', marginBottom: '30px' }}>
-              {result.scorePercent >= 90 ? '🏆' : result.scorePercent >= 70 ? '🥇' : '🥈'}
+            <div style={{ fontSize: '5rem', marginBottom: '30px' }}>
+              {result.scorePercent >= 90 ? '🤠🏆' : result.scorePercent >= 70 ? '🤠⭐' : '🤠💪'}
             </div>
             
+            <h2 style={{ fontSize: '3rem', marginBottom: '30px', color: '#1e293b' }}>
+              SHERIFF SELAMAT!
+            </h2>
+            
             <div style={{ 
-              fontSize: '2.5rem', marginBottom: '25px',
-              color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#d97706' : '#dc2626',
+              fontSize: '4rem', 
+              marginBottom: '30px',
+              color: result.scorePercent >= 90 ? '#059669' : result.scorePercent >= 70 ? '#f59e0b' : '#dc2626',
               fontWeight: 'bold'
             }}>
               {result.scorePercent}%
             </div>
             
-            <div style={{ fontSize: '1.3rem', marginBottom: '15px', color: '#374151' }}>
-              {result.scorePercent >= 90 && getRandomMessage("greatResult")}
-              {result.scorePercent >= 70 && result.scorePercent < 90 && getRandomMessage("goodResult")}
-              {result.scorePercent < 70 && getRandomMessage("needPractice")}
+            <div style={{ 
+              fontSize: '1.8rem', 
+              marginBottom: '40px', 
+              color: '#374151',
+              lineHeight: 1.6
+            }}>
+              {result.scorePercent >= 90 && motivationMessages.victory[Math.floor(Math.random() * motivationMessages.victory.length)]}
+              {result.scorePercent >= 70 && result.scorePercent < 90 && "Keren! Sheriff hampir sempurna! 🌟 Teruskan!"}
+              {result.scorePercent < 70 && "Sheriff selamat tapi terluka! Latihan lagi yuk! 💪"}
             </div>
 
-            <div style={{ fontSize: '1.2rem', marginBottom: '30px' }}>
-              Benar: <strong style={{ color: '#3b82f6' }}>{result.correct}/{result.total}</strong> | 
-              XP: <strong style={{ color: '#10b981' }}>+{result.gainedXp}</strong>
+            <div style={{ 
+              display: 'flex', 
+              gap: '30px', 
+              justifyContent: 'center', 
+              marginBottom: '50px',
+              fontSize: '1.5rem'
+            }}>
+              <div>⭐ Score: <strong style={{ color: '#3b82f6' }}>{result.score}</strong></div>
+              <div>XP: <strong style={{ color: '#10b981' }}>+{result.gainedXp}</strong></div>
             </div>
-
-            {result.badge && (
-              <div style={{ marginBottom: '40px' }}>
-                <h4 style={{ marginBottom: '20px', color: '#1e293b' }}>🏅 Badge Baru!</h4>
-                <img 
-                  src={result.badge.image} 
-                  alt={result.badge.badge_name}
-                  style={{
-                    width: '120px', height: '120px', objectFit: 'contain',
-                    borderRadius: '20px', boxShadow: '0 15px 40px rgba(0,0,0,0.2)'
-                  }}
-                />
-                <div style={{ fontWeight: '700', marginTop: '15px', fontSize: '1.1rem' }}>
-                  {result.badge.badge_name}
-                </div>
-              </div>
-            )}
 
             <button 
               onClick={() => navigate("/game")}
               style={{
-                width: '100%', padding: '25px', fontSize: '1.3rem', fontWeight: '700',
-                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white',
-                border: 'none', borderRadius: '25px', cursor: 'pointer',
-                boxShadow: '0 15px 40px rgba(59,130,246,0.4)'
+                width: '100%', padding: '30px', fontSize: '1.6rem', 
+                fontWeight: '800', background: 'linear-gradient(135deg, #f59e0b, #d97706)', 
+                color: 'white', border: 'none', borderRadius: '30px', 
+                cursor: 'pointer', boxShadow: '0 20px 50px rgba(245,158,11,0.5)',
+                transition: 'all 0.3s ease'
               }}
+              onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
             >
-              🎮 Kembali ke Peta Game
+              🎮 Kembali ke Peta Petualangan
             </button>
           </div>
-        </div>
+        </VictoryModal>
       )}
     </Container>
   );
