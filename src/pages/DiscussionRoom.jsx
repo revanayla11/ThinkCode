@@ -108,20 +108,20 @@ export default function DiscussionRoom() {
       const taskMap = res.data.data || {};
       
       const dynamicTasks = [
-        { id: 1, text: "📖 Baca Mini Lesson", done: !!taskMap[1] },
-        { id: 2, text: "💬 Diskusi Problem", done: !!taskMap[2] },
-        { id: 3, text: "✍️ Tulis Pseudocode", done: !!taskMap[3] },
-        { id: 4, text: "🔄 Buat Flowchart", done: !!taskMap[4] },
-        { id: 5, text: "✅ Validasi Jawaban", done: !!taskMap[5] }
+        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
+        { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
+        { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
+        { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
+        { id: 5, text: "Cek Jawaban dan upload kode c", done: !!taskMap[5] }
       ];
       setTasks(dynamicTasks);
     } catch (err) {
       setTasks([
-        { id: 1, text: "📖 Baca Mini Lesson", done: false },
-        { id: 2, text: "💬 Diskusi Problem", done: false },
-        { id: 3, text: "✍️ Tulis Pseudocode", done: false },
-        { id: 4, text: "🔄 Buat Flowchart", done: false },
-        { id: 5, text: "✅ Validasi Jawaban", done: false }
+        { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
+        { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
+        { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
+        { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
+        { id: 5, text: "Cek Jawaban dan upload kode c", done: !!taskMap[5] }
       ]);
     }
   };
@@ -744,7 +744,7 @@ const renderFlowchart = () => {
               disabled={isValidating || isSubmitted}
             >
               {isValidating ? "🔍 VALIDATING..." : 
-               isSubmitted ? "🎉 CERTIFIED!" : "✅ PROVE MASTERY"}
+               isSubmitted ? "🎉 CERTIFIED!" : "CEK JAWABAN & UPLOAD CODE"}
             </ProveMasteryButton>
           </LeftPanel>
 
@@ -760,7 +760,7 @@ const renderFlowchart = () => {
                 {templateData.blanks?.map((blank, index) => (
                   <BlankRow key={index}>
                     <BlankLabel>
-                      📝 Blank {index + 1}: <strong>{blank.hint}</strong>
+                      📝 Blank {index + 1}: 
                     </BlankLabel>
                     <InputGroup>
                       <BlankInput
@@ -861,8 +861,8 @@ const PerformanceBox = styled.div`
 `;
 
 const Emoji = styled.div`font-size: 32px;`;
-const Level = styled.div`font-size: 18px; font-weight: 800; color: #10b981; text-transform: uppercase;`;
-const Score = styled.div`font-size: 32px; font-weight: 900; color: #10b981;`;
+const Level = styled.div`font-size: 18px; font-weight: 800; color: #25233b; text-transform: uppercase;`;
+const Score = styled.div`font-size: 32px; font-weight: 900; color: #25233b;`;
 const ProgressBar = styled.div`flex: 1; height: 10px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; margin-left: 20px;`;
 const ProgressFill = styled.div`height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.5s ease; border-radius: 10px;`;
 
