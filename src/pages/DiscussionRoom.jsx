@@ -267,18 +267,59 @@ export default function DiscussionRoom() {
 
   
 
-  // ✅ NEW TEMPLATE SESUAI REQUEST
-  // Ganti loadTemplateData
-const loadTemplateData = async () => {
+  const loadTemplateData = useCallback(async () => {
   try {
-    const res = await api.get(`/discussion/template-dynamic/${materiId}`); // Baru!
-    const data = res.data.data;
+    console.log("🔄 Loading template...");
+    const res = await api.get(`/discussion/template-dynamic/${materiId}`);
+    console.log("✅ Template loaded:", res.data.data);
+    
+    const data = res.data.data || {
+      template: `DEKLARASI 
+___BLANK_0___ : integer
+
+ALGORITMA 
+read(___BLANK_1___)
+IF (___BLANK_2___) THEN 
+write("___BLANK_3___", ___BLANK_4___)
+ENDIF 
+END`,
+      blanks: [
+        { id: 0, hint: "Nama variabel", example: "angka" },
+        { id: 1, hint: "Variabel input", example: "angka" },
+        { id: 2, hint: "Kondisi", example: "angka > 0" },
+        { id: 3, hint: "Pesan", example: "Angka " },
+        { id: 4, hint: "Variabel output", example: "angka" }
+      ]
+    };
+    
     setTemplateData(data);
-    setPseudocodeBlanks(Array(data.blanks?.length || 3).fill(""));
+    // ✅ INIT BLANKS ARRAY
+    setPseudocodeBlanks(Array(data.blanks?.length || 5).fill(""));
   } catch (err) {
-    console.error("Template error:", err);
+    console.error("❌ Template error:", err);
+    // ✅ FAILSAFE TEMPLATE
+    const fallbackData = {
+      template: `DEKLARASI 
+___BLANK_0___ : integer
+
+ALGORITMA 
+read(___BLANK_1___)
+IF (___BLANK_2___) THEN 
+write("___BLANK_3___", ___BLANK_4___)
+ENDIF 
+END`,
+      blanks: [
+        { id: 0, hint: "Nama variabel", example: "angka" },
+        { id: 1, hint: "Variabel input", example: "angka" },
+        { id: 2, hint: "Kondisi", example: "angka > 0" },
+        { id: 3, hint: "Pesan", example: "Angka " },
+        { id: 4, hint: "Variabel output", example: "angka" }
+      ]
+    };
+    setTemplateData(fallbackData);
+    setPseudocodeBlanks(["", "", "", "", ""]);
   }
-};
+}, [materiId]);
 
   /* ================= SAVE FUNCTIONS ================= */
 // Update savePseudocode
@@ -334,6 +375,32 @@ const saveFlowchart = async () => {
     Swal.fire("❌", "Gagal simpan", "error");
   }
 };
+
+// 🔥 TAMBAHKAN useEffect INI (SETELAH semua fungsi load)
+useEffect(() => {
+  const initData = async () => {
+    console.log("🚀 Loading all data...");
+    
+    // 1. TEMPLATE PERTAMA (KRITIS!)
+    await loadTemplateData();
+    
+    // 2. Lainnya PARALEL
+    await Promise.all([
+      loadWorkspaceData(),
+      loadTasks(),
+      loadClues(),
+      loadMiniLesson(),
+      loadSubmissionStatus(),
+      loadPerformance(),
+      loadTimerStatus()
+    ]);
+    
+    console.log("✅ All data loaded!");
+  };
+  
+  initData();
+}, [roomId, materiId, loadTemplateData]); // ✅ DEPENDENCIES
+
 
 
   /* ================= FLOWCHART BUILDER - FULL VERSION WITH ELSE ================= */
@@ -806,35 +873,49 @@ Swal.fire({
           {/* RIGHT PANEL */}
           <RightPanel>
             <PseudocodeCard>
-              <CardTitle>📝 Fill-in-Blank Pseudocode</CardTitle>
-              <TemplatePreview>
-                <pre>{renderFilledTemplate()}</pre>
-              </TemplatePreview>
-              
-              <BlanksContainer>
-                {templateData.blanks?.map((blank, index) => (
-                  <BlankRow key={index}>
-                    <BlankLabel>
-                      📝 Blank {index + 1}: 
-                    </BlankLabel>
-                    <InputGroup>
-                      <BlankInput
-                        value={pseudocodeBlanks[index] || ""}
-                        onChange={(e) => updateBlank(index, e.target.value)}
-                        placeholder={`Masukkan jawaban blank ${index + 1}...`}
-                      />
-                      <HintButton onClick={() => Swal.fire(`💡 Hint Blank ${index + 1}`, blank.hint, "info")}>
-                        ❓
-                      </HintButton>
-                    </InputGroup>
-                  </BlankRow>
-                ))}
-              </BlanksContainer>
+  <CardTitle>📝 Fill-in-Blank Pseudocode</CardTitle>
+  
+  {/* LOADING STATE */}
+  {!templateData.template ? (
+    <TemplatePreview>
+      <div style={{padding: '40px', textAlign: 'center', color: '#6b7280'}}>
+        🔄 Loading template...
+      </div>
+    </TemplatePreview>
+  ) : (
+    <>
+      <TemplatePreview>
+        <pre>{renderFilledTemplate()}</pre>
+      </TemplatePreview>
+      
+      <BlanksContainer>
+        {templateData.blanks?.map((blank, index) => (
+          <BlankRow key={index}>
+            <BlankLabel>
+              📝 Blank {index + 1}: {blank.hint}
+            </BlankLabel>
+            <InputGroup>
+              <BlankInput
+                value={pseudocodeBlanks[index] || ""}
+                onChange={(e) => updateBlank(index, e.target.value)}
+                placeholder={`Contoh: ${blank.example || 'isi jawaban'}`}
+              />
+              <HintButton 
+                onClick={() => Swal.fire(`💡 Blank ${index + 1}`, blank.hint, "info")}
+              >
+                ❓
+              </HintButton>
+            </InputGroup>
+          </BlankRow>
+        ))}
+      </BlanksContainer>
 
-              <SaveButton onClick={savePseudocode} disabled={isSubmitted}>
-                💾 Save Pseudocode
-              </SaveButton>
-            </PseudocodeCard>
+      <SaveButton onClick={savePseudocode} disabled={isSubmitted || !pseudocode.trim()}>
+        💾 Save Pseudocode ({pseudocodeBlanks.filter(b => b.trim()).length}/{templateData.blanks?.length || 5} blanks filled)
+      </SaveButton>
+    </>
+  )}
+</PseudocodeCard>
 
             <FlowchartCard>
               <CardTitle>🔄 Flowchart Builder</CardTitle>
