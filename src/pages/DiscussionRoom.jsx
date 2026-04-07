@@ -26,6 +26,7 @@ export default function DiscussionRoom() {
   // Flowchart
   const [conditions, setConditions] = useState([]);
   const [elseInstruction, setElseInstruction] = useState("");
+  const [showElse, setShowElse] = useState(false);
   
   // Clues & Tasks
   const [clues, setClues] = useState([]);
@@ -91,12 +92,16 @@ export default function DiscussionRoom() {
     try {
       const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
       const data = res.data.data || {};
-      
-      setPseudocode(""); 
-      
+
+      // ✅ LOAD PSEUDOCODE (FIX UTAMA)
+      setPseudocode(data.pseudocode || "");
+
+      // ✅ LOAD FLOWCHART
       const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
+
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
       setElseInstruction(flowchart.elseInstruction || "");
+
     } catch (err) {
       console.error("Load workspace error:", err);
     }
@@ -166,36 +171,49 @@ export default function DiscussionRoom() {
 
 
   // ✅ FIXED INITIAL LOAD + RULES POPUP + TIMER
-  useEffect(() => {
-    if (!roomId || !materiId) return;
-    
-    Promise.all([
-      loadSubmissionStatus(),
-      loadPerformance(),
-      loadWorkspaceData(),
-      loadTasks(),
-      loadClues(),
-      loadTemplateData(),
-      loadTimerStatus() // ✅ ADD TIMER
-    ]).then(() => {
-      // ✅ SHOW RULES POPUP ON FIRST LOAD
-      const hasSeenRules = localStorage.getItem(`rules_${roomId}`);
-      if (!hasSeenRules && !isSubmitted) {
-        setTimeout(() => {
-          setShowRules(true);
-          localStorage.setItem(`rules_${roomId}`, 'true');
-        }, 500);
-      }
-    }).catch(err => console.error("Initial load error:", err));
-  }, [roomId, materiId, loadWorkspaceData, loadTimerStatus]);
+useEffect(() => {
+  if (!roomId || !materiId) return;
+
+  Promise.all([
+    loadSubmissionStatus(),
+    loadPerformance(),
+    loadWorkspaceData(),
+    loadTasks(),
+    loadClues(),
+    loadTemplateData(),
+    loadTimerStatus()
+  ]).then(() => {
+
+    const hasSeenRules = localStorage.getItem(`rules_${roomId}`);
+
+    if (!hasSeenRules) {
+      setTimeout(() => {
+        setShowRules(true);
+        localStorage.setItem(`rules_${roomId}`, "true");
+      }, 500);
+    }
+
+  }).catch(err => console.error("Initial load error:", err));
+
+}, [roomId, materiId]);
 
   /* ================= TEMPLATE FUNCTIONS ================= */
-  const updateBlank = (index, value) => {
-    const newBlanks = [...pseudocodeBlanks];
-    newBlanks[index] = value;
-    setPseudocodeBlanks(newBlanks);
-    setPseudocode(renderFilledTemplate());
-  };
+const updateBlank = (index, value) => {
+  const newBlanks = [...pseudocodeBlanks];
+  newBlanks[index] = value;
+  setPseudocodeBlanks(newBlanks);
+
+  // ✅ LANGSUNG HITUNG TANPA DELAY STATE
+  let filled = templateData.template || "";
+  templateData.blanks?.forEach((_, i) => {
+    filled = filled.replaceAll(
+      `___BLANK_${i}___`,
+      newBlanks[i] || `[BLANK ${i + 1}]`
+    );
+  });
+
+  setPseudocode(filled);
+};
 
   const renderFilledTemplate = () => {
     let filled = templateData.template || "";
@@ -249,9 +267,9 @@ export default function DiscussionRoom() {
   };
 
   const toggleElse = () => {
-  if (isSubmitted) return;
-  setElseInstruction(prev => prev ? "" : ""); // toggle muncul/hilang
-};
+    if (isSubmitted) return;
+    setShowElse(prev => !prev);
+  };
 
   /* ================= FIXED CLUE FUNCTIONS ================= */
   const requestClue = async () => {
@@ -296,27 +314,37 @@ export default function DiscussionRoom() {
   };
 
   /* ================= SAVE FUNCTIONS ================= */
-  const savePseudocode = async () => {
-    try {
-      await api.post(`/discussion/room/${roomId}/pseudocode`, { pseudocode });
-      Swal.fire("✅", "Pseudocode tersimpan!", "success");
-      loadPerformance();
-    } catch (err) {
-      Swal.fire("❌", "Gagal simpan", "error");
-    }
-  };
+const savePseudocode = async () => {
+  if (!pseudocode.trim()) {
+    Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
+    return;
+  }
 
-  const saveFlowchart = async () => {
-    try {
-      await api.post(`/discussion/room/${roomId}/flowchart`, { 
-        flowchart: { conditions, elseInstruction } 
-      });
-      Swal.fire("✅", "Flowchart tersimpan!", "success");
-      loadPerformance();
-    } catch (err) {
-      Swal.fire("❌", "Gagal simpan", "error");
-    }
-  };
+  try {
+    await api.post(`/discussion/room/${roomId}/pseudocode`, { pseudocode });
+    Swal.fire("✅", "Pseudocode tersimpan!", "success");
+    loadPerformance();
+  } catch (err) {
+    Swal.fire("❌", "Gagal simpan", "error");
+  }
+};
+
+const saveFlowchart = async () => {
+  if (conditions.length === 0) {
+    Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
+    return;
+  }
+
+  try {
+    await api.post(`/discussion/room/${roomId}/flowchart`, {
+      flowchart: { conditions, elseInstruction }
+    });
+    Swal.fire("✅", "Flowchart tersimpan!", "success");
+    loadPerformance();
+  } catch (err) {
+    Swal.fire("❌", "Gagal simpan", "error");
+  }
+};
 
   /* ================= FLOWCHART RENDER ================= */
   /* ================= FLOWCHART BUILDER - FULL VERSION ================= */
