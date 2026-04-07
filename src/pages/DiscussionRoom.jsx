@@ -574,6 +574,59 @@ const renderFlowchart = () => {
   );
 };
 
+const handleOpenClue = async () => {
+  try {
+    const res = await api.post("/clue/open", {
+      clueId,
+    });
+
+    // ✅ kalau berhasil
+    Swal.fire({
+      icon: "success",
+      title: "Clue Terbuka!",
+      text: "Berhasil membuka clue 🎉",
+    });
+
+  } catch (err) {
+    const error = err.response?.data;
+
+    // ❌ kalau XP tidak cukup → tampilkan popup kamu
+    if (error?.message === "XP tidak mencukupi untuk membuka clue") {
+      Swal.fire({
+        icon: "warning",
+        title: "⚠️ XP Tidak Cukup",
+        html: `
+          <div style="text-align:left">
+            <p>Beberapa anggota belum memiliki XP yang cukup.</p>
+
+            <p><strong>XP Dibutuhkan:</strong> ${error.detail.requiredXp}</p>
+            <p><strong>XP Saat Ini:</strong> ${error.detail.currentXp}</p>
+
+            <hr/>
+
+            <p style="color:#3b82f6;">
+              🎮 Kamu bisa mendapatkan XP dengan bermain <b>Mini Game</b>
+            </p>
+          </div>
+        `,
+        confirmButtonText: "🎮 Ke Mini Game",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/mini-game";
+        }
+      });
+
+    } else {
+      // ❗ fallback error lain
+      Swal.fire({
+        icon: "error",
+        title: "Terjadi Kesalahan",
+        text: error?.message || "Coba lagi nanti",
+      });
+    }
+  }
+};
+
   /* ================= VALIDATE ================= */
   const validateBeforeUpload = async () => {
     setIsValidating(true);
@@ -626,11 +679,6 @@ Swal.fire({
           <strong>📘 Jawaban Kamu:</strong>
           <pre style="background:#f8fafc; padding:8px; border-radius:6px;">${pseudocode}</pre>
         </div>
-
-        <div style="margin-top:8px;">
-          <strong>🎯 Contoh Jawaban Benar:</strong>
-          <pre style="background:#ecfdf5; padding:8px; border-radius:6px;">${res.data.correctAnswer?.pseudocode || "-"}</pre>
-        </div>
       `
           : ""
       }
@@ -653,9 +701,6 @@ Swal.fire({
         </div>
 
         <div style="margin-top:8px;">
-          <strong>🎯 Flowchart yang benar:</strong><br/>
-          ${res.data.correctAnswer?.flowchart || "Perhatikan alur IF-ELSE"}
-        </div>
       `
           : ""
       }
@@ -692,7 +737,7 @@ Swal.fire({
             <li><strong>Buat</strong> pseudocode & flowchart logic</li>
             <li><strong>Convert ke C code</strong></li>
             <li><strong>Test</strong> di <a href="https://www.onlinegdb.com/" target="_blank" style="color: #3b82f6;">OnlineGDB</a></li>
-            <li><strong>Download/Salin</strong> .c file → Upload!</li>
+            <li><strong>Download/Salin</strong> kode c lalu Upload!</li>
           </ol>
         </div>
       `,
