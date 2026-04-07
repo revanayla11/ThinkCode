@@ -92,7 +92,7 @@ export default function DiscussionRoom() {
       const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
       const data = res.data.data || {};
       
-      setPseudocode(data.pseudocode || "");
+      setPseudocode(""); 
       
       const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
@@ -247,6 +247,11 @@ export default function DiscussionRoom() {
       Swal.fire("Error", "Gagal update task", "error");
     }
   };
+
+  const toggleElse = () => {
+  if (isSubmitted) return;
+  setElseInstruction(prev => prev ? "" : ""); // toggle muncul/hilang
+};
 
   /* ================= FIXED CLUE FUNCTIONS ================= */
   const requestClue = async () => {
@@ -830,6 +835,9 @@ const renderFlowchart = () => {
               <FlowchartButtons>
                 <FlowBtn onClick={addCondition} disabled={isSubmitted}>
                   ➕ Add Condition
+                </FlowBtn>
+                <FlowBtn onClick={toggleElse} disabled={isSubmitted}>
+                  ➕ Add Else
                 </FlowBtn>
                 <FlowBtn onClick={saveFlowchart} disabled={isSubmitted}>
                   💾 Save Flowchart
