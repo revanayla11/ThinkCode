@@ -204,20 +204,30 @@ export default function DiscussionRoom() {
     }
   };
 
-  const loadWorkspaceData = useCallback(async () => {
-    try {
-      const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
-      const data = res.data.data || {};
+const loadWorkspaceData = useCallback(async () => {
+  try {
+    const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
+    const data = res.data.data || {};
 
+    console.log("🔄 Load workspace:", data);
+
+    // 🔥 PSEUDOCODE - Load kalau kosong
+    if (!pseudocode.trim()) {
       setPseudocode(data.pseudocode || "");
-      const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
+    }
+
+    // 🔥 FLOWCHART - JANGAN OVERWRITE kalau user lagi edit!
+    const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
+    if (flowchart.conditions?.length === 0 && conditions.length === 0) {
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
       setElseInstruction(flowchart.elseInstruction || "");
-      setShowElse(!!flowchart.elseInstruction);
-    } catch (err) {
-      console.error("Load workspace error:", err);
+      setShowElse(!!flowchart.showElse);
     }
-  }, [roomId]);
+
+  } catch (err) {
+    console.error("Load workspace error:", err);
+  }
+}, [roomId, pseudocode, conditions.length]); // Tambah dependencies
 
   const loadTasks = async () => {
     try {
