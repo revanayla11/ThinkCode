@@ -354,24 +354,27 @@ const saveFlowchart = async () => {
     return;
   }
   
-  // 🔥 NORMALIZE BEFORE SAVE
-  const normalizedFlowchart = {
+  // 🔥 SIMPAN ASLI - JANGAN LOWERCASE DULU
+  const flowchartData = {
     conditions: conditions.map(cond => ({
-      condition: cond.condition.trim().toLowerCase(),
-      yes: cond.yes.trim().toLowerCase(),
+      condition: cond.condition.trim(),  // ✅ ASLI
+      yes: cond.yes.trim(),              // ✅ ASLI
       no: cond.no || ''
     })),
-    elseInstruction: elseInstruction.trim().toLowerCase(),
+    elseInstruction: elseInstruction.trim(),
     showElse
   };
   
+  console.log("💾 Saving flowchart:", flowchartData); // DEBUG
+  
   try {
     await api.post(`/discussion/room/${roomId}/flowchart`, {
-      flowchart: normalizedFlowchart
+      flowchart: flowchartData
     });
     Swal.fire("✅", "Flowchart tersimpan!", "success");
     loadPerformance();
   } catch (err) {
+    console.error("Save flowchart error:", err);
     Swal.fire("❌", "Gagal simpan", "error");
   }
 };
