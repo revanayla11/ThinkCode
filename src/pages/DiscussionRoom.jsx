@@ -324,58 +324,54 @@ END`,
   /* ================= SAVE FUNCTIONS ================= */
 // Update savePseudocode
 const savePseudocode = async () => {
-  if (!pseudocode.trim()) {
-    Swal.fire("⚠️", "Pseudocode masih kosong!", "warning");
-    return;
-  }
-  
-  // 🔥 FORMAT EXACTLY LIKE TEACHER
-  const formattedPseudo = pseudocode
-    .trim()
-    .replace(/\r\n/g, '\n')  // Unix line endings
-    .replace(/[^\S\n]{2,}/g, ' ') // Multiple whitespace → single space
-    .replace(/\n\s*\n/g, '\n');   // Multiple newlines → single
+  if (!pseudocode?.trim()) return Swal.fire("⚠️", "Isi pseudocode!", "warning");
   
   try {
-    await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      pseudocode: formattedPseudo 
+    const res = await api.post(`/discussion/room/${roomId}/pseudocode`, { 
+      pseudocode: pseudocode.trim() 
     });
-    Swal.fire("✅", "Pseudocode tersimpan!", "success");
+    
+    Swal.fire({
+      title: "✅ Saved!",
+      text: res.data.message,
+      icon: "success",
+      timer: 2000
+    });
+    
     loadPerformance();
   } catch (err) {
-    Swal.fire("❌", "Gagal simpan", "error");
+    Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
   }
 };
 
-// Update saveFlowchart
 const saveFlowchart = async () => {
-  if (conditions.length === 0) {
-    Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
-    return;
-  }
+  if (conditions.length === 0) return Swal.fire("⚠️", "Tambah kondisi!", "warning");
   
-  // 🔥 SIMPAN ASLI - JANGAN LOWERCASE DULU
   const flowchartData = {
-    conditions: conditions.map(cond => ({
-      condition: cond.condition.trim(),  // ✅ ASLI
-      yes: cond.yes.trim(),              // ✅ ASLI
-      no: cond.no || ''
+    conditions: conditions.map(c => ({
+      condition: c.condition.trim(),
+      yes: c.yes.trim(),
+      no: c.no || ''
     })),
     elseInstruction: elseInstruction.trim(),
     showElse
   };
   
-  console.log("💾 Saving flowchart:", flowchartData); // DEBUG
-  
   try {
-    await api.post(`/discussion/room/${roomId}/flowchart`, {
-      flowchart: flowchartData
+    const res = await api.post(`/discussion/room/${roomId}/flowchart`, { 
+      flowchart: flowchartData 
     });
-    Swal.fire("✅", "Flowchart tersimpan!", "success");
+    
+    Swal.fire({
+      title: "✅ Saved!",
+      text: res.data.message,
+      icon: "success",
+      timer: 2000
+    });
+    
     loadPerformance();
   } catch (err) {
-    console.error("Save flowchart error:", err);
-    Swal.fire("❌", "Gagal simpan", "error");
+    Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
   }
 };
 
