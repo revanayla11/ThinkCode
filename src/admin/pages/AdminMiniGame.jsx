@@ -358,48 +358,54 @@ const loadQuestions = async (slug, levelNumber) => {
 
   // 🔥 FIXED: Question CRUD - True/False jangan di-convert ke boolean
   const submitQuestion = async () => {
-    try {
-      setLoading(true);
-      let meta = {};
+  try {
+    setLoading(true);
+    let meta = {};
 
-      // Generate meta berdasarkan game type
-      if (currentGameType === "mcq") {
-        meta = { 
-          options: questionForm.options.filter(o => o.trim()), 
-          answerIndex: Number(questionForm.answerIndex) 
-        };
-      } else if (currentGameType === "typing") {
-        meta = { answer: questionForm.answer };
-      } else if (currentGameType === "truefalse") {
-        // ✅ FIXED: Kirim string "true"/"false" bukan boolean
-        meta = { answer: questionForm.answer }; // "true" atau "false"
-      } else if (currentGameType === "dragdrop") {
-        meta = { 
-          answers: questionForm.answer.split(',').map(a => a.trim()).filter(a => a)
-        };
-      }
-
-      const payload = {
-        content: questionForm.content,
-        type: currentGameType,
-        meta,
+    // Generate meta berdasarkan game type
+    if (currentGameType === "mcq") {
+      meta = { 
+        options: questionForm.options.filter(o => o.trim()), 
+        answerIndex: Number(questionForm.answerIndex) 
       };
-
-      if (editingQuestion) {
-        await apiPut(`/admin/minigame/question/${editingQuestion.id}`, payload);
-      } else {
-        await apiPost(`/admin/minigame/${selectedMateri.slug}/levels/${selectedLevel.levelNumber}/question`, payload);
-      }
-
-      resetQuestionForm();
-      loadQuestions(selectedMateri.slug, selectedLevel.levelNumber);
-    } catch (error) {
-      console.error("Error submitting question:", error);
-      alert("Gagal menyimpan soal!");
-    } finally {
-      setLoading(false);
+    } else if (currentGameType === "typing") {
+      meta = { answer: questionForm.answer };
+    } else if (currentGameType === "truefalse") {
+      // 🔥 FIXED: Pastikan answer TIDAK KOSONG dan STRING
+      const answerValue = questionForm.answer || "false"; // Default false jika kosong
+      meta = { 
+        answer: answerValue, // Pastikan string "true"/"false"
+        statement: questionForm.content // Backup statement
+      };
+    } else if (currentGameType === "dragdrop") {
+      meta = { 
+        answers: questionForm.answer.split(',').map(a => a.trim()).filter(a => a)
+      };
     }
-  };
+
+    console.log("🔥 SENDING META:", meta); // Debug
+
+    const payload = {
+      content: questionForm.content,
+      type: currentGameType,
+      meta,
+    };
+
+    if (editingQuestion) {
+      await apiPut(`/admin/minigame/question/${editingQuestion.id}`, payload);
+    } else {
+      await apiPost(`/admin/minigame/${selectedMateri.slug}/levels/${selectedLevel.levelNumber}/question`, payload);
+    }
+
+    resetQuestionForm();
+    loadQuestions(selectedMateri.slug, selectedLevel.levelNumber);
+  } catch (error) {
+    console.error("Error submitting question:", error);
+    alert("Gagal menyimpan soal!");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // 🔥 FIXED: editQuestion - handle string "true"/"false"
   const editQuestion = (question) => {
