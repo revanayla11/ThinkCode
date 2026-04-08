@@ -174,9 +174,9 @@ export default function GamePlay() {
   console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
 
   try {
-    console.log("📡 SENDING to /game/level/" + id + "/submit"); // ← FIXED LOG
+    // 🔥 FIXED ROUTE!
+    console.log("📡 SENDING to /game/level/" + id + "/submit");
     
-    // 🔥 FIX ROUTE - INI YANG SALAH!
     const res = await apiPost(`/game/level/${id}/submit`, {
       scorePercent,
       totalQuestions,
@@ -192,27 +192,14 @@ export default function GamePlay() {
         gainedXp: res.data.rewardXp,
         hearts: res.data.hearts,
         completed: res.data.completed,
-        isFirstCompletion: res.data.isFirstCompletion || true
+        isFirstCompletion: true
       });
     }
   } catch (err) {
-    console.error("💥 API ERROR DETAIL:", {
-      url: `/game/level/${id}/submit`, // ← FIXED ERROR LOG
-      status: err.response?.status,
-      data: err.response?.data,
-      message: err.message
-    });
-    
-    // Fallback
-    setResult({
-      scorePercent,
-      gainedXp: 0,
-      hearts: lives,
-      completed: scorePercent >= 80,
-      isFirstCompletion: true
-    });
+    console.error("💥 API ERROR:", err);
   }
 };
+
   const renderGame = () => {
     if (!questions[index]) return null;
     const props = {
