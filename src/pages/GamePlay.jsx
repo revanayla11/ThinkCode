@@ -22,6 +22,7 @@ export default function GamePlay() {
   const [result, setResult] = useState(null);
   const [timeLeft, setTimeLeft] = useState(40);
   const [loading, setLoading] = useState(true);
+  const [isGameFinished, setIsGameFinished] = useState(false);
 
   const timerRef = useRef(null);
 
@@ -50,12 +51,18 @@ export default function GamePlay() {
     }
   };
 
-useEffect(() => {
+uuseEffect(() => {
   if (timerRef.current) {
     clearInterval(timerRef.current);
   }
 
-  if (loading || !questions.length || feedback || result) return;
+  if (
+    loading ||
+    !questions.length ||
+    feedback ||
+    result ||
+    isGameFinished
+  ) return;
 
   setTimeLeft(40);
 
@@ -63,6 +70,8 @@ useEffect(() => {
     setTimeLeft((prev) => {
       if (prev <= 1) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
+
         handleWrong("timeout");
         return 0;
       }
@@ -71,22 +80,41 @@ useEffect(() => {
   }, 1000);
 
   return () => clearInterval(timerRef.current);
-}, [index, feedback, result, loading, questions.length]);
+}, [index, feedback, result, loading, questions.length, isGameFinished]);
 
 const handleCorrect = () => {
-  if (timerRef.current) clearInterval(timerRef.current);
+  if (isGameFinished) return;
+
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+
+  setScore((s) => s + 100);
+
+  // 🔥 LANGSUNG CEK: ini soal terakhir atau bukan
+  if (index === questions.length - 1) {
+    setTimeout(() => {
+      finishGame();
+    }, 500);
+    return;
+  }
 
   setFeedback("correct");
-  setScore((s) => s + 100);
 
   setTimeout(() => {
     setFeedback(null);
-    nextQuestion();
-  }, 800); // lebih cepat biar smooth
+    setIndex((prev) => prev + 1);
+  }, 500);
 };
 
 const handleWrong = (reason = "wrong") => {
-  if (timerRef.current) clearInterval(timerRef.current);
+  if (isGameFinished) return;
+
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
 
   setFeedback(reason);
 
@@ -94,12 +122,12 @@ const handleWrong = (reason = "wrong") => {
     const newLives = l - 1;
 
     if (newLives <= 0) {
-      setTimeout(() => finishGame(), 800);
+      setTimeout(() => finishGame(), 500);
     } else {
       setTimeout(() => {
         setFeedback(null);
-        nextQuestion();
-      }, 800);
+        setIndex((prev) => prev + 1);
+      }, 500);
     }
 
     return newLives;
@@ -115,29 +143,23 @@ const nextQuestion = () => {
 };
 
 const finishGame = async () => {
-  // 🛑 STOP semua aktivitas
+  if (isGameFinished) return; // 🛑 anti double
+
+  setIsGameFinished(true);
+
   if (timerRef.current) {
     clearInterval(timerRef.current);
+    timerRef.current = null;
   }
 
-  // 🛡️ Hindari double submit
-  if (result) return;
+  const totalQuestions = questions.length;
+  const correctAnswers = Math.round(score / 100);
+  const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+  const heartsUsed = 5 - lives;
+
+  console.log("🎯 FINAL:", { correctAnswers, scorePercent });
 
   try {
-    // 🎯 HITUNG SCORE REAL
-    const totalQuestions = questions.length;
-    const correctAnswers = Math.round(score / 100); // tiap soal = 100
-    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
-    const heartsUsed = 5 - lives;
-
-    console.log("🎯 FINISH GAME:", {
-      correctAnswers,
-      totalQuestions,
-      scorePercent,
-      heartsUsed
-    });
-
-    // 🚀 KIRIM KE BACKEND
     const res = await apiPost(`/game/submit/${id}`, {
       scorePercent,
       totalQuestions,
@@ -145,38 +167,17 @@ const finishGame = async () => {
       heartsUsed
     });
 
-    console.log("✅ API RESPONSE:", res);
-
     if (res.status) {
-      const data = res.data;
-
-      // 🎉 SET RESULT (INI YANG BIKIN POPUP MUNCUL)
       setResult({
-        scorePercent: data.scorePercent,
-        gainedXp: data.rewardXp,
-        hearts: data.hearts,
-        completed: data.completed,
-        isFirstCompletion: data.isFirstCompletion
+        scorePercent: res.data.scorePercent,
+        gainedXp: res.data.rewardXp,
+        hearts: res.data.hearts,
+        completed: res.data.completed,
+        isFirstCompletion: res.data.isFirstCompletion
       });
-    } else {
-      throw new Error("Submit gagal");
     }
-
   } catch (err) {
-    console.error("💥 FINISH ERROR:", err.response?.data || err.message);
-
-    // ❌ FALLBACK (biar UI tetap muncul walau API error)
-    const totalQuestions = questions.length;
-    const correctAnswers = Math.round(score / 100);
-    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
-
-    setResult({
-      scorePercent,
-      gainedXp: 0,
-      hearts: lives,
-      completed: scorePercent >= 80,
-      isFirstCompletion: false
-    });
+    console.error("Submit error:", err);
   }
 };
 
