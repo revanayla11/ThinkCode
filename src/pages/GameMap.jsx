@@ -23,24 +23,39 @@ export default function GameMap() {
   }, []);
 
   // 🔥 FIXED UNLOCK LOGIC: completed + score >= 80
-  const isUnlocked = (mIdx, lIdx) => {
-    // Level 1 selalu unlocked
-    if (mIdx === 0 && lIdx === 0) return true;
-    
-    // Hitung total levels sebelum materi ini
-    const prevMateriLevels = levels
-      .slice(0, mIdx)
-      .reduce((sum, m) => sum + m.levels.length, 0);
+// 🔥 FIXED isUnlocked - pakai progress.score
+const isUnlocked = (mIdx, lIdx) => {
+  if (mIdx === 0 && lIdx === 0) return true;
+  
+  const prevMateriLevels = levels
+    .slice(0, mIdx)
+    .reduce((sum, m) => sum + m.levels.length, 0);
 
-    const requiredProgress = prevMateriLevels + lIdx;
-    
-    // Progress yang bener-bener unlocked (completed + score >=80)
-    const unlockedCount = progress.filter(p => 
-      p.completed && p.score >= 80
-    ).length;
+  const requiredProgress = prevMateriLevels + lIdx;
+  const unlockedCount = progress.filter(p => 
+    p.completed && p.score >= 80  // ← DB field 'score'!
+  ).length;
 
-    return unlockedCount >= requiredProgress;
-  };
+  // 🔥 DEBUG CONSOLE
+  console.log(`🔓 Level ${mIdx}-${lIdx}: need ${requiredProgress}, unlocked ${unlockedCount}/${progress.length}`);
+  
+  return unlockedCount >= requiredProgress;
+};
+
+// 🔥 DEBUG useEffect
+useEffect(() => {
+  apiGet("/game/map")
+    .then((res) => {
+      if (res.status) {
+        console.log("🗺️ FULL RESPONSE:", res);
+        console.log("📊 PROGRESS DETAIL:", res.progress);
+        setLevels(res.levels || []);
+        setProgress(res.progress || []);
+        setUserStats(res.userStats || {});
+      }
+    })
+    .catch(err => console.error("Map error:", err));
+}, []);
 
   const isCompleted = (levelId) =>
     progress.some(p => p.levelId == levelId && p.completed && p.score >= 80);

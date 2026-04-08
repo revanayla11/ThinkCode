@@ -104,41 +104,48 @@ export default function GamePlay() {
   };
 
   // 🔥 FIXED SUBMIT - Kirim data lengkap
-  const finishGame = async () => {
+const finishGame = async () => {
     try {
       const scorePercent = Math.round((score / (questions.length * 100)) * 100);
       const correctAnswers = Math.round(score / 100);
       const heartsUsed = 5 - lives;
       
-      console.log(`📤 Submit: ${scorePercent}% (${correctAnswers}/${questions.length}), hearts: ${heartsUsed}`);
+      console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}), hearts: ${heartsUsed}`);
       
       const res = await apiPost(`/game/submit/${id}`, {
-        scorePercent,
+        scorePercent,           // ← INI!
         totalQuestions: questions.length,
         correctAnswers,
-        heartsUsed
+        heartsUsed,
+        answers: questions.map(q => ({ id: q.id }))  // Optional
       });
 
+      console.log("✅ Submit response:", res.data);
+      
       setResult({
         scorePercent: res.data.scorePercent,
         gainedXp: res.data.rewardXp,
         totalXp: res.data.totalXp,
         hearts: res.data.hearts,
         completed: res.data.completed,
-        isFirstCompletion: res.data.isFirstCompletion
+        isFirstCompletion: res.data.isFirstCompletion,
+        perfectReward: res.data.perfectReward
       });
     } catch (err) {
-      console.error("Submit error:", err);
+      console.error("❌ Submit error:", err.response?.data || err.message);
+      
+      // Fallback local
       const scorePercent = Math.round((score / (questions.length * 100)) * 100);
       setResult({
         scorePercent,
-        gainedXp: Math.round(scorePercent / 10),
-        totalXp: 0,
-        hearts: lives,
+        gainedXp: Math.round(scorePercent / 5),
+        totalXp: userStats.xp + Math.round(scorePercent / 5),
+        hearts: Math.max(0, lives - 1),
         completed: scorePercent >= 80
       });
     }
   };
+
 
   const renderGame = () => {
     if (!questions[index]) return null;
