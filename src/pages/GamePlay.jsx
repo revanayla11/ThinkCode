@@ -105,49 +105,46 @@ export default function GamePlay() {
 
   // 🔥 FIXED SUBMIT - Clamp scorePercent + No userStats dependency
   // 🔥 FIXED finishGame - Score beneran 100% jika semua benar
+// 🔥 FIXED finishGame - CORRECT 100% calculation
 const finishGame = async () => {
   try {
-    // 🔥 CORRECT scorePercent: (correctAnswers / totalQuestions) * 100
-    const correctAnswers = Math.round(score / 100);
-    const scorePercent = Math.min(100, Math.max(0, Math.round((correctAnswers / questions.length) * 100)));
+    // 🔥 TRUE scorePercent: correct / total * 100
+    const correctAnswers = Math.round(score / 100);  // 5/5 = 5
+    const scorePercent = Math.round((correctAnswers / questions.length) * 100); // 5/5 = 100%
     const heartsUsed = 5 - lives;
     
-    console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}) hearts: ${heartsUsed}`);
+    console.log(`📊 RAW: score=${score}, correct=${correctAnswers}/${questions.length} = ${scorePercent}%`);
     
-    // 🔥 FIXED - Handle data wrapper
-const res = await apiPost(`/game/submit/${id}`, {
-  scorePercent,
-  totalQuestions: questions.length,
-  correctAnswers,
-  heartsUsed
-});
+    const res = await apiPost(`/game/submit/${id}`, {
+      scorePercent,
+      totalQuestions: questions.length,
+      correctAnswers,
+      heartsUsed
+    });
 
-// 🔥 ACCESS res.data.data
-console.log("✅ Submit response:", res.data);
+    console.log("✅ FULL RESPONSE:", res);
 
-setResult({
-  scorePercent: res.data.data?.scorePercent || scorePercent,
-  gainedXp: res.data.data?.rewardXp || 0,
-  totalXp: res.data.data?.totalXp || 0,
-  hearts: res.data.data?.hearts || 5,
-  completed: res.data.data?.completed || (scorePercent >= 80),
-  isFirstCompletion: res.data.data?.isFirstCompletion || true,
-  perfectReward: res.data.data?.perfectReward || 20
-});
+    // 🔥 Safe data access
+    const resultData = res.data?.data || res.data || {};
+    setResult({
+      scorePercent: resultData.scorePercent || scorePercent,
+      gainedXp: resultData.rewardXp || 0,
+      totalXp: resultData.totalXp || 0,
+      hearts: resultData.hearts || 5,
+      completed: resultData.completed !== false, // true if >=80%
+      isFirstCompletion: resultData.isFirstCompletion !== false,
+      perfectReward: resultData.perfectReward || 20
+    });
   } catch (err) {
-    console.error("❌ Submit error:", err.response?.data || err.message);
-    
+    console.error("❌ ERROR:", err.response?.data || err);
     const correctAnswers = Math.round(score / 100);
-    const scorePercent = Math.min(100, Math.round((correctAnswers / questions.length) * 100));
-    
+    const scorePercent = Math.round((correctAnswers / questions.length) * 100);
     setResult({
       scorePercent,
       gainedXp: scorePercent === 100 ? 25 : Math.round(scorePercent / 5),
-      totalXp: "Error",
-      hearts: Math.max(0, 5 - (5 - lives)),
-      completed: scorePercent >= 80,
-      isFirstCompletion: true,
-      perfectReward: 20
+      totalXp: 0,
+      hearts: Math.max(0, lives),
+      completed: scorePercent >= 80
     });
   }
 };

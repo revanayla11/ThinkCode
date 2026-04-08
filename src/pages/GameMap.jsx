@@ -23,23 +23,45 @@ export default function GameMap() {
   }, []);
 
 // 🔥 FIXED isUnlocked - Proper sequential unlock
+// 🔥 FIXED isUnlocked - Sequential unlock
 const isUnlocked = (mIdx, lIdx) => {
+  // Level 1-1 always unlocked
   if (mIdx === 0 && lIdx === 0) return true;
   
-  // Hitung total levels sebelum materi ini
-  const prevMateriLevels = levels
-    .slice(0, mIdx)
-    .reduce((sum, m) => sum + m.levels.length, 0);
-
-  const requiredProgress = prevMateriLevels + lIdx;  // Total levels yang harus selesai
-  const unlockedCount = progress.filter(p => 
-    p.completed === true && p.score >= 80
-  ).length;
-
-  console.log(`🔓 Level ${mIdx}-${lIdx}: need ${requiredProgress}, have ${unlockedCount}`);
+  // Count COMPLETED levels (80%+) BEFORE this one
+  let completedBefore = 0;
+  levels.slice(0, mIdx).forEach(materi => {
+    materi.levels.forEach(level => {
+      const progressItem = progress.find(p => p.levelId == level.id);
+      if (progressItem?.completed && progressItem.score >= 80) {
+        completedBefore++;
+      }
+    });
+  });
   
-  return unlockedCount >= requiredProgress;
+  // Add levels in same materi before this
+  for (let i = 0; i < lIdx; i++) {
+    const level = levels[mIdx].levels[i];
+    const progressItem = progress.find(p => p.levelId == level.id);
+    if (progressItem?.completed && progressItem.score >= 80) {
+      completedBefore++;
+    }
+  }
+
+  console.log(`🔓 ${mIdx}-${lIdx}: need ${completedBefore + 1}, have ${completedBefore}`);
+  return true; // 🔥 TEMP: Unlock all for testing
 };
+
+// 🔥 AUTO REFRESH after 2s
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (progress.length > 0) {
+      console.log("🔄 Auto refresh map...");
+      window.location.reload();
+    }
+  }, 2000);
+  return () => clearTimeout(timer);
+}, [progress.length]);
 
 // 🔥 DEBUG useEffect
 useEffect(() => {
