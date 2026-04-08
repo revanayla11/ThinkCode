@@ -2,20 +2,204 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/api";
 
-// ================= STYLES ================= (SAMA, skip untuk singkat)
-const Container = styled.div` /* ... sama seperti sebelumnya ... */ `;
-const Card = styled.div` /* ... sama ... */ `;
-const SectionTitle = styled.h2` /* ... sama ... */ `;
-const Button = styled.button` /* ... sama ... */ `;
-const Input = styled.input` /* ... sama ... */ `;
-const Textarea = styled.textarea` /* ... sama ... */ `;
-const Select = styled.select` /* ... sama ... */ `;
-const GameTypeBadge = styled.span` /* ... sama ... */ `;
-const LevelItem = styled.div` /* ... sama ... */ `;
-const QuestionItem = styled.div` /* ... sama ... */ `;
-const MateriButton = styled(Button)` /* ... sama ... */ `;
-const FormGroup = styled.div` /* ... sama ... */ `;
-const Label = styled.label` /* ... sama ... */ `;
+// ================= STYLES =================
+const Container = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+`;
+
+const Card = styled.div`
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+`;
+
+const SectionTitle = styled.h2`
+  color: #2c3e50;
+  font-size: 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const Button = styled.button`
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 8px 4px 0 0;
+  font-size: 14px;
+  
+  ${props => props.primary && `
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  `}
+  
+  ${props => props.danger && `
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  `}
+  
+  ${props => props.success && `
+    background: linear-gradient(45deg, #51cf66, #40c057);
+    color: white;
+    box-shadow: 0 4px 15px rgba(81, 207, 102, 0.4);
+  `}
+  
+  ${props => props.small && `
+    padding: 6px 12px;
+    font-size: 12px;
+  `}
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  margin: 8px 0;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+`;
+
+const Textarea = styled.textarea`
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  margin: 8px 0;
+  resize: vertical;
+  min-height: 120px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  margin: 8px 0;
+  background: white;
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+`;
+
+const GameTypeBadge = styled.span`
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  margin-left: 12px;
+  
+  ${props => props.type === 'mcq' && 'background: #ff6b6b;'}
+  ${props => props.type === 'typing' && 'background: #51cf66;'}
+  ${props => props.type === 'truefalse' && 'background: #339af0;'}
+  ${props => props.type === 'dragdrop' && 'background: #f0932b;'}
+`;
+
+const LevelItem = styled.div`
+  background: white;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 12px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  }
+`;
+
+const QuestionItem = styled.div`
+  background: white;
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 12px 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+`;
+
+const MateriButton = styled(Button)`
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+  color: #495057;
+  border: 2px solid #dee2e6;
+  padding: 16px;
+  font-size: 16px;
+  margin-bottom: 8px;
+  
+  &:hover {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border-color: #667eea;
+  }
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 16px;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+  font-size: 14px;
+`;
 
 // ================= COMPONENT =================
 export default function AdminMiniGame() {
@@ -43,7 +227,7 @@ export default function AdminMiniGame() {
     type: "mcq",
     options: ["", "", "", "", ""],
     answerIndex: 0,
-    answer: "true", // ✅ DEFAULT TRUE
+    answer: "",
   });
 
   // Load materi dan badges
@@ -79,10 +263,13 @@ export default function AdminMiniGame() {
     }
   };
 
+  // 🔥 FIXED: loadQuestions - sesuaikan dengan backend response
   const loadQuestions = async (slug, levelNumber) => {
     try {
       setLoading(true);
       const res = await apiGet(`/admin/minigame/${slug}/levels/${levelNumber}`);
+      
+      // ✅ Backend return { success: true, data: { level, questions } }
       setQuestions(res.data.data.questions || []);
       setSelectedLevel(res.data.data.level || null);
     } catch (error) {
@@ -113,12 +300,12 @@ export default function AdminMiniGame() {
       type: "mcq",
       options: ["", "", "", "", ""],
       answerIndex: 0,
-      answer: "true", // ✅ DEFAULT TRUE
+      answer: "",
     });
     setEditingQuestion(null);
   };
 
-  // Level CRUD (SAMA)
+  // Level CRUD
   const submitLevel = async () => {
     try {
       setLoading(true);
@@ -161,37 +348,28 @@ export default function AdminMiniGame() {
     }
   };
 
-  // 🔥 QUESTION CRUD - FULLY FIXED
+  // 🔥 FIXED: Question CRUD - True/False jangan di-convert ke boolean
   const submitQuestion = async () => {
     try {
       setLoading(true);
       let meta = {};
 
-      console.log("🔧 SUBMIT QUESTION DEBUG:", { currentGameType, questionForm });
-
-      // ✅ FIXED MCQ - JANGAN FILTER!
+      // Generate meta berdasarkan game type
       if (currentGameType === "mcq") {
         meta = { 
-          options: questionForm.options, // ← FIXED: Semua opsi, termasuk kosong
+          options: questionForm.options.filter(o => o.trim()), 
           answerIndex: Number(questionForm.answerIndex) 
         };
-      } 
-      // ✅ FIXED TRUEFALSE - String ke Boolean
-      else if (currentGameType === "truefalse") {
-        meta = { 
-          answer: questionForm.answer === "true" // ✅ "true" → true, "false" → false
-        };
-      } 
-      else if (currentGameType === "typing") {
+      } else if (currentGameType === "typing") {
         meta = { answer: questionForm.answer };
-      } 
-      else if (currentGameType === "dragdrop") {
+      } else if (currentGameType === "truefalse") {
+        // ✅ FIXED: Kirim string "true"/"false" bukan boolean
+        meta = { answer: questionForm.answer }; // "true" atau "false"
+      } else if (currentGameType === "dragdrop") {
         meta = { 
           answers: questionForm.answer.split(',').map(a => a.trim()).filter(a => a)
         };
       }
-
-      console.log("📤 PAYLOAD META:", meta);
 
       const payload = {
         content: questionForm.content,
@@ -215,22 +393,17 @@ export default function AdminMiniGame() {
     }
   };
 
-  // 🔥 FIXED editQuestion
+  // 🔥 FIXED: editQuestion - handle string "true"/"false"
   const editQuestion = (question) => {
     setEditingQuestion(question);
     const meta = JSON.parse(question.meta || "{}");
     
-    console.log("🔧 EDIT DEBUG:", { meta });
-    
     setQuestionForm({
       content: question.content || "",
       type: question.type || "mcq",
-      options: Array.isArray(meta.options) ? meta.options.slice(0, 5) : ["", "", "", "", ""],
-      answerIndex: Number(meta.answerIndex) || 0,
-      // ✅ FIXED truefalse: boolean → string
-      answer: meta.answer === true ? "true" : 
-              meta.answer === false ? "false" : 
-              meta.answer || "true",
+      options: meta.options || ["", "", "", "", ""],
+      answerIndex: meta.answerIndex || 0,
+      answer: meta.answer || "", // ✅ String "true"/"false"
     });
   };
 
@@ -254,7 +427,7 @@ export default function AdminMiniGame() {
           <Textarea
             placeholder={
               currentGameType === "mcq" ? "Pertanyaan pilihan ganda..." :
-              currentGameType === "typing" ? "Kode awal yang harus dilengkapi..." :
+              currentGameType === "typing" ? "Kode awal yang harus dilengkapi...\nfunction tambah(a, b) {\n  // lengkapi" :
               currentGameType === "truefalse" ? "Pernyataan True/False..." :
               "Item1\nItem2\nItem3 (pisahkan dengan enter untuk dragdrop)"
             }
@@ -345,6 +518,7 @@ export default function AdminMiniGame() {
           {question.content}
         </div>
         
+        {/* Preview Jawaban */}
         <div style={{ 
           background: '#f8f9fa', 
           padding: '12px', 
@@ -354,9 +528,7 @@ export default function AdminMiniGame() {
         }}>
           {question.type === "mcq" && (
             <div>
-              ✅ Jawaban: <strong style={{color: '#28a745'}}>
-                {meta.options?.[meta.answerIndex] || 'Tidak ada'}
-              </strong>
+              ✅ Jawaban: <strong style={{color: '#28a745'}}>{meta.options?.[meta.answerIndex]}</strong>
             </div>
           )}
           
@@ -369,8 +541,8 @@ export default function AdminMiniGame() {
           )}
           
           {question.type === "truefalse" && (
-            <div style={{color: meta.answer ? '#28a745' : '#dc3545', fontWeight: 'bold'}}>
-              ✅ {meta.answer ? 'BENAR' : 'SALAH'}
+            <div style={{color: meta.answer === "true" ? '#28a745' : '#dc3545'}}>
+              ✅ {meta.answer === "true" ? 'BENAR' : 'SALAH'}
             </div>
           )}
           
@@ -391,20 +563,26 @@ export default function AdminMiniGame() {
       {/* MATERI */}
       <Card>
         <SectionTitle>📚 Pilih Materi</SectionTitle>
-        {materi.map((m) => (
-          <MateriButton
-            key={m.id}
-            onClick={() => {
-              setSelectedMateri(m);
-              setSelectedLevel(null);
-              setQuestions([]);
-              setEditingLevel(null);
-              loadLevels(m.slug);
-            }}
-          >
-            📖 {m.title}
-          </MateriButton>
-        ))}
+        {materi.length === 0 ? (
+          <p style={{ color: '#6c757d', textAlign: 'center', padding: '40px' }}>
+            📭 Belum ada materi. Buat materi terlebih dahulu!
+          </p>
+        ) : (
+          materi.map((m) => (
+            <MateriButton
+              key={m.id}
+              onClick={() => {
+                setSelectedMateri(m);
+                setSelectedLevel(null);
+                setQuestions([]);
+                setEditingLevel(null);
+                loadLevels(m.slug);
+              }}
+            >
+              📖 {m.title}
+            </MateriButton>
+          ))
+        )}
       </Card>
 
       {/* LEVEL */}
@@ -488,7 +666,7 @@ export default function AdminMiniGame() {
             <Button 
               primary 
               onClick={submitLevel}
-              disabled={loading}
+              disabled={loading || !levelForm.title || !levelForm.levelNumber}
             >
               {loading ? '⏳ Menyimpan...' : (editingLevel ? '✏️ Update' : '➕ Tambah')} Level
             </Button>
