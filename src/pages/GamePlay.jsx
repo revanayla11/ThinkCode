@@ -120,7 +120,7 @@ export default function GamePlay() {
     setTimeout(() => {
       setFeedback(null);
       setIndex((prev) => prev + 1);
-    }, 500);
+    }, 1500); // Extended biar notif keliatan lebih lama
   };
 
   const handleWrong = (reason = "wrong") => {
@@ -137,12 +137,12 @@ export default function GamePlay() {
       const newLives = l - 1;
 
       if (newLives <= 0) {
-        setTimeout(() => finishGame(), 500);
+        setTimeout(() => finishGame(), 1500);
       } else {
         setTimeout(() => {
           setFeedback(null);
           setIndex((prev) => prev + 1);
-        }, 500);
+        }, 1500);
       }
 
       return newLives;
@@ -183,7 +183,7 @@ export default function GamePlay() {
         heartsUsed
       });
 
-      console.log("✅ BACKEND RESPONSE:", res);  // ← INI HARUS MUNCUL!
+      console.log("✅ BACKEND RESPONSE:", res);  
       
       if (res.status) {
         setResult({
@@ -219,7 +219,7 @@ export default function GamePlay() {
       question: questions[index],
       onCorrect: handleCorrect,
       onWrong: handleWrong,
-      disabled: !!feedback || !!result
+      disabled: !!result // HANYA disable saat result, bukan feedback
     };
 
     switch (level?.gameType) {
@@ -309,7 +309,7 @@ export default function GamePlay() {
             </div>
           </div>
 
-          {/* MINI FEEDBACK NOTIF - KECIL DI POJOK KANAN ATAS */}
+          {/* MINI FEEDBACK NOTIF - SELALU TERLIHAT DI POJOK */}
           {feedback && (
             <div style={{
               position: 'fixed',
@@ -352,8 +352,9 @@ export default function GamePlay() {
             </div>
           )}
 
+          {/* GAME SELALU TERLIHAT - TIDAK DIHIDE SAAT FEEDBACK */}
           <div style={{ height: '600px' }}>
-            {!feedback && !result && renderGame()}
+            {renderGame()}
           </div>
 
           {result && (
