@@ -103,48 +103,68 @@ export default function GamePlay() {
     }
   };
 
-  // 🔥 FIXED SUBMIT - Clamp scorePercent + No userStats dependency
-  // 🔥 FIXED finishGame - Score beneran 100% jika semua benar
-// 🔥 FIXED finishGame - CORRECT 100% calculation
 const finishGame = async () => {
+  // 🛑 STOP semua aktivitas
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+  }
+
+  // 🛡️ Hindari double submit
+  if (result) return;
+
   try {
-    // 🔥 TRUE scorePercent: correct / total * 100
-    const correctAnswers = Math.round(score / 100);  // 5/5 = 5
-    const scorePercent = Math.round((correctAnswers / questions.length) * 100); // 5/5 = 100%
+    // 🎯 HITUNG SCORE REAL
+    const totalQuestions = questions.length;
+    const correctAnswers = Math.round(score / 100); // tiap soal = 100
+    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
     const heartsUsed = 5 - lives;
-    
-    console.log(`📊 RAW: score=${score}, correct=${correctAnswers}/${questions.length} = ${scorePercent}%`);
-    
+
+    console.log("🎯 FINISH GAME:", {
+      correctAnswers,
+      totalQuestions,
+      scorePercent,
+      heartsUsed
+    });
+
+    // 🚀 KIRIM KE BACKEND
     const res = await apiPost(`/game/submit/${id}`, {
       scorePercent,
-      totalQuestions: questions.length,
+      totalQuestions,
       correctAnswers,
       heartsUsed
     });
 
-    console.log("✅ FULL RESPONSE:", res);
+    console.log("✅ API RESPONSE:", res);
 
-    // 🔥 Safe data access
-    const resultData = res.data?.data || res.data || {};
-    setResult({
-      scorePercent: resultData.scorePercent || scorePercent,
-      gainedXp: resultData.rewardXp || 0,
-      totalXp: resultData.totalXp || 0,
-      hearts: resultData.hearts || 5,
-      completed: resultData.completed !== false, // true if >=80%
-      isFirstCompletion: resultData.isFirstCompletion !== false,
-      perfectReward: resultData.perfectReward || 20
-    });
+    if (res.status) {
+      const data = res.data;
+
+      // 🎉 SET RESULT (INI YANG BIKIN POPUP MUNCUL)
+      setResult({
+        scorePercent: data.scorePercent,
+        gainedXp: data.rewardXp,
+        hearts: data.hearts,
+        completed: data.completed,
+        isFirstCompletion: data.isFirstCompletion
+      });
+    } else {
+      throw new Error("Submit gagal");
+    }
+
   } catch (err) {
-    console.error("❌ ERROR:", err.response?.data || err);
+    console.error("💥 FINISH ERROR:", err.response?.data || err.message);
+
+    // ❌ FALLBACK (biar UI tetap muncul walau API error)
+    const totalQuestions = questions.length;
     const correctAnswers = Math.round(score / 100);
-    const scorePercent = Math.round((correctAnswers / questions.length) * 100);
+    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+
     setResult({
       scorePercent,
-      gainedXp: scorePercent === 100 ? 25 : Math.round(scorePercent / 5),
-      totalXp: 0,
-      hearts: Math.max(0, lives),
-      completed: scorePercent >= 80
+      gainedXp: 0,
+      hearts: lives,
+      completed: scorePercent >= 80,
+      isFirstCompletion: false
     });
   }
 };

@@ -22,38 +22,21 @@ export default function GameMap() {
       .catch(console.error);
   }, []);
 
-// 🔥 PERFECT SEQUENTIAL UNLOCK
 const isUnlocked = (mIdx, lIdx) => {
-  // Level 1 selalu unlocked
+  // Level pertama selalu terbuka
   if (mIdx === 0 && lIdx === 0) return true;
-  
-  // Flatten semua levels sebelum ini
-  let requiredCompleted = 0;
-  
-  // Semua materi sebelumnya
-  for (let m = 0; m < mIdx; m++) {
-    levels[m].levels.forEach(level => {
-      const progressItem = progress.find(p => p.levelId == level.id);
-      if (progressItem?.completed && progressItem.score >= 80) {
-        requiredCompleted++;
-      }
-    });
-  }
-  
-  // Level sebelumnya di materi yang sama
-  for (let l = 0; l < lIdx; l++) {
-    const level = levels[mIdx].levels[l];
-    const progressItem = progress.find(p => p.levelId == level.id);
-    if (progressItem?.completed && progressItem.score >= 80) {
-      requiredCompleted++;
-    }
+
+  // Ambil level sebelumnya
+  if (lIdx > 0) {
+    const prevLevel = levels[mIdx].levels[lIdx - 1];
+    const progressItem = progress.find(p => p.levelId == prevLevel.id);
+    return progressItem?.completed && progressItem.score >= 80;
   }
 
-  // Hanya buka jika SEMUA sebelumnya completed 80%+
-  const unlocked = requiredCompleted === (mIdx * 3 + lIdx); // Asumsi 3 level per materi
-  
-  console.log(`🔓 Level ${mIdx}-${lIdx}: required=${mIdx * 3 + lIdx}, completed=${requiredCompleted}, unlocked=${unlocked}`);
-  return unlocked;
+  // Kalau level pertama di materi baru → cek materi sebelumnya
+  const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
+  const progressItem = progress.find(p => p.levelId == prevMateriLastLevel.id);
+  return progressItem?.completed && progressItem.score >= 80;
 };
 
 // 🔥 MANUAL REFRESH BUTTON (temporary)
