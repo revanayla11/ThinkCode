@@ -92,12 +92,17 @@ const handleCorrect = () => {
   }
 
   setScore((s) => s + 100);
-
-  // 🔥 TAMBAH INI
   setCorrectCount((c) => c + 1);
 
+  // 🔥 Kalau soal terakhir
   if (index === questions.length - 1) {
-    finishGame();
+    setFeedback("correct");
+
+    // ⏳ Kasih waktu React update state dulu
+    setTimeout(() => {
+      finishGame();
+    }, 300); // 300–500ms cukup
+
     return;
   }
 
