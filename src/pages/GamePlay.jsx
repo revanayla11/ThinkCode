@@ -235,13 +235,11 @@ const finishGame = async () => {
     return (
       <Layout>
         <div style={{
-          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
         }}>
-          <div style={{ textAlign: 'center', color: 'white', fontSize: '2rem' }}>
+          <div style={{ textAlign: 'center', color: 'black', fontSize: '2rem' }}>
             🎮 Loading Level...
           </div>
         </div>

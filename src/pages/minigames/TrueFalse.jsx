@@ -53,11 +53,8 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       setDroppedCards(newDropped);
       setCards(prev => prev.filter(c => c.id !== cardId));
       
-      // Mini feedback KECIL - DIPERTAHANKAN
-      showMiniFeedback(
-        card.correct === isTrue ? 'correct' : 'wrong', 
-        card.correct === isTrue ? '✅ Benar!' : '❌ Salah!'
-      );
+      // HAPUS: showMiniFeedback() - tidak ada notif popup lagi
+      // Cuma feedback visual di card aja (✅/❌ di pojok)
       
       // Final check
       if (newDropped.true.length + newDropped.false.length === adminStatements.length) {
@@ -73,7 +70,7 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
 
   if (adminStatements.length === 0) {
     return (
-      <div style={{ height: '100%', minHeight: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)', borderRadius: '20px' }}>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', borderRadius: '20px' }}>
         <div style={{ textAlign: 'center', color: '#6b7280' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
           <h3>Tunggu soal dari guru!</h3>
@@ -82,6 +79,15 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       </div>
     );
   }
+
+  // Hitung ukuran card berdasarkan panjang teks
+  const getCardWidth = (content) => {
+    const wordCount = content.split(' ').length;
+    if (wordCount <= 4) return '160px';
+    if (wordCount <= 7) return '220px';
+    if (wordCount <= 10) return '280px';
+    return '340px';
+  };
 
   return (
     <div style={{
@@ -94,7 +100,7 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
 
-      {/* PERNYATAAN CARDS */}
+      {/* PERNYATAAN CARDS - UKURAN OTOMATIS */}
       <div style={{
         flex: '0 0 180px',
         display: 'flex',
@@ -120,7 +126,7 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
               draggable={!disabled}
               onDragStart={(e) => handleDragStart(e, card.id)}
               style={{
-                width: '200px',
+                width: getCardWidth(card.content),
                 height: '85px',
                 padding: '1rem',
                 background: `linear-gradient(135deg, hsl(${220 + (idx % 5) * 20}, 70%, 95%), hsl(${220 + (idx % 5) * 20}, 60%, 92%))`,
@@ -135,7 +141,8 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
                 display: 'flex',
                 alignItems: 'center',
                 position: 'relative',
-                flexShrink: 0
+                flexShrink: 0,
+                maxWidth: '340px'
               }}
             >
               <div style={{ flex: 1 }}>{card.content}</div>
@@ -273,22 +280,7 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
         </div>
       </div>
 
-      {/* MINI NOTIF FEEDBACK KECIL - DIPERTAHANKAN */}
-      {showFeedback.show && (
-        <div style={{
-          position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
-          padding: '1rem 1.5rem', borderRadius: '12px',
-          background: showFeedback.type === 'correct' 
-            ? 'linear-gradient(135deg, #10b981, #059669)' 
-            : 'linear-gradient(135deg, #ef4444, #dc2626)',
-          color: 'white', fontWeight: '700', fontSize: '1rem',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-          transform: 'scale(1)',
-          animation: 'popIn 0.3s ease-out'
-        }}>
-          {showFeedback.message}
-        </div>
-      )}
+      {/* HAPUS: MINI NOTIF FEEDBACK - TIDAK ADA LAGI POPUP */}
 
       {/* Instructions - Kecil */}
       <div style={{
@@ -299,14 +291,6 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       }}>
         🖱️ Seret card ke BENAR atau SALAH
       </div>
-
-      <style jsx>{`
-        @keyframes popIn {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 };
