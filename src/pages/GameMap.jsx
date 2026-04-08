@@ -35,33 +35,35 @@ export default function GameMap() {
   };
 
   // 🔥 NEW LOGIC: Completion-Based Unlocking
-  const isUnlocked = (mIdx, lIdx) => {
-    // Level pertama selalu kebuka
-    if (mIdx === 0 && lIdx === 0) return true;
+  // 🔥 SUPER SIMPLE: PERNAH MAIN = BUKA
+const isUnlocked = (mIdx, lIdx) => {
+  // Level pertama selalu kebuka
+  if (mIdx === 0 && lIdx === 0) return true;
 
-    // 🔥 DALAM MATERI: level berikutnya buka kalau level sebelumnya COMPLETED
-    if (lIdx > 0) {
-      const prevLevel = levels[mIdx]?.levels[lIdx - 1];
-      if (!prevLevel) return false;
+  // 🔥 DALAM MATERI: level berikutnya buka kalau level sebelumnya PERNAH DIMAIN
+  if (lIdx > 0) {
+    const prevLevel = levels[mIdx]?.levels[lIdx - 1];
+    if (!prevLevel) return false;
 
-      return progress.some(p => 
-        Number(p.levelId) === Number(prevLevel.id) &&
-        p.completed === true  // ✅ CUMA CEK COMPLETED
-      );
-    }
+    // ✅ ADA PROGRESS = PERNAH MAIN = BUKA!
+    return progress.some(p => Number(p.levelId) === Number(prevLevel.id));
+  }
 
-    // 🔥 ANTAR MATERI: materi berikutnya buka kalau SEMUA level materi sebelumnya COMPLETED
-    const prevMateri = levels[mIdx - 1];
-    if (!prevMateri) return false;
+  // 🔥 ANTAR MATERI: materi berikutnya buka kalau SEMUA level materi sebelumnya PERNAH DIMAIN
+  const prevMateri = levels[mIdx - 1];
+  if (!prevMateri) return false;
 
-    return prevMateri.levels.every(lvl =>
-      progress.some(p =>
-        Number(p.levelId) === Number(lvl.id) &&
-        p.completed === true  // ✅ CUMA CEK COMPLETED
-      )
-    );
-  };
+  return prevMateri.levels.every(lvl =>
+    progress.some(p => Number(p.levelId) === Number(lvl.id))
+  );
+};
 
+// ✅ isCompleted tetap cek completed: true (untuk warna hijau)
+const isCompleted = (levelId) =>
+  progress.some(p =>
+    Number(p.levelId) === Number(levelId) &&
+    p.completed === true
+  );
   // ✅ isCompleted (tetap sama)
   const isCompleted = (levelId) =>
     progress.some(p =>
