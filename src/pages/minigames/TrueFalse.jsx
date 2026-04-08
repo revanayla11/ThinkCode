@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
   const [cards, setCards] = useState([]);
   const [droppedCards, setDroppedCards] = useState({ true: [], false: [] });
+  const [showFeedback, setShowFeedback] = useState({ show: false, type: '', message: '' });
 
   const adminStatements = question.content.split('\n').filter(s => s.trim());
   const correctAnswers = question.meta.answer ? 
@@ -18,8 +19,14 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       
       setCards(statementCards);
       setDroppedCards({ true: [], false: [] });
+      setShowFeedback({ show: false, type: '', message: '' });
     }
   }, [question]);
+
+  const showMiniFeedback = (type, message) => {
+    setShowFeedback({ show: true, type, message });
+    setTimeout(() => setShowFeedback({ show: false, type: '', message: '' }), 1500);
+  };
 
   const handleDragStart = (e, cardId) => {
     if (disabled) return;
@@ -45,6 +52,12 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       
       setDroppedCards(newDropped);
       setCards(prev => prev.filter(c => c.id !== cardId));
+      
+      // Mini feedback KECIL - DIPERTAHANKAN
+      showMiniFeedback(
+        card.correct === isTrue ? 'correct' : 'wrong', 
+        card.correct === isTrue ? '✅ Benar!' : '❌ Salah!'
+      );
       
       // Final check
       if (newDropped.true.length + newDropped.false.length === adminStatements.length) {
@@ -260,6 +273,23 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
         </div>
       </div>
 
+      {/* MINI NOTIF FEEDBACK KECIL - DIPERTAHANKAN */}
+      {showFeedback.show && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
+          padding: '1rem 1.5rem', borderRadius: '12px',
+          background: showFeedback.type === 'correct' 
+            ? 'linear-gradient(135deg, #10b981, #059669)' 
+            : 'linear-gradient(135deg, #ef4444, #dc2626)',
+          color: 'white', fontWeight: '700', fontSize: '1rem',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+          transform: 'scale(1)',
+          animation: 'popIn 0.3s ease-out'
+        }}>
+          {showFeedback.message}
+        </div>
+      )}
+
       {/* Instructions - Kecil */}
       <div style={{
         background: 'rgba(255,255,255,0.8)', padding: '0.8rem',
@@ -269,6 +299,14 @@ const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
       }}>
         🖱️ Seret card ke BENAR atau SALAH
       </div>
+
+      <style jsx>{`
+        @keyframes popIn {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
