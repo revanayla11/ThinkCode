@@ -10,47 +10,6 @@ export default function GameMap() {
   const [showLockedModal, setShowLockedModal] = useState(false);
   const [lockedLevel, setLockedLevel] = useState(null);
 
-  useEffect(() => {
-    apiGet("/game/map")
-      .then((res) => {
-        if (res.status) {
-          setLevels(res.levels || []);
-          setProgress(res.progress || []);
-          setUserStats(res.userStats || {});
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-const isUnlocked = (mIdx, lIdx) => {
-  if (mIdx === 0 && lIdx === 0) return true;
-
-  if (lIdx > 0) {
-    const prevLevel = levels[mIdx].levels[lIdx - 1];
-    return progress.some(p => p.levelId == prevLevel.id);
-  }
-
-  const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
-  return progress.some(p => p.levelId == prevMateriLastLevel.id);
-};
-
-// 🔥 MANUAL REFRESH BUTTON (temporary)
-const refreshMap = () => {
-  window.location.reload();
-};
-
-// 🔥 AUTO REFRESH after 2s
-useEffect(() => {
-  const timer = setTimeout(() => {
-    if (progress.length > 0) {
-      console.log("🔄 Auto refresh map...");
-      window.location.reload();
-    }
-  }, 2000);
-  return () => clearTimeout(timer);
-}, [progress.length]);
-
-// 🔥 DEBUG useEffect
 useEffect(() => {
   apiGet("/game/map")
     .then((res) => {
@@ -64,6 +23,39 @@ useEffect(() => {
     })
     .catch(err => console.error("Map error:", err));
 }, []);
+
+const isUnlocked = (mIdx, lIdx) => {
+  if (mIdx === 0 && lIdx === 0) return true;
+
+  if (lIdx > 0) {
+    const prevLevel = levels[mIdx].levels[lIdx - 1];
+
+    return progress.some(p =>
+      Number(p.levelId) === Number(prevLevel.id) &&
+      p.completed === true &&
+      Number(p.score) >= 80
+    );
+  }
+
+  const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
+
+  return progress.some(p =>
+    Number(p.levelId) === Number(prevMateriLastLevel.id) &&
+    p.completed === true &&
+    Number(p.score) >= 80
+  );
+};
+
+// 🔥 AUTO REFRESH after 2s
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (progress.length > 0) {
+      console.log("🔄 Auto refresh map...");
+      window.location.reload();
+    }
+  }, 2000);
+  return () => clearTimeout(timer);
+}, [progress.length]);
 
   const isCompleted = (levelId) =>
     progress.some(p => p.levelId == levelId && p.completed && p.score >= 80);
