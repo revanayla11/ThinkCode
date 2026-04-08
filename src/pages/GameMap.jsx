@@ -9,76 +9,72 @@ export default function GameMap() {
   const [userStats, setUserStats] = useState({ xp: 0, streak: 0, hearts: 5 });
   const [showLockedModal, setShowLockedModal] = useState(false);
   const [lockedLevel, setLockedLevel] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-useEffect(() => {
-  apiGet("/game/map")
-    .then((res) => {
-      if (res.status) {
-        console.log("🗺️ FULL RESPONSE:", res);
-        console.log("📊 PROGRESS:", res.progress);
-        console.log("📚 LEVELS STRUCTURE:", res.levels);
+  // 🔥 LOAD DATA
+  useEffect(() => {
+    loadMapData();
+  }, []);
+
+  const loadMapData = () => {
+    setIsLoading(true);
+    apiGet("/game/map")
+      .then((res) => {
+        if (res.status) {
+          console.log("🗺️ FULL RESPONSE:", res);
+          console.log("📊 PROGRESS:", res.progress);
+          console.log("📚 LEVELS:", res.levels);
+          
+          setLevels(res.levels || []);
+          setProgress(res.progress || []);
+          setUserStats(res.userStats || {});
+        }
+      })
+      .catch(err => console.error("Map error:", err))
+      .finally(() => setIsLoading(false));
+  };
+
+  // ✅ FIXED: isUnlocked dengan multiple field support
+  const isUnlocked = (mIdx, lIdx) => {
+    if (mIdx === 0 && lIdx === 0) return true;
+
+    if (lIdx > 0) {
+      const prevLevel = levels[mIdx]?.levels[lIdx - 1];
+      if (!prevLevel) return false;
+      
+      return progress.some(p => {
+        const pId = Number(p.levelId || p.id || p.level_id);
+        const lId = Number(prevLevel.id);
+        const completed = p.completed === true || p.completed === "true";
+        const score = Number(p.score || p.scorePercent || 0);
         
-        // Debug level 1 specifically
-        const level1Progress = res.progress.find(p => 
-          Number(p.levelId || p.id) === Number(res.levels?.[0]?.levels?.[0]?.id)
-        );
-        console.log("🎯 LEVEL 1 PROGRESS:", level1Progress);
+        console.log(`🔍 Lvl ${lIdx} check prev(${lId}): pId=${pId}, completed=${completed}, score=${score}`);
         
-        setLevels(res.levels || []);
-        setProgress(res.progress || []);
-        setUserStats(res.userStats || {});
-      }
-    })
-    .catch(err => console.error("Map error:", err));
-}, []);
+        return pId === lId && completed && score >= 80;
+      });
+    }
 
-const isUnlocked = (mIdx, lIdx) => {
-  if (mIdx === 0 && lIdx === 0) return true;
-
-  if (lIdx > 0) {
-    const prevLevel = levels[mIdx].levels[lIdx - 1];
+    const prevMateriLastLevel = levels[mIdx - 1]?.levels?.slice(-1)[0];
+    if (!prevMateriLastLevel) return false;
     
     return progress.some(p => {
-      // Coba keduanya: levelId DAN id
-      const progressLevelId = Number(p.levelId || p.id);
-      const levelId = Number(prevLevel.id);
+      const pId = Number(p.levelId || p.id || p.level_id);
+      const lId = Number(prevMateriLastLevel.id);
+      const completed = p.completed === true || p.completed === "true";
+      const score = Number(p.score || p.scorePercent || 0);
       
-      console.log(`🔍 Comparing: progress=${progressLevelId}, level=${levelId}, completed=${p.completed}, score=${p.score}`);
-      
-      return progressLevelId === levelId &&
-             p.completed === true &&
-             Number(p.score) >= 80;
+      return pId === lId && completed && score >= 80;
     });
-  }
+  };
 
-  const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
-  
-  return progress.some(p => {
-    const progressLevelId = Number(p.levelId || p.id);
-    const levelId = Number(prevMateriLastLevel.id);
-    
-    return progressLevelId === levelId &&
-           p.completed === true &&
-           Number(p.score) >= 80;
-  });
-};
-
-// 🔥 AUTO REFRESH after 2s
-useEffect(() => {
-  const timer = setTimeout(() => {
-    if (progress.length > 0) {
-      console.log("🔄 Auto refresh map...");
-      window.location.reload();
-    }
-  }, 2000);
-  return () => clearTimeout(timer);
-}, [progress.length]);
-
+  // ✅ FIXED: isCompleted
   const isCompleted = (levelId) =>
-  progress.some(p => {
-    const pId = Number(p.levelId || p.id || p.level_id);
-    return pId === Number(levelId) && p.completed && Number(p.score) >= 80;
-  });
+    progress.some(p => {
+      const pId = Number(p.levelId || p.id || p.level_id);
+      const completed = p.completed === true || p.completed === "true";
+      const score = Number(p.score || p.scorePercent || 0);
+      return pId === Number(levelId) && completed && score >= 80;
+    });
 
   const getThemeIcon = (mIdx) => {
     const themes = ["✈️", "🚀", "⚡", "🌟", "🔥", "💎"];
@@ -86,6 +82,21 @@ useEffect(() => {
   };
 
   const getStreakEmoji = (streak) => (streak >= 7 ? "🔥" : streak >= 3 ? "⭐⭐" : "⭐");
+
+  // 🔄 SAFE POLLING (bukan reload!)
+  useEffect(() => {
+    let interval;
+    if (progress.length > 0 && levels.length > 0) {
+      console.log("🔄 Starting safe polling...");
+      interval = setInterval(() => {
+        loadMapData();
+      }, 4000); // Poll setiap 4 detik
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [progress.length, levels.length]);
 
   // Flatten levels untuk positioning
   const flatLevels = levels.flatMap((m, mIdx) =>
@@ -96,7 +107,6 @@ useEffect(() => {
     }))
   );
 
-  // Zig-zag positioning
   const getNodePosition = (index) => {
     const baseY = index * 120;
     const pattern = [
@@ -108,7 +118,6 @@ useEffect(() => {
     return { x: p.x, y: baseY + p.offsetY };
   };
 
-  // 🔥 LEVEL NODE dengan LOCKED POPUP
   const LevelNode = ({ level, unlocked, completed, themeIcon }) => (
     <>
       <Link
@@ -165,7 +174,7 @@ useEffect(() => {
     </>
   );
 
-  if (levels.length === 0) {
+  if (isLoading) {
     return (
       <Layout>
         <div style={{ 
@@ -175,6 +184,9 @@ useEffect(() => {
           fontSize: "1.8rem" 
         }}>
           🎮 Loading game map...
+          <div style={{ fontSize: "1rem", marginTop: "10px", opacity: 0.8 }}>
+            Levels: {levels.length} | Progress: {progress.length}
+          </div>
         </div>
       </Layout>
     );
@@ -193,7 +205,7 @@ useEffect(() => {
               backdropFilter: "blur(20px)",
               padding: "24px 32px",
               borderRadius: "24px",
-              marginBottom: "40px",
+              marginBottom: "20px",
               textAlign: "center",
               zIndex: 100,
               boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
@@ -227,12 +239,52 @@ useEffect(() => {
             }}>
               {userStats.xp.toLocaleString()} XP
             </div>
+            
+            {/* 🔥 MANUAL REFRESH & DEBUG INFO */}
+            <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "8px" }}>
+                📊 Progress loaded: {progress.length} items
+              </div>
+              <button 
+                onClick={loadMapData}
+                style={{
+                  padding: "8px 20px",
+                  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  marginRight: "10px"
+                }}
+              >
+                🔄 Refresh
+              </button>
+              <button 
+                onClick={() => {
+                  console.log("📋 FULL DEBUG:", { levels, progress, flatLevels });
+                  alert(`Levels: ${levels.length}\nProgress: ${progress.length}\nFirst 3 progress:\n${JSON.stringify(progress.slice(0,3), null, 2)}`);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  background: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  fontSize: "0.85rem"
+                }}
+              >
+                Debug
+              </button>
+            </div>
           </div>
 
           {/* MAP CONTAINER */}
           <div style={{ 
             position: "relative", 
-            height: flatLevels.length * 130 + 300,
+            height: Math.max(flatLevels.length * 130 + 300, 600),
             maxWidth: "1000px",
             margin: "0 auto"
           }}>
@@ -284,6 +336,7 @@ useEffect(() => {
                     transform: "translate(-50%, -50%)",
                     zIndex: 10,
                   }}
+                  title={`Level ${lvl.levelNumber}: ${unlocked ? '✅ Unlocked' : completed ? '✅ Completed' : '🔒 Locked'}`}
                 >
                   <LevelNode
                     level={lvl}
@@ -295,10 +348,26 @@ useEffect(() => {
               );
             })}
           </div>
+
+          {/* DEBUG INFO - HAPUS NANTI */}
+          <div style={{
+            maxWidth: "1000px",
+            margin: "20px auto",
+            padding: "20px",
+            background: "rgba(0,0,0,0.05)",
+            borderRadius: "12px",
+            fontSize: "0.9rem",
+            color: "#374151"
+          }}>
+            <strong>Debug Info:</strong><br/>
+            Total Levels: {flatLevels.length}<br/>
+            Progress Items: {progress.length}<br/>
+            First Progress: {progress[0] ? JSON.stringify(progress[0]) : "None"}
+          </div>
         </div>
       </Layout>
 
-      {/* 🔥 GLOBAL LOCKED MODAL */}
+      {/* 🔥 LOCKED MODAL */}
       {showLockedModal && lockedLevel && (
         <div style={{
           position: 'fixed', 
@@ -339,26 +408,6 @@ useEffect(() => {
               Selesaikan level sebelumnya dengan <strong>skor 80% atau lebih</strong> 
               untuk membuka akses ke level ini!
             </p>
-            <div style={{
-              background: 'linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%)',
-              height: '8px',
-              borderRadius: '4px',
-              marginBottom: '1.5rem'
-            }}>
-              <div style={{
-                background: '#10b981',
-                height: '8px',
-                borderRadius: '4px',
-                width: '80%'
-              }}></div>
-            </div>
-            <p style={{ 
-              color: '#059669', 
-              fontSize: '0.95rem',
-              fontWeight: '600'
-            }}>
-              🎯 Target: 80%+ | 💎 Reward: {lockedLevel.reward_xp} XP
-            </p>
             <button 
               onClick={() => {
                 setShowLockedModal(false);
@@ -376,14 +425,6 @@ useEffect(() => {
                 marginTop: '1.5rem',
                 boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)',
                 transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 15px 35px rgba(59, 130, 246, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
               }}
             >
               Kembali ke Map
