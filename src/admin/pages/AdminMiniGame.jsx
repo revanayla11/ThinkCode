@@ -372,7 +372,7 @@ const loadQuestions = async (slug, levelNumber) => {
       meta = { answer: questionForm.answer };
     } else if (currentGameType === "truefalse") {
       // 🔥 FIXED: Pastikan answer TIDAK KOSONG dan STRING
-      const answerValue = questionForm.answer || "false"; // Default false jika kosong
+      const answerValue = questionForm.answer === "true" ? "true" : "false"; // Default false jika kosong
       meta = { 
         answer: answerValue, // Pastikan string "true"/"false"
         statement: questionForm.content // Backup statement
