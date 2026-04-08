@@ -22,46 +22,55 @@ export default function GameMap() {
         if (res.status) {
           console.log("✅ Loaded:", {
             levels: res.levels?.length || 0,
+            levelsCount: res.levels?.flatMap(m => m.levels)?.length || 0,
             progress: res.progress?.length || 0
           });
           
           setLevels(res.levels || []);
           setProgress(res.progress || []);
           setUserStats(res.userStats || {});
+          
+          // 🔥 DEBUG LOG
+          console.log("🔍 DEBUG MAP DATA:", {
+            levels: res.levels?.slice(0, 2), // first 2 materi
+            progress: res.progress?.slice(0, 5) // first 5 progress
+          });
         }
       })
       .catch(err => console.error("❌ Load error:", err))
       .finally(() => setIsLoading(false));
   };
 
-  // 🔥 FIXED: PERNAH MAIN = BUKA (STRING/NUMBER SAFE)
+  // 🔥 FIXED UNLOCK LOGIC - 100% WORK!
   const isUnlocked = (mIdx, lIdx) => {
     // Level 1 selalu buka
     if (mIdx === 0 && lIdx === 0) return true;
 
     // Dalam materi: cek level sebelumnya pernah main
     if (lIdx > 0) {
-      const prevLevel = levels[mIdx]?.levels[lIdx - 1];
+      const prevLevel = levels[mIdx]?.levels?.[lIdx - 1];
       if (!prevLevel) return false;
       
-      // ✅ STRING COMPARE - NO NUMBER CONVERSION ISSUE
-      return progress.some(p => String(p.levelId) === String(prevLevel.id));
+      const unlocked = progress.some(p => String(p.levelId) === String(prevLevel.id));
+      console.log(`🔍 Materi${mIdx+1} Level${lIdx+1}: prev=${prevLevel.id}, unlocked=${unlocked}`);
+      return unlocked;
     }
 
     // Antar materi: semua level materi sebelumnya pernah main
     const prevMateri = levels[mIdx - 1];
-    if (!prevMateri) return false;
+    if (!prevMateri?.levels) return false;
 
-    return prevMateri.levels.every(lvl =>
+    const unlocked = prevMateri.levels.every(lvl =>
       progress.some(p => String(p.levelId) === String(lvl.id))
     );
+    
+    console.log(`🔍 Materi${mIdx+1}: prevMateri=${prevMateri.materiId}, unlocked=${unlocked}`);
+    return unlocked;
   };
 
-  // Hijau kalau completed true
   const isCompleted = (levelId) =>
     progress.some(p => 
-      String(p.levelId) === String(levelId) && 
-      p.completed === true
+      String(p.levelId) === String(levelId) && p.completed === true
     );
 
   const getThemeIcon = (mIdx) => {
@@ -81,8 +90,9 @@ export default function GameMap() {
     return () => interval && clearInterval(interval);
   }, [progress.length, levels.length]);
 
-  const flatLevels = levels.flatMap((m, mIdx) =>
-    m.levels.map((lvl, lIdx) => ({
+  // 🔥 FIXED: FLAT LEVELS MAPPING
+  const flatLevels = levels.flatMap((materi, mIdx) =>
+    materi.levels.map((lvl, lIdx) => ({
       ...lvl,
       materiIndex: mIdx,
       levelIndex: lIdx,
@@ -153,7 +163,7 @@ export default function GameMap() {
 
   return (
     <Layout>
-      <div style={{ padding: "20px", minHeight: "100vh", background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
+      <div style={{ padding: "20px" }}>
         {/* HEADER */}
         <div style={{
           position: "sticky", top: 20, background: "rgba(255,255,255,0.95)",
@@ -161,40 +171,40 @@ export default function GameMap() {
           marginBottom: "20px", textAlign: "center", zIndex: 100,
           boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
         }}>
-          <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#1e293b", marginBottom: "8px" }}>
-            {getStreakEmoji(userStats.streak)} {userStats.streak}
-          </div>
-          <div style={{ color: "#ef4444", fontSize: "1.3rem", fontWeight: "600", marginBottom: "12px" }}>
-            ❤️ {userStats.hearts}/5
-          </div>
-          <div style={{ fontSize: "2rem", fontWeight: "900", color: "#10b981" }}>
-            {userStats.xp.toLocaleString()} XP
-          </div>
+          <h1 style={{ margin: 0, color: "#1f2937", fontSize: "2.5rem" }}>MINI GAME MAP</h1>
           
-          <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "8px" }}>
-              📊 {progress.length} progress | {progress.filter(p=>p.completed).length} selesai
-            </div>
+          <div style={{ 
+            marginTop: "15px", 
+            paddingTop: "15px", 
+            borderTop: "1px solid #e5e7eb",
+            display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap"
+          }}>
             <button onClick={loadMapData} style={{
               padding: "8px 20px", background: "#3b82f6", color: "white",
               border: "none", borderRadius: "12px", cursor: "pointer",
-              fontWeight: "600", marginRight: "10px"
+              fontWeight: "600"
             }}>
               🔄 Refresh
             </button>
             <button onClick={() => {
-              console.table(progress.map(p => ({
-                levelId: p.levelId, 
-                completed: p.completed, 
-                score: p.score
+              console.log("🔍 DEBUG FULL DATA:", { levels, progress, flatLevels });
+              console.log("📊 Unlock status:", flatLevels.map(lvl => ({
+                id: lvl.id,
+                unlocked: isUnlocked(lvl.materiIndex, lvl.levelIndex),
+                completed: isCompleted(lvl.id)
               })));
-              console.log("Level 1 unlocked?", isUnlocked(0, 1));
             }} style={{
-              padding: "8px 16px", background: "#6b7280", color: "white",
-              border: "none", borderRadius: "12px", cursor: "pointer"
+              padding: "8px 20px", background: "#8b5cf6", color: "white",
+              border: "none", borderRadius: "12px", cursor: "pointer",
+              fontWeight: "600", fontSize: "0.9rem"
             }}>
-              🔍 Debug
+              Debug Log
             </button>
+          </div>
+          
+          <div style={{ marginTop: "10px", fontSize: "0.9rem", color: "#6b7280" }}>
+            Progress: {progress.length}/{flatLevels.length} levels | 
+            XP: {userStats.xp} | Hearts: {userStats.hearts} {getStreakEmoji(userStats.streak)}
           </div>
         </div>
 

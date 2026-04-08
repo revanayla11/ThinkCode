@@ -292,7 +292,7 @@ export default function GamePlay() {
               <span style={{
                 padding: '0.5rem 1rem',
                 background: `var(--game-${level.gameType})`,
-                color: 'white',
+                color: 'black',
                 borderRadius: '20px',
                 fontSize: '0.9rem',
                 fontWeight: '700',
