@@ -81,12 +81,32 @@ export default function GamePlay() {
     });
   };
 
-  const finishGame = () => {
+// Di GamePlay.jsx - tambah di finishGame():
+const finishGame = async () => {
+  try {
+    // 🔥 KIRIM KE BACKEND
+    const res = await apiPost(`/game/submit/${id}`, {
+      answers: questions.map((q, idx) => ({
+        questionId: q.id,
+        answer: 'auto-calculated' // Frontend hitung sendiri
+      })),
+      scorePercent: Math.round((score / (questions.length * 100)) * 100)
+    });
+    
+    setResult({
+      scorePercent: res.data.scorePercent,
+      gainedXp: res.data.rewardXp,
+      totalXp: res.data.totalXp,
+      hearts: res.data.hearts
+    });
+  } catch (err) {
+    console.error("Submit error:", err);
     setResult({
       scorePercent: Math.round((score / (questions.length * 100)) * 100),
-      gainedXp: Math.round(score / 20),
+      gainedXp: Math.round(score / 20)
     });
-  };
+  }
+};
 
   // 🎮 GAME SWITCHER
   const renderGame = () => {
@@ -116,6 +136,61 @@ export default function GamePlay() {
   if (!level) return <div style={{ padding: 100 }}>Loading...</div>;
 
   const q = questions[index];
+
+  // Tambahkan di akhir GamePlay.jsx sebelum return:
+{result && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.9)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    zIndex: 1000,
+    padding: '2rem'
+  }}>
+    <div style={{
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '4rem 3rem',
+      borderRadius: '32px',
+      textAlign: 'center',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
+      maxWidth: '500px',
+      width: '90%'
+    }}>
+      <div style={{ fontSize: '6rem', marginBottom: '1rem' }}>
+        {result.scorePercent >= 60 ? '🎉' : '📚'}
+      </div>
+      <h1 style={{ fontSize: '3rem', marginBottom: '1rem', fontWeight: '800' }}>
+        {result.scorePercent}%
+      </h1>
+      <p style={{ fontSize: '1.5rem', opacity: 0.9, marginBottom: '2rem' }}>
+        +{result.gainedXp} XP
+      </p>
+      <button 
+        onClick={() => navigate("/game")}
+        style={{
+          padding: '1.5rem 4rem',
+          background: 'white',
+          color: '#667eea',
+          border: 'none',
+          borderRadius: '50px',
+          fontSize: '1.2rem',
+          fontWeight: '700',
+          cursor: 'pointer',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+        }}
+      >
+        🎮 Main Lagi
+      </button>
+    </div>
+  </div>
+)}
 
   return (
     <div style={{ padding: 20 }}>

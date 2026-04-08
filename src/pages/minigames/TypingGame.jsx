@@ -1,36 +1,69 @@
-// SheriffGame.jsx - Self-contained dengan style inline
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const SheriffGame = ({ onComplete }) => {
-  const [health, setHealth] = useState(100);
-  const [bullets, setBullets] = useState([
-    { id: 1, x: '15%', y: '25%', isBad: false, hit: false },
-    { id: 2, x: '75%', y: '45%', isBad: true, hit: false },
-    { id: 3, x: '30%', y: '65%', isBad: false, hit: false },
-    { id: 4, x: '60%', y: '30%', isBad: true, hit: false },
-    { id: 5, x: '20%', y: '80%', isBad: false, hit: false }
-  ]);
-  const [gameOver, setGameOver] = useState(false);
+const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
+  const [grid, setGrid] = useState(Array(8).fill().map(() => Array(20).fill('')));
+  const [selectedCell, setSelectedCell] = useState({ row: 0, col: 0 });
+  const [score, setScore] = useState(0);
+  const inputRef = useRef();
 
-  const handleBulletClick = (bullet) => {
-    if (bullet.hit || gameOver) return;
+  // Target answer untuk code completion
+  const targetAnswer = question.meta.answer || 'function tambah(a, b) { return a + b; }';
+  const answerChars = targetAnswer.toUpperCase().split('');
 
-    const newBullets = bullets.map(b => 
-      b.id === bullet.id ? { ...b, hit: true } : b
-    );
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [selectedCell]);
+
+  const handleCellClick = (row, col) => {
+    if (disabled) return;
+    setSelectedCell({ row, col });
+  };
+
+  const handleKeyPress = (e) => {
+    if (disabled || !/[a-zA-Z0-9\s(){};+=_\$\$]/.test(e.key)) return;
     
-    if (bullet.isBad) {
-      // Hit bad bullet - lose health
-      setHealth(prev => Math.max(0, prev - 25));
-      setGameOver(true);
-      setTimeout(() => onComplete(25), 1500);
-    } else {
-      // Hit good bullet - continue
-      setBullets(newBullets);
-      if (newBullets.filter(b => !b.hit).length === 0) {
-        onComplete(100);
-      }
+    e.preventDefault();
+    const newGrid = grid.map(r => [...r]);
+    
+    // Fill current cell
+    newGrid[selectedCell.row][selectedCell.col] = e.key.toUpperCase();
+    
+    // Move to next cell
+    let nextCol = selectedCell.col + 1;
+    let nextRow = selectedCell.row;
+    
+    if (nextCol >= 20) {
+      nextCol = 0;
+      nextRow += 1;
     }
+    
+    if (nextRow < 8) {
+      setSelectedCell({ row: nextRow, col: nextCol });
+    }
+    
+    setGrid(newGrid);
+    setScore(prev => Math.min(100, prev + 5));
+    
+    // Auto complete check
+    const filledText = newGrid.flat().join('').replace(/\s+/g, ' ').trim();
+    if (filledText.includes(targetAnswer.toUpperCase())) {
+      setTimeout(() => onCorrect(), 500);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => handleKeyPress(e);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCell, grid, disabled]);
+
+  const getCellColor = (row, col) => {
+    const cellValue = grid[row][col];
+    const expectedChar = answerChars[row * 20 + col] || '';
+    
+    if (cellValue === expectedChar && expectedChar) return '#10b981';
+    if (cellValue && cellValue !== expectedChar) return '#ef4444';
+    return '#f9fafb';
   };
 
   return (
@@ -38,203 +71,111 @@ const SheriffGame = ({ onComplete }) => {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
+      gap: '1.5rem',
       padding: '1rem',
-      gap: '1.5rem'
+      fontFamily: 'Monaco, Consolas, monospace'
     }}>
-      {/* Health Bar */}
+      {/* Header */}
       <div style={{
-        background: 'linear-gradient(90deg, #ef4444 0%, #10b981 100%)',
-        height: '20px',
-        borderRadius: '10px',
-        overflow: 'hidden',
-        boxShadow: '0 5px 15px rgba(0,0,0,0.2)'
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+        color: 'white',
+        padding: '1.5rem 2rem',
+        borderRadius: '20px',
+        fontWeight: '700'
       }}>
-        <div style={{
-          height: '100%',
-          background: '#10b981',
-          width: `${health}%`,
-          transition: 'width 0.5s ease',
-          display: 'flex',
-          alignItems: 'center',
-          paddingLeft: '1rem',
-          color: 'white',
-          fontWeight: '700'
-        }}>
-          Nyawa: {health}%
+        ⌨️ Score: {score}
+        <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+          Klik kotak → Ketik kode → Tab=Hint
         </div>
       </div>
 
-      {/* Sheriff Container */}
+      {/* Hint */}
+      <div style={{
+        background: 'rgba(59, 130, 246, 0.1)',
+        padding: '1rem',
+        borderRadius: '12px',
+        border: '2px dashed #3b82f6',
+        fontSize: '0.95rem',
+        color: '#1e40af'
+      }}>
+        💡 Hint: {targetAnswer.slice(0, 30)}...
+      </div>
+
+      {/* Grid Editor */}
       <div style={{
         flex: 1,
-        position: 'relative',
-        background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+        background: 'linear-gradient(135deg, #1e293b, #0f172a)',
         borderRadius: '24px',
         padding: '2rem',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        border: '4px solid #f59e0b',
-        boxShadow: 'inset 0 0 20px rgba(245, 158, 11, 0.2)'
+        flexDirection: 'column',
+        alignItems: 'center'
       }}>
-        {/* Sheriff Body */}
         <div style={{
-          position: 'relative',
-          width: '250px',
-          height: '350px'
-        }}>
-          {/* Head */}
-          <div style={{
-            position: 'absolute',
-            top: '5%',
-            left: '35%',
-            width: '60px',
-            height: '60px',
-            background: '#f97316',
-            borderRadius: '50%',
-            border: '4px solid #ea580c',
-            zIndex: 3,
-            transition: 'all 0.3s ease'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '20%',
-              left: '25%',
-              width: '12px',
-              height: '12px',
-              background: 'white',
-              borderRadius: '50%',
-              boxShadow: '20px 0 0 white'
-            }}></div>
-            <div style={{
-              position: 'absolute',
-              bottom: '20%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '20px',
-              height: '20px',
-              background: '#f97316',
-              borderRadius: '50%'
-            }}></div>
-          </div>
-
-          {/* Body */}
-          <div style={{
-            position: 'absolute',
-            top: '25%',
-            left: '25%',
-            width: '100px',
-            height: '120px',
-            background: 'linear-gradient(180deg, #1f2937, #374151)',
-            borderRadius: '50px 50px 20px 20px',
-            zIndex: 2,
-            border: '4px solid #111827'
-          }}></div>
-
-          {/* Arms */}
-          <div style={{
-            position: 'absolute',
-            top: '35%',
-            left: '10%',
-            width: '25px',
-            height: '80px',
-            background: 'linear-gradient(180deg, #f97316, #ea580c)',
-            borderRadius: '20px',
-            transformOrigin: 'bottom center',
-            transform: 'rotate(-20deg)',
-            zIndex: 1
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            top: '35%',
-            right: '10%',
-            width: '25px',
-            height: '80px',
-            background: 'linear-gradient(180deg, #f97316, #ea580c)',
-            borderRadius: '20px',
-            transformOrigin: 'bottom center',
-            transform: 'rotate(20deg)',
-            zIndex: 1
-          }}></div>
-
-          {/* Legs */}
-          <div style={{
-            position: 'absolute',
-            bottom: '5%',
-            left: '30%',
-            width: '20px',
-            height: '90px',
-            background: 'linear-gradient(180deg, #1f2937, #111827)',
-            borderRadius: '10px 10px 20px 20px'
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            bottom: '5%',
-            right: '30%',
-            width: '20px',
-            height: '90px',
-            background: 'linear-gradient(180deg, #1f2937, #111827)',
-            borderRadius: '10px 10px 20px 20px'
-          }}></div>
-
-          {/* Hat */}
-          <div style={{
-            position: 'absolute',
-            top: '2%',
-            left: '28%',
-            width: '80px',
-            height: '35px',
-            background: 'linear-gradient(135deg, #7c2d12, #a85521)',
-            borderRadius: '40px 40px 10px 10px',
-            zIndex: 4,
-            boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
-          }}></div>
+          display: 'grid',
+          gridTemplateColumns: `repeat(20, 28px)`,
+          gridTemplateRows: `repeat(8, 32px)`,
+          gap: '1px',
+          maxWidth: '600px',
+          background: '#334155',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          boxShadow: 'inset 0 0 30px rgba(0,0,0,0.5)'
+        }} tabIndex={0} ref={inputRef}>
+          {grid.map((row, rowIndex) =>
+            row.map((cell, colIndex) => {
+              const cellColor = getCellColor(rowIndex, colIndex);
+              const isSelected = rowIndex === selectedCell.row && colIndex === selectedCell.col;
+              
+              return (
+                <div
+                  key={`${rowIndex}-${colIndex}`}
+                  style={{
+                    background: isSelected 
+                      ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
+                      : cellColor,
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1rem',
+                    fontWeight: '700',
+                    color: isSelected ? 'white' : '#1e293b',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    border: isSelected ? '3px solid #60a5fa' : '2px solid transparent',
+                    boxShadow: isSelected 
+                      ? '0 0 20px rgba(59,130,246,0.5)' 
+                      : cell ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                    transition: 'all 0.2s ease',
+                    transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                  onClick={() => handleCellClick(rowIndex, colIndex)}
+                >
+                  {cell || ''}
+                </div>
+              );
+            })
+          )}
         </div>
-
-        {/* Bullets */}
-        {bullets.map(bullet => (
-          <div
-            key={bullet.id}
-            style={{
-              position: 'absolute',
-              left: bullet.x,
-              top: bullet.y,
-              width: '40px',
-              height: '40px',
-              background: bullet.isBad 
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                : 'linear-gradient(135deg, #10b981, #059669)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: bullet.hit ? 'not-allowed' : 'pointer',
-              border: `4px solid ${bullet.hit ? '#6b7280' : 'white'}`,
-              boxShadow: bullet.isBad 
-                ? '0 0 20px rgba(239, 68, 68, 0.6)' 
-                : '0 0 20px rgba(16, 185, 129, 0.6)',
-              transition: 'all 0.3s ease',
-              opacity: bullet.hit ? 0.5 : 1,
-              transform: bullet.hit ? 'scale(0.8)' : 'scale(1)'
-            }}
-            onClick={() => handleBulletClick(bullet)}
-          >
-            <i className={`fas fa-${bullet.isBad ? 'skull-crossbones' : 'shield-alt'}`} 
-               style={{ fontSize: '1.2rem', color: 'white' }}></i>
-          </div>
-        ))}
-      </div>
-
-      <div style={{
-        textAlign: 'center',
-        fontSize: '1.3rem',
-        color: '#1f2937',
-        fontWeight: '700'
-      }}>
-        Klik peluru merah untuk kalah! Lindungi sheriff! 🛡️
+        
+        {/* Progress */}
+        <div style={{
+          marginTop: '2rem',
+          padding: '1rem 2rem',
+          background: 'rgba(255,255,255,0.1)',
+          borderRadius: '12px',
+          color: 'white',
+          fontSize: '1.1rem'
+        }}>
+          Progress: {Math.round((score / 100) * 100)}% | 
+          Karakter: {grid.flat().filter(c => c).length}/160
+        </div>
       </div>
     </div>
   );
 };
 
-export default SheriffGame;
+export default TypingGame;

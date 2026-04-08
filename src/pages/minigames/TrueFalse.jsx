@@ -1,45 +1,72 @@
-// TTSGame.jsx - Self-contained dengan style inline
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const TTSGame = ({ onComplete }) => {
-  const [grid, setGrid] = useState(Array(10).fill().map(() => Array(15).fill('')));
-  const [selectedCell, setSelectedCell] = useState({ row: -1, col: -1 });
+const TrueFalse = ({ question, onCorrect, onWrong, disabled }) => {
+  const [cards, setCards] = useState([]);
+  const [droppedCards, setDroppedCards] = useState({ true: [], false: [] });
   const [score, setScore] = useState(0);
-  const inputRef = useRef();
 
-  // Words to solve
-  const words = [
-    { word: 'R E A C T', row: 0, col: 0, horizontal: true },
-    { word: 'G A M E S', row: 3, col: 8, horizontal: true },
-    { word: 'Q U I Z', row: 6, col: 2, horizontal: true }
+  // Generate random statements (simulasi database)
+  const statements = [
+    "React adalah library JavaScript untuk UI",
+    "JavaScript dibuat oleh Microsoft",
+    "const tidak bisa diubah nilainya",
+    "Array dimulai dari index 1",
+    "Function adalah first-class citizen di JS"
   ];
 
-  const handleCellClick = (row, col) => {
-    setSelectedCell({ row, col });
-    inputRef.current?.focus();
-  };
-
-  const handleKeyPress = (e) => {
-    if (selectedCell.row === -1 || !/[a-zA-Z]/.test(e.key)) return;
-    
-    e.preventDefault();
-    const newGrid = grid.map(r => [...r]);
-    newGrid[selectedCell.row][selectedCell.col] = e.key.toUpperCase();
-    
-    setGrid(newGrid);
-    setScore(prev => Math.min(100, prev + 5));
-    setSelectedCell(prev => ({ row: prev.row, col: (prev.col + 1) % 15 }));
-    
-    if (score >= 90) {
-      setTimeout(() => onComplete(100), 500);
-    }
-  };
+  const correctAnswers = [true, false, true, false, true]; // Jawaban benar
 
   useEffect(() => {
-    const handleKeyDown = (e) => handleKeyPress(e);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCell, score, grid]);
+    // Shuffle cards
+    const shuffled = statements.map((s, i) => ({ 
+      id: i, 
+      content: s, 
+      correct: correctAnswers[i] 
+    })).sort(() => Math.random() - 0.5);
+    
+    setCards(shuffled);
+    setDroppedCards({ true: [], false: [] });
+    setScore(0);
+  }, [question]);
+
+  const handleDragStart = (e, cardId) => {
+    if (disabled) return;
+    e.dataTransfer.setData('cardId', cardId);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, isTrue) => {
+    if (disabled) return;
+    e.preventDefault();
+    
+    const cardId = parseInt(e.dataTransfer.getData('cardId'));
+    const card = cards.find(c => c.id === cardId);
+    
+    if (card) {
+      const newDropped = { ...droppedCards };
+      newDropped[isTrue ? 'true' : 'false'].push(card);
+      
+      // Check if correct
+      const isCorrect = card.correct === isTrue;
+      if (isCorrect) {
+        setScore(prev => Math.min(100, prev + 20));
+      }
+      
+      setDroppedCards(newDropped);
+      setCards(prev => prev.filter(c => c.id !== cardId));
+      
+      // Check completion
+      if (newDropped.true.length + newDropped.false.length === statements.length) {
+        setTimeout(() => {
+          if (score >= 80) onCorrect();
+          else onWrong();
+        }, 800);
+      }
+    }
+  };
 
   return (
     <div style={{
@@ -47,114 +74,147 @@ const TTSGame = ({ onComplete }) => {
       display: 'flex',
       flexDirection: 'column',
       gap: '1.5rem',
-      padding: '1rem'
+      padding: '1rem',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      {/* Score & Instructions */}
+      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'white',
+        background: 'linear-gradient(135deg, #ec4899, #be185d)',
+        color: 'white',
         padding: '1.5rem 2rem',
-        borderRadius: '16px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          fontSize: '1.5rem',
-          fontWeight: '800',
-          background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          Score: {score}
-        </div>
-        <div style={{ color: '#6b7280', fontSize: '1rem' }}>
-          Klik sel → Ketik huruf → Enter
-        </div>
-      </div>
-
-      {/* Words List */}
-      <div style={{
-        background: 'rgba(139, 92, 246, 0.05)',
-        padding: '1rem',
-        borderRadius: '12px',
-        border: '2px dashed #c4b5fd'
-      }}>
-        <h4 style={{ margin: '0 0 0.5rem 0', color: '#6d28d9' }}>Kata yang dicari:</h4>
-        <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#3730a3' }}>
-          REACT • GAMES • QUIZ
-        </div>
-      </div>
-
-      {/* TTS Grid */}
-      <div style={{
-        flex: 1,
-        background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
         borderRadius: '20px',
-        padding: '2rem',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        overflow: 'auto'
+        fontWeight: '700',
+        fontSize: '1.2rem'
       }}>
-        <div 
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(15, 1fr)',
-            gap: '1px',
-            maxWidth: '600px',
-            background: '#e5e7eb',
-            padding: '1rem',
-            borderRadius: '12px',
-            boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)'
-          }}
-          tabIndex={0}
-          ref={inputRef}
-        >
-          {grid.map((row, rowIndex) =>
-            row.map((cell, colIndex) => (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  background: 
-                    rowIndex === selectedCell.row && colIndex === selectedCell.col
-                      ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-                      : cell 
-                        ? '#ffffff'
-                        : '#f1f5f9',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1rem',
-                  fontWeight: '700',
-                  color: rowIndex === selectedCell.row && colIndex === selectedCell.col ? 'white' : '#374151',
-                  cursor: 'pointer',
-                  border: '2px solid transparent',
-                  transition: 'all 0.2s ease',
-                  boxShadow: cell ? '0 2px 8px rgba(0,0,0,0.1)' : 'none'
-                }}
-                onClick={() => handleCellClick(rowIndex, colIndex)}
-                onMouseEnter={(e) => {
-                  if (rowIndex === selectedCell.row && colIndex === selectedCell.col) {
-                    e.currentTarget.style.transform = 'scale(1.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                {cell || ''}
+        📚 Score: {score}
+        <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+          Drag card ke kotak yang benar!
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', gap: '2rem' }}>
+        {/* Cards Stack */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1rem'
+        }}>
+          <h3 style={{ color: '#6b7280', margin: 0 }}>📬 Tumpukan Kartu</h3>
+          <div style={{
+            height: '400px',
+            width: '280px',
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: '24px',
+            border: '3px dashed #d1d5db',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(20px)'
+          }}>
+            {cards.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+                🎉 Semua kartu sudah ditempatkan!
               </div>
-            ))
-          )}
+            ) : (
+              cards.slice(0, 3).map((card, idx) => ( // Show top 3 cards
+                <div
+                  key={card.id}
+                  draggable={!disabled}
+                  onDragStart={(e) => handleDragStart(e, card.id)}
+                  style={{
+                    width: '240px',
+                    padding: '1.5rem 2rem',
+                    background: `hsl(${200 + idx * 20}, 70%, 95%)`,
+                    borderRadius: '20px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+                    transform: `translateY(${idx * 10}px) rotate(${idx * 2}deg)`,
+                    cursor: disabled ? 'not-allowed' : 'grab',
+                    border: '3px solid rgba(255,255,255,0.8)',
+                    transition: 'all 0.3s ease',
+                    fontSize: '1rem',
+                    lineHeight: '1.4',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
+                  {card.content}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Drop Zones */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '2rem', 
+          justifyContent: 'center' 
+        }}>
+          {[
+            { isTrue: true, label: '✅ BENAR', color: '#10b981' },
+            { isTrue: false, label: '❌ SALAH', color: '#ef4444' }
+          ].map(({ isTrue, label, color }) => (
+            <div
+              key={label}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, isTrue)}
+              style={{
+                height: '200px',
+                minWidth: '300px',
+                background: `linear-gradient(135deg, ${color}20, ${color}10)`,
+                border: `4px dashed ${color}`,
+                borderRadius: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1rem',
+                padding: '2rem',
+                backdropFilter: 'blur(20px)',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: '800',
+                color: color
+              }}>
+                {label}
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '1rem',
+                width: '100%'
+              }}>
+                {droppedCards[isTrue ? 'true' : 'false'].map(card => (
+                  <div key={card.id} style={{
+                    padding: '1rem',
+                    background: card.correct === isTrue ? '#fff' : '#fee2e2',
+                    borderRadius: '16px',
+                    border: `2px solid ${card.correct === isTrue ? '#10b981' : '#ef4444'}`,
+                    fontSize: '0.9rem',
+                    textAlign: 'center',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.1)'
+                  }}>
+                    {card.content}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-export default TTSGame;
+export default TrueFalse;
