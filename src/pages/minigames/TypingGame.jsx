@@ -4,7 +4,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
   const [grid, setGrid] = useState(Array(8).fill().map(() => Array(20).fill('')));
   const [selectedCell, setSelectedCell] = useState({ row: 0, col: 0 });
   const [score, setScore] = useState(0);
-  const [showScorePopup, setShowScorePopup] = useState(false); // 🔥 NEW: Score popup state
+  const [showScorePopup, setShowScorePopup] = useState(false); // Popup 1x di akhir
   const inputRef = useRef();
 
   // 🔥 SOAL DARI ADMIN + TARGET ANSWER
@@ -44,15 +44,16 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
     setGrid(newGrid);
     setScore(prev => Math.min(100, prev + 2));
     
-    // Check completion
+    // 🔥 CHECK 1x SAJA di AKHIR - TIDAK BERKALI-KALI!
     const filledText = newGrid.flat().join('').replace(/\s+/g, ' ').trim();
-    if (filledText.includes(targetAnswer.toUpperCase())) {
-      // 🔥 SHOW SCORE POPUP SEBELUM onCorrect()
+    if (filledText.includes(targetAnswer.toUpperCase()) && !showScorePopup) {
       setShowScorePopup(true);
+      
+      // Popup 2.5s → onCorrect
       setTimeout(() => {
         setShowScorePopup(false);
         onCorrect();
-      }, 2500); // 2.5 detik untuk lihat popup
+      }, 2500);
     }
   };
 
@@ -60,7 +61,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
     const handleKeyDown = (e) => handleKeyPress(e);
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCell, grid, disabled]);
+  }, [selectedCell, grid, disabled, showScorePopup]); // Prevent multiple triggers
 
   const getCellColor = (row, col) => {
     const cellValue = grid[row][col];
@@ -71,14 +72,11 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
     return '#f3f4f6';
   };
 
-  // 🔥 SCORE POPUP COMPONENT
+  // 🔥 SCORE POPUP - 1x di AKHIR
   const ScorePopup = () => (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.7)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
@@ -138,7 +136,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           fontWeight: '600',
           backdropFilter: 'blur(10px)'
         }}>
-          ⏱️ Selesai dalam {Math.round((grid.flat().filter(c => c).length * 50) / 1000)} detik
+          ⏱️ Selesai dalam {Math.round(grid.flat().filter(c => c).length * 50 / 1000)} detik
         </div>
       </div>
     </div>
@@ -167,7 +165,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
 
   return (
     <>
-      {/* 🔥 SCORE POPUP - HANYA TAMPIL KETIKA showScorePopup = true */}
+      {/* 🔥 POPUP 1x DI AKHIR SAJA */}
       {showScorePopup && <ScorePopup />}
       
       <div style={{
@@ -217,21 +215,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           {questionText}
         </div>
 
-        {/* Hint - HANYA 3 KARAKTER PERTAMA */}
-        <div style={{
-          background: 'rgba(34, 197, 94, 0.1)',
-          padding: '1rem 1.5rem',
-          borderRadius: '12px',
-          border: '2px dashed #22c55e',
-          fontSize: '1rem',
-          color: '#166534',
-          fontFamily: 'inherit',
-          fontWeight: '500'
-        }}>
-          💡 Hint: <code>{targetAnswer.slice(0, 25)}...</code>
-        </div>
-
-        {/* Grid Editor - FIXED SIZE */}
+        {/* Grid Editor */}
         <div style={{ 
           flex: 1, 
           display: 'flex', 
@@ -243,7 +227,6 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           gap: '1.5rem',
           minHeight: '400px'
         }}>
-          {/* Grid Container */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(20, 26px)`,
@@ -293,7 +276,6 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
             )}
           </div>
           
-          {/* Progress - Fixed Position */}
           <div style={{
             padding: '1rem 1.5rem',
             background: 'rgba(255,255,255,0.15)',
@@ -311,7 +293,6 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           </div>
         </div>
 
-        {/* Instructions */}
         <div style={{
           background: 'rgba(255,255,255,0.8)',
           padding: '1rem',
@@ -325,6 +306,18 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           ⌨️ Gunakan keyboard untuk mengetik | Klik kotak untuk pindah posisi
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes popupSlide {
+          0% { transform: scale(0.7) translateY(30px); opacity: 0; }
+          70% { transform: scale(1.03); }
+          100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+      `}</style>
     </>
   );
 };

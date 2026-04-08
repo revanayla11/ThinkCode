@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
+const DragDropGame = ({ question, onCorrect, onWrong, disabled, onLevelComplete }) => {
   // 🔥 DATA DARI ADMIN
   const questionText = question.content || 'Susun urutan yang benar!';
   const correctOrder = question.meta.answers || ['A', 'B', 'C', 'D'];
@@ -8,7 +8,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
   const [items, setItems] = useState([]);
   const [userMapping, setUserMapping] = useState({});
   const [score, setScore] = useState(0);
-  const [showScorePopup, setShowScorePopup] = useState(false); // 🔥 NEW: Score popup state
+  const [showScorePopup, setShowScorePopup] = useState(false); // 🔥 Score popup AKHIR LEVEL
 
   useEffect(() => {
     // Items = A,B,C,D,E,F berdasarkan correctOrder length
@@ -52,26 +52,36 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
     });
     setScore(Math.round((correctCount / correctOrder.length) * 100));
     
-    // Complete check
+    // Complete check - 🔥 HAPUS POPUP, CUMA onCorrect/onWrong
     if (Object.keys(newMapping).length === correctOrder.length) {
       const isCompleteCorrect = Object.entries(newMapping).every(([idx, item]) => 
         item === correctOrder[idx]
       );
       
       if (isCompleteCorrect) {
-        // 🔥 SHOW SCORE POPUP SEBELUM onCorrect()
-        setShowScorePopup(true);
-        setTimeout(() => {
-          setShowScorePopup(false);
-          onCorrect();
-        }, 2500); // 2.5 detik untuk lihat popup
+        onCorrect(); // 🔥 Langsung onCorrect, popup di parent
       } else {
         onWrong();
       }
     }
   };
 
-  // 🔥 SCORE POPUP - KONSISTEN DENGAN GAME LAIN
+  // 🔥 HANDLE LEVEL COMPLETION (DIPANGGIL OLEH PARENT)
+  const handleLevelCompletion = async (finalScore) => {
+    setShowScorePopup(true);
+    
+    // Submit data ke parent
+    if (onLevelComplete) {
+      await onLevelComplete({
+        scorePercent: finalScore,
+        totalQuestions: 1,
+        correctAnswers: 1,
+        heartsUsed: 1
+      });
+    }
+  };
+
+  // 🔥 SCORE POPUP - HANYA DI AKHIR LEVEL
   if (showScorePopup) {
     return (
       <div style={{
@@ -137,7 +147,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
               marginBottom: '1rem',
               textShadow: '0 2px 10px rgba(0,0,0,0.3)'
             }}>
-              Urutan Benar!
+              Level Selesai!
             </h2>
 
             {/* Score Display */}
@@ -211,7 +221,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
               fontWeight: '600',
               lineHeight: '1.5'
             }}>
-              ✅ Semua urutan sudah tepat! Kamu berhasil menyelesaikan tantangan ini!
+              ✅ Drag & Drop level selesai! Semua rewards berhasil didapatkan!
             </div>
 
             {/* Auto Continue Timer */}
@@ -223,7 +233,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
               fontWeight: '600',
               border: '1px solid rgba(255,255,255,0.3)'
             }}>
-              Auto lanjut dalam <span style={{ color: '#ecfdf5', fontSize: '1.3rem' }}>2.5s</span> ⏱️
+              Auto lanjut dalam <span style={{ color: '#ecfdf5', fontSize: '1.3rem' }}>3s</span> ⏱️
             </div>
           </div>
 
@@ -330,7 +340,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
         🧩 Seret huruf ke posisi angka yang benar!
       </div>
 
-      {/* Main Game - FIXED LAYOUT */}
+      {/* Main Game - NO FEEDBACK WARNA (NETRAL SAMPAI AKHIR) */}
       <div style={{ 
         flex: 1, 
         display: 'flex', 
@@ -367,10 +377,10 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
                 height: '85px',
                 width: '85px',
                 background: Object.values(userMapping).includes(item) 
-                  ? '#f3f4f6' 
+                  ? '#dbeafe'  // 🔥 Selected: biru muda
                   : 'linear-gradient(135deg, #ffffff, #f8fafc)',
                 border: `3px solid ${
-                  Object.values(userMapping).includes(item) ? '#d1d5db' : '#3b82f6'
+                  Object.values(userMapping).includes(item) ? '#3b82f6' : '#e5e7eb'
                 }`,
                 borderRadius: '20px',
                 display: 'flex',
@@ -401,7 +411,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
           ➡️
         </div>
 
-        {/* Targets (1️⃣,2️⃣,3️⃣,4️⃣) */}
+        {/* Targets (1️⃣,2️⃣,3️⃣,4️⃣) - NO GREEN/RED */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -425,14 +435,10 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
               style={{
                 height: '85px',
                 background: userMapping[targetIdx] 
-                  ? (userMapping[targetIdx] === correctOrder[targetIdx] 
-                    ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)' 
-                    : 'linear-gradient(135deg, #fee2e2, #fecaca)')
+                  ? '#dbeafe'  // 🔥 Selected: biru muda SAJA
                   : 'rgba(59,130,246,0.08)',
                 border: `3px dashed ${
-                  userMapping[targetIdx] 
-                    ? (userMapping[targetIdx] === correctOrder[targetIdx] ? '#10b981' : '#ef4444')
-                    : '#60a5fa'
+                  userMapping[targetIdx] ? '#3b82f6' : '#60a5fa'
                 }`,
                 borderRadius: '20px',
                 display: 'flex',
@@ -451,7 +457,6 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
               {userMapping[targetIdx] ? (
                 <span style={{ fontSize: '1.3rem' }}>
                   {targetIdx + 1}️⃣ {userMapping[targetIdx]}
-                  {userMapping[targetIdx] === correctOrder[targetIdx] && ' ✅'}
                 </span>
               ) : (
                 <span>{targetIdx + 1}️⃣ Taruh disini...</span>
@@ -461,7 +466,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
         </div>
       </div>
 
-      {/* Progress Bar - FIXED */}
+      {/* Progress Bar */}
       <div style={{
         height: '14px',
         background: '#e5e7eb',
@@ -483,7 +488,7 @@ const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
 
       {/* Instructions */}
       <div style={{
-                background: 'rgba(255,255,255,0.8)',
+        background: 'rgba(255,255,255,0.8)',
         padding: '1rem',
         borderRadius: '12px',
         textAlign: 'center',

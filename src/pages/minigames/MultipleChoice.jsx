@@ -11,8 +11,8 @@ const MultipleChoice = ({
 }) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [showScorePopup, setShowScorePopup] = useState(false); // 🔥 GANTI NAMA: showCompletionModal → showScorePopup
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScorePopup, setShowScorePopup] = useState(false);
   const [score, setScore] = useState(0);
 
   // 🔥 DATA DARI ADMIN
@@ -33,12 +33,7 @@ const MultipleChoice = ({
     
     setTimeout(async () => {
       if (isCorrect) {
-        // 🔥 SHOW SCORE POPUP SEBELUM onCorrect()
-        setShowScorePopup(true);
-        setTimeout(async () => {
-          setShowScorePopup(false);
-          await handleCompletion(finalScore);
-        }, 2500); // 2.5 detik untuk lihat popup
+        onCorrect?.();
       } else {
         onWrong?.();
         setTimeout(() => {
@@ -49,9 +44,10 @@ const MultipleChoice = ({
     }, 800);
   };
 
-  // 🔥 HANDLE COMPLETION (DIPANGGIL SETELAH POPUP TUTUP)
-  const handleCompletion = async (finalScore) => {
+  // 🔥 HANDLE COMPLETION (DIPANGGIL OLEH PARENT KETIKA LEVEL SELESAI)
+  const handleLevelCompletion = async (finalScore) => {
     setIsSubmitting(true);
+    setShowScorePopup(true); // 🔥 SHOW POPUP HANYA DI AKHIR LEVEL
     
     try {
       const submitData = {
@@ -64,8 +60,6 @@ const MultipleChoice = ({
       if (onLevelComplete) {
         await onLevelComplete(submitData);
       }
-
-      onCorrect?.(); // 🔥 Panggil onCorrect setelah completion
     } catch (error) {
       console.error('Completion failed:', error);
     } finally {
@@ -73,7 +67,7 @@ const MultipleChoice = ({
     }
   };
 
-  // 🔥 SCORE POPUP - KONSISTEN DENGAN GAME LAIN
+  // 🔥 SCORE POPUP - HANYA DI AKHIR LEVEL
   if (showScorePopup) {
     return (
       <div style={{
@@ -139,7 +133,7 @@ const MultipleChoice = ({
               marginBottom: '1rem',
               textShadow: '0 2px 10px rgba(0,0,0,0.3)'
             }}>
-              Jawaban Benar!
+              Level Selesai!
             </h2>
 
             {/* Score Display */}
@@ -207,7 +201,7 @@ const MultipleChoice = ({
               fontWeight: '600',
               lineHeight: '1.5'
             }}>
-              ✅ Jawabanmu sempurna! Semua rewards berhasil didapatkan!
+              ✅ Level Multiple Choice selesai! Semua rewards berhasil didapatkan!
             </div>
 
             {/* Auto Continue Timer */}
@@ -219,7 +213,7 @@ const MultipleChoice = ({
               fontWeight: '600',
               marginBottom: '1.5rem'
             }}>
-              Auto lanjut dalam <span style={{ color: '#ecfdf5', fontSize: '1.2rem' }}>2.5s</span>
+              Auto lanjut dalam <span style={{ color: '#ecfdf5', fontSize: '1.2rem' }}>3s</span>
             </div>
           </div>
         </div>
@@ -262,7 +256,7 @@ const MultipleChoice = ({
     );
   }
 
-  // 🔥 MAIN UI (SAMA PERSIS)
+  // 🔥 MAIN UI - SAMPAI DENGAN TRUEFALSE (TIDAK ADA WARNA BENAR/SALAH)
   return (
     <div style={{ 
       height: '100%',
@@ -316,7 +310,7 @@ const MultipleChoice = ({
         <div>{questionText}</div>
       </div>
 
-      {/* Options */}
+      {/* Options - SAMPAI DENGAN TRUEFALSE (HANYA SELECTED YANG BERUBAH WARNA) */}
       <div style={{ 
         flex: 1, 
         display: 'flex', 
@@ -331,7 +325,6 @@ const MultipleChoice = ({
         border: '2px solid #f1f5f9'
       }}>
         {options.map((option, index) => {
-          const isCorrectOption = index === correctIndex;
           const isSelected = selectedAnswer === index;
           
           return (
@@ -343,23 +336,17 @@ const MultipleChoice = ({
                 width: '100%',
                 padding: '1.3rem 1.8rem',
                 background: disabled || isSubmitting ? '#f8fafc' : 
-                           isAnswered ? 
-                           (isCorrectOption ? '#dcfce7' : '#fee2e2') :
                            isSelected ? '#dbeafe' : '#ffffff',
-                color: disabled || isSubmitting ? '#9ca3af' :
-                      isAnswered ? 
-                      (isCorrectOption ? '#166534' : '#991b1b') : '#1f2937',
+                color: disabled || isSubmitting ? '#9ca3af' : '#1f2937',
                 border: '3px solid',
-                borderColor: disabled || isSubmitting ? '#e5e7eb' :
-                            isAnswered ? 
-                            (isCorrectOption ? '#22c55e' : '#ef4444') : '#e5e7eb',
+                borderColor: disabled || isSubmitting ? '#e5e7eb' : 
+                            isSelected ? '#3b82f6' : '#e5e7eb',
                 borderRadius: '16px',
                 fontSize: '1.1rem',
                 fontWeight: '600',
                 cursor: (disabled || isAnswered || isSubmitting) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: (disabled || isAnswered || isSubmitting) ? '0 2px 8px rgba(0,0,0,0.05)' :
-                          isCorrectOption ? '0 12px 30px rgba(34,197,94,0.4)' :
                           isSelected ? '0 8px 20px rgba(59,130,246,0.2)' :
                           '0 4px 15px rgba(0,0,0,0.08)',
                 position: 'relative',
@@ -369,7 +356,7 @@ const MultipleChoice = ({
                 alignItems: 'center',
                 justifyContent: 'flex-start',
                 minHeight: '70px',
-                opacity: isAnswered && !isCorrectOption && !isSelected ? 0.6 : 1
+                opacity: disabled || isSubmitting ? 0.6 : 1
               }}
             >
               {/* Number Badge */}
@@ -378,8 +365,6 @@ const MultipleChoice = ({
                 height: '36px',
                 borderRadius: '50%',
                 background: disabled || isSubmitting ? '#e5e7eb' :
-                           isAnswered ? 
-                           (isCorrectOption ? '#22c55e' : '#ef4444') :
                            isSelected ? '#3b82f6' : '#6b7280',
                 color: 'white',
                 display: 'flex',
@@ -402,16 +387,6 @@ const MultipleChoice = ({
               }}>
                 {option}
               </span>
-              
-              {/* Checkmark for correct */}
-              {isAnswered && isCorrectOption && (
-                <div style={{
-                  fontSize: '1.5rem',
-                  marginLeft: '1rem'
-                }}>
-                  ✅
-                </div>
-              )}
             </button>
           );
         })}
