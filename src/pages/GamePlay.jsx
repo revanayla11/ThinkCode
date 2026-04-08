@@ -171,10 +171,11 @@ const finishGame = async () => {
   const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
   const heartsUsed = 5 - lives;
 
-  console.log("🎯 FINAL:", { correctAnswers, scorePercent });
+  console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
 
   try {
-    // ✅ SESUAI ROUTE: /game/submit/:id
+    console.log("📡 SENDING to /game/submit/" + id);
+    
     const res = await apiPost(`/game/submit/${id}`, {
       scorePercent,
       totalQuestions,
@@ -182,7 +183,7 @@ const finishGame = async () => {
       heartsUsed
     });
 
-    console.log("✅ BACKEND RESPONSE:", res.data);
+    console.log("✅ BACKEND RESPONSE:", res);  // ← INI HARUS MUNCUL!
     
     if (res.status) {
       setResult({
@@ -194,9 +195,14 @@ const finishGame = async () => {
       });
     }
   } catch (err) {
-    console.error("💥 SUBMIT ERROR:", err.response?.data || err.message);
+    console.error("💥 API ERROR DETAIL:", {
+      url: `/game/submit/${id}`,
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message
+    });
     
-    // Fallback - show result meski API error
+    // Fallback
     setResult({
       scorePercent,
       gainedXp: 0,
