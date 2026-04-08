@@ -139,8 +139,6 @@ export default function GameMap() {
       <div
         style={{
           padding: "20px",
-          background:
-            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           minHeight: "100vh",
         }}
       >
