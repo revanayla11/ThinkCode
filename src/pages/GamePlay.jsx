@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiGet, apiPost } from "../services/api";
 import Sidebar from "../components/Sidebar";
-import Layout from "../components/Layout"; // ← IMPORT LAYOUT!
+import Layout from "../components/Layout";
 
 import MultipleChoice from "./minigames/MultipleChoice";
 import TypingGame from "./minigames/TypingGame";
@@ -13,7 +13,6 @@ export default function GamePlay() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // States
   const [level, setLevel] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
@@ -26,7 +25,6 @@ export default function GamePlay() {
 
   const timerRef = useRef(null);
 
-  // Load level data
   useEffect(() => {
     loadLevel();
   }, [id]);
@@ -38,7 +36,6 @@ export default function GamePlay() {
       if (res.status) {
         setLevel(res.level);
         setQuestions(res.questions || []);
-        // Reset game state
         setIndex(0);
         setLives(5);
         setScore(0);
@@ -53,7 +50,6 @@ export default function GamePlay() {
     }
   };
 
-  // Timer logic
   useEffect(() => {
     if (loading || !questions.length || feedback || result) return;
 
@@ -72,23 +68,19 @@ export default function GamePlay() {
     return () => clearInterval(timerRef.current);
   }, [index, feedback, result, loading, questions.length]);
 
-  // Handle correct answer
   const handleCorrect = () => {
     clearInterval(timerRef.current);
     setFeedback("correct");
     setScore((s) => s + 100);
-
     setTimeout(() => {
       setFeedback(null);
       nextQuestion();
     }, 1500);
   };
 
-  // Handle wrong answer
   const handleWrong = (reason = "wrong") => {
     clearInterval(timerRef.current);
     setFeedback(reason);
-
     setLives((l) => {
       const newLives = l - 1;
       if (newLives <= 0) {
@@ -103,7 +95,6 @@ export default function GamePlay() {
     });
   };
 
-  // Next question logic
   const nextQuestion = () => {
     if (index + 1 < questions.length) {
       setIndex(index + 1);
@@ -112,47 +103,45 @@ export default function GamePlay() {
     }
   };
 
-  // 🔥 SUBMIT TO BACKEND + UPDATE USER XP!
+  // 🔥 FIXED SUBMIT - Kirim data lengkap
   const finishGame = async () => {
     try {
       const scorePercent = Math.round((score / (questions.length * 100)) * 100);
+      const correctAnswers = Math.round(score / 100);
+      const heartsUsed = 5 - lives;
+      
+      console.log(`📤 Submit: ${scorePercent}% (${correctAnswers}/${questions.length}), hearts: ${heartsUsed}`);
       
       const res = await apiPost(`/game/submit/${id}`, {
-        answers: questions.map((q, idx) => ({
-          questionId: q.id,
-          userAnswer: "completed", // Simplified
-          timeTaken: 40 - timeLeft
-        })),
         scorePercent,
         totalQuestions: questions.length,
-        correctAnswers: Math.round(score / 100)
+        correctAnswers,
+        heartsUsed
       });
 
       setResult({
-        scorePercent: res.data.scorePercent || scorePercent,
-        gainedXp: res.data.rewardXp || Math.round(scorePercent / 10),
-        totalXp: res.data.totalXp || 0,
-        hearts: res.data.hearts || 4,
-        completed: res.data.completed || scorePercent >= 60
+        scorePercent: res.data.scorePercent,
+        gainedXp: res.data.rewardXp,
+        totalXp: res.data.totalXp,
+        hearts: res.data.hearts,
+        completed: res.data.completed,
+        isFirstCompletion: res.data.isFirstCompletion
       });
     } catch (err) {
       console.error("Submit error:", err);
-      // Fallback
       const scorePercent = Math.round((score / (questions.length * 100)) * 100);
       setResult({
         scorePercent,
         gainedXp: Math.round(scorePercent / 10),
         totalXp: 0,
-        hearts: lives - 1,
-        completed: scorePercent >= 60
+        hearts: lives,
+        completed: scorePercent >= 80
       });
     }
   };
 
-  // Game renderer
   const renderGame = () => {
     if (!questions[index]) return null;
-
     const props = {
       question: questions[index],
       onCorrect: handleCorrect,
@@ -161,20 +150,14 @@ export default function GamePlay() {
     };
 
     switch (level?.gameType) {
-      case "mcq":
-        return <MultipleChoice {...props} />;
-      case "typing":
-        return <TypingGame {...props} />;
-      case "truefalse":
-        return <TrueFalse {...props} />;
-      case "dragdrop":
-        return <DragDropGame {...props} />;
-      default:
-        return <MultipleChoice {...props} />;
+      case "mcq": return <MultipleChoice {...props} />;
+      case "typing": return <TypingGame {...props} />;
+      case "truefalse": return <TrueFalse {...props} />;
+      case "dragdrop": return <DragDropGame {...props} />;
+      default: return <MultipleChoice {...props} />;
     }
   };
 
-  // Loading screen
   if (loading) {
     return (
       <Layout>
@@ -185,11 +168,7 @@ export default function GamePlay() {
           justifyContent: 'center',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
         }}>
-          <div style={{
-            textAlign: 'center',
-            color: 'white',
-            fontSize: '2rem'
-          }}>
+          <div style={{ textAlign: 'center', color: 'white', fontSize: '2rem' }}>
             🎮 Loading Level...
           </div>
         </div>
@@ -222,37 +201,16 @@ export default function GamePlay() {
     );
   }
 
-  const currentQuestion = questions[index];
-
   return (
     <Layout>
-      <div style={{ 
-        display: 'flex', 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
-      }}>
-        {/* Sidebar */}
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' }}>
         <Sidebar />
-
-        {/* Main Content */}
-        <div style={{ 
-          flex: 1, 
-          marginLeft: '280px', // Sidebar width
-          padding: '2rem',
-          maxWidth: '1000px',
-          margin: '0 auto'
-        }}>
+        <div style={{ flex: 1, marginLeft: '280px', padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
           {/* Header */}
           <div style={{ marginBottom: '2rem' }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem', 
-              marginBottom: '1rem' 
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               <h1 style={{ 
-                margin: 0, 
-                fontSize: '2.5rem', 
+                margin: 0, fontSize: '2.5rem', 
                 background: 'linear-gradient(135deg, #1e293b, #334155)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -272,15 +230,7 @@ export default function GamePlay() {
                 {level.gameType}
               </span>
             </div>
-            
-            {/* Stats */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '2rem', 
-              fontSize: '1.3rem', 
-              color: '#6b7280',
-              fontWeight: '600'
-            }}>
+            <div style={{ display: 'flex', gap: '2rem', fontSize: '1.3rem', color: '#6b7280', fontWeight: '600' }}>
               <span>⏱️ {timeLeft}s</span>
               <span>❤️ {lives}/5</span>
               <span>📊 {score} pts</span>
@@ -288,7 +238,6 @@ export default function GamePlay() {
             </div>
           </div>
 
-          {/* Feedback */}
           {feedback && (
             <div style={{
               position: 'fixed',
@@ -312,19 +261,14 @@ export default function GamePlay() {
             </div>
           )}
 
-          {/* Game Content - HAPUS <h3>{q?.content}</h3> */}
           <div style={{ height: '600px' }}>
             {!feedback && !result && renderGame()}
           </div>
 
-          {/* RESULT MODAL */}
           {result && (
             <div style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               background: 'rgba(0,0,0,0.9)',
               display: 'flex',
               alignItems: 'center',
@@ -347,26 +291,14 @@ export default function GamePlay() {
                 <div style={{ fontSize: '6rem', marginBottom: '1rem' }}>
                   {result.completed ? '🎉' : '📚'}
                 </div>
-                <h1 style={{ 
-                  fontSize: '3.5rem', 
-                  margin: '0 0 1rem 0', 
-                  fontWeight: '900' 
-                }}>
+                <h1 style={{ fontSize: '3.5rem', margin: '0 0 1rem 0', fontWeight: '900' }}>
                   {result.scorePercent}%
                 </h1>
-                <div style={{ 
-                  fontSize: '1.5rem', 
-                  opacity: 0.95, 
-                  marginBottom: '2.5rem' 
-                }}>
-                  +{result.gainedXp} XP | ❤️ {result.hearts} tersisa
+                <div style={{ fontSize: '1.5rem', opacity: 0.95, marginBottom: '2.5rem' }}>
+                  {result.isFirstCompletion ? `+${result.gainedXp} XP` : '💎 Sudah selesai sebelumnya'}
+                  <br />❤️ {result.hearts} tersisa
                 </div>
-                <div style={{
-                  display: 'flex',
-                  gap: '1rem',
-                  justifyContent: 'center',
-                  flexWrap: 'wrap'
-                }}>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button 
                     onClick={() => navigate("/game")}
                     style={{
