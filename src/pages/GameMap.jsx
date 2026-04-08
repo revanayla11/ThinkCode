@@ -22,22 +22,21 @@ export default function GameMap() {
       .catch(console.error);
   }, []);
 
-  // 🔥 FIXED UNLOCK LOGIC: completed + score >= 80
-// 🔥 FIXED isUnlocked - pakai progress.score
+// 🔥 FIXED isUnlocked - Proper sequential unlock
 const isUnlocked = (mIdx, lIdx) => {
   if (mIdx === 0 && lIdx === 0) return true;
   
+  // Hitung total levels sebelum materi ini
   const prevMateriLevels = levels
     .slice(0, mIdx)
     .reduce((sum, m) => sum + m.levels.length, 0);
 
-  const requiredProgress = prevMateriLevels + lIdx;
+  const requiredProgress = prevMateriLevels + lIdx;  // Total levels yang harus selesai
   const unlockedCount = progress.filter(p => 
-    p.completed && p.score >= 80  // ← DB field 'score'!
+    p.completed === true && p.score >= 80
   ).length;
 
-  // 🔥 DEBUG CONSOLE
-  console.log(`🔓 Level ${mIdx}-${lIdx}: need ${requiredProgress}, unlocked ${unlockedCount}/${progress.length}`);
+  console.log(`🔓 Level ${mIdx}-${lIdx}: need ${requiredProgress}, have ${unlockedCount}`);
   
   return unlockedCount >= requiredProgress;
 };

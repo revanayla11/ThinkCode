@@ -104,51 +104,56 @@ export default function GamePlay() {
   };
 
   // 🔥 FIXED SUBMIT - Clamp scorePercent + No userStats dependency
-  const finishGame = async () => {
-    try {
-      // 🔥 CLAMP scorePercent ke 0-100 (FIX 120% error)
-      const rawScorePercent = Math.round((score / (questions.length * 100)) * 100);
-      const scorePercent = Math.min(100, Math.max(0, rawScorePercent));
-      const correctAnswers = Math.round(score / 100);
-      const heartsUsed = 5 - lives;
-      
-      console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}), hearts: ${heartsUsed}`);
-      
-      const res = await apiPost(`/game/submit/${id}`, {
-        scorePercent,           // Guaranteed 0-100
-        totalQuestions: questions.length,
-        correctAnswers,
-        heartsUsed,
-        answers: questions.map(q => ({ id: q.id }))
-      });
+  // 🔥 FIXED finishGame - Score beneran 100% jika semua benar
+const finishGame = async () => {
+  try {
+    // 🔥 CORRECT scorePercent: (correctAnswers / totalQuestions) * 100
+    const correctAnswers = Math.round(score / 100);
+    const scorePercent = Math.min(100, Math.max(0, Math.round((correctAnswers / questions.length) * 100)));
+    const heartsUsed = 5 - lives;
+    
+    console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}) hearts: ${heartsUsed}`);
+    
+    const res = await apiPost(`/game/submit/${id}`, {
+      scorePercent,
+      totalQuestions: questions.length,
+      correctAnswers,
+      heartsUsed
+    });
 
-      console.log("✅ Submit response:", res.data);
-      
-      setResult({
-        scorePercent: res.data.scorePercent,
-        gainedXp: res.data.rewardXp,
-        totalXp: res.data.totalXp,
-        hearts: res.data.hearts,
-        completed: res.data.completed,
-        isFirstCompletion: res.data.isFirstCompletion,
-        perfectReward: res.data.perfectReward
-      });
-    } catch (err) {
-      console.error("❌ Submit error:", err.response?.data || err.message);
-      
-      // 🔥 FIXED FALLBACK - No userStats dependency
-      const scorePercent = Math.min(100, Math.max(0, Math.round((score / (questions.length * 100)) * 100)));
-      const heartsUsed = 5 - lives;
-      
-      setResult({
-        scorePercent,
-        gainedXp: Math.round(scorePercent / 5),
-        totalXp: "Error - Coba lagi",  // ← Safe fallback
-        hearts: Math.max(0, 5 - heartsUsed),
-        completed: scorePercent >= 80
-      });
+    // 🔥 CHECK res.data exists
+    if (!res.data) {
+      throw new Error("No response data");
     }
-  };
+
+    console.log("✅ Submit response:", res.data);
+    
+    setResult({
+      scorePercent: res.data.scorePercent || scorePercent,
+      gainedXp: res.data.rewardXp || 0,
+      totalXp: res.data.totalXp || 0,
+      hearts: res.data.hearts || 5,
+      completed: res.data.completed || (scorePercent >= 80),
+      isFirstCompletion: res.data.isFirstCompletion || true,
+      perfectReward: res.data.perfectReward || 20
+    });
+  } catch (err) {
+    console.error("❌ Submit error:", err.response?.data || err.message);
+    
+    const correctAnswers = Math.round(score / 100);
+    const scorePercent = Math.min(100, Math.round((correctAnswers / questions.length) * 100));
+    
+    setResult({
+      scorePercent,
+      gainedXp: scorePercent === 100 ? 25 : Math.round(scorePercent / 5),
+      totalXp: "Error",
+      hearts: Math.max(0, 5 - (5 - lives)),
+      completed: scorePercent >= 80,
+      isFirstCompletion: true,
+      perfectReward: 20
+    });
+  }
+};
 
   const renderGame = () => {
     if (!questions[index]) return null;
