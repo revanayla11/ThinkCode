@@ -24,6 +24,8 @@ export default function GamePlay() {
   const [loading, setLoading] = useState(true);
   const [isGameFinished, setIsGameFinished] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const correctRef = useRef(0);
+  const hasAnsweredRef = useRef(false);
 
   const timerRef = useRef(null);
 
@@ -41,6 +43,7 @@ export default function GamePlay() {
         setIndex(0);
         setLives(5);
         setScore(0);
+        correctRef.current = 0;
         setFeedback(null);
         setResult(null);
       }
@@ -83,25 +86,31 @@ useEffect(() => {
   return () => clearInterval(timerRef.current);
 }, [index, feedback, result, loading, questions.length, isGameFinished]);
 
+useEffect(() => {
+  hasAnsweredRef.current = false;
+}, [index]);
+
 const handleCorrect = () => {
-  if (isGameFinished) return;
+  // 🛑 CEGAH DOUBLE CLICK / DOUBLE TRIGGER
+  if (isGameFinished || hasAnsweredRef.current) return;
+
+  hasAnsweredRef.current = true;
 
   if (timerRef.current) {
     clearInterval(timerRef.current);
     timerRef.current = null;
   }
 
+  correctRef.current += 1;
   setScore((s) => s + 100);
-  setCorrectCount((c) => c + 1);
 
-  // 🔥 Kalau soal terakhir
+  // 🔥 SOAL TERAKHIR
   if (index === questions.length - 1) {
     setFeedback("correct");
 
-    // ⏳ Kasih waktu React update state dulu
     setTimeout(() => {
       finishGame();
-    }, 300); // 300–500ms cukup
+    }, 300); // kasih sedikit delay biar UI smooth
 
     return;
   }
@@ -159,8 +168,8 @@ const finishGame = async () => {
 
   const totalQuestions = questions.length;
 
-  // 🔥 PAKAI INI (BUKAN score lagi)
-  const correctAnswers = correctCount;
+  // 🔥 AMBIL DARI REF (100% AKURAT)
+  const correctAnswers = correctRef.current;
 
   const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
   const heartsUsed = 5 - lives;
