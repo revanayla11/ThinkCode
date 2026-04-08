@@ -1,28 +1,6 @@
-import React, { useEffect, useState } from "react";
-import styled from "styled-components";
+import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../services/api";
 
-// ================= STYLE =================
-const Container = styled.div`
-  padding: 20px;
-`;
-const Button = styled.button`
-  margin: 5px;
-`;
-const Input = styled.input`
-  display: block;
-  margin: 5px 0;
-`;
-const Textarea = styled.textarea`
-  display: block;
-  margin: 5px 0;
-`;
-const Select = styled.select`
-  display: block;
-  margin: 5px 0;
-`;
-
-// ================= COMPONENT =================
 export default function AdminMiniGame() {
   const [materi, setMateri] = useState([]);
   const [levels, setLevels] = useState([]);
@@ -32,8 +10,8 @@ export default function AdminMiniGame() {
   const [selectedLevel, setSelectedLevel] = useState(null);
 
   const [levelForm, setLevelForm] = useState({
-    title: "",
     levelNumber: "",
+    title: "",
     totalQuestions: "",
     reward_xp: "",
     gameType: "mcq",
@@ -67,8 +45,6 @@ export default function AdminMiniGame() {
     setQuestions(res.data.questions);
   };
 
-  const currentGameType = selectedLevel?.gameType;
-
   // ================= LEVEL =================
   const submitLevel = async () => {
     await apiPost(`/admin/minigame/${selectedMateri.slug}/levels`, levelForm);
@@ -79,22 +55,22 @@ export default function AdminMiniGame() {
   const submitQuestion = async () => {
     let meta = {};
 
-    if (currentGameType === "mcq") {
+    if (selectedLevel.gameType === "mcq") {
       meta = {
         options: questionForm.options,
         answerIndex: Number(questionForm.answerIndex),
       };
     }
 
-    if (currentGameType === "typing") {
+    if (selectedLevel.gameType === "typing") {
       meta = { answer: questionForm.answer };
     }
 
-    if (currentGameType === "truefalse") {
+    if (selectedLevel.gameType === "truefalse") {
       meta = { answer: questionForm.answer === "true" };
     }
 
-    if (currentGameType === "dragdrop") {
+    if (selectedLevel.gameType === "dragdrop") {
       meta = {
         statement: questionForm.statement,
         answer: questionForm.answer,
@@ -105,7 +81,7 @@ export default function AdminMiniGame() {
       `/admin/minigame/${selectedMateri.slug}/levels/${selectedLevel.levelNumber}/question`,
       {
         content: questionForm.content,
-        type: currentGameType, // 🔥 FIX UTAMA
+        type: selectedLevel.gameType,
         meta,
       }
     );
@@ -114,13 +90,13 @@ export default function AdminMiniGame() {
   };
 
   return (
-    <Container>
-      <h1>Admin Mini Game</h1>
+    <div style={{ padding: 20 }}>
+      <h1>Mini Game Admin</h1>
 
       {/* ================= MATERI ================= */}
       <h3>Pilih Materi</h3>
       {materi.map((m) => (
-        <Button
+        <button
           key={m.id}
           onClick={() => {
             setSelectedMateri(m);
@@ -128,7 +104,7 @@ export default function AdminMiniGame() {
           }}
         >
           {m.title}
-        </Button>
+        </button>
       ))}
 
       {/* ================= LEVEL ================= */}
@@ -136,21 +112,36 @@ export default function AdminMiniGame() {
         <>
           <h3>Tambah Level</h3>
 
-          <Input
-            placeholder="Judul"
-            onChange={(e) =>
-              setLevelForm({ ...levelForm, title: e.target.value })
-            }
-          />
-
-          <Input
-            placeholder="Level"
+          <input
+            placeholder="Level Number"
             onChange={(e) =>
               setLevelForm({ ...levelForm, levelNumber: e.target.value })
             }
           />
 
-          <Select
+          <input
+            placeholder="Judul Level"
+            onChange={(e) =>
+              setLevelForm({ ...levelForm, title: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Total Soal"
+            onChange={(e) =>
+              setLevelForm({ ...levelForm, totalQuestions: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="XP"
+            onChange={(e) =>
+              setLevelForm({ ...levelForm, reward_xp: e.target.value })
+            }
+          />
+
+          {/* 🔥 GAME TYPE */}
+          <select
             onChange={(e) =>
               setLevelForm({ ...levelForm, gameType: e.target.value })
             }
@@ -159,26 +150,26 @@ export default function AdminMiniGame() {
             <option value="typing">Typing</option>
             <option value="truefalse">True False</option>
             <option value="dragdrop">Drag Drop</option>
-          </Select>
+          </select>
 
-          <Button onClick={submitLevel}>Tambah Level</Button>
+          <button onClick={submitLevel}>Tambah Level</button>
 
           <hr />
 
+          <h3>List Level</h3>
           {levels.map((l) => (
             <div key={l.id}>
               <b>
-                {l.title} ({l.gameType})
+                Level {l.levelNumber} - {l.title} ({l.gameType})
               </b>
-
-              <Button
+              <button
                 onClick={() => {
                   setSelectedLevel(l);
                   loadQuestions(selectedMateri.slug, l.levelNumber);
                 }}
               >
                 Kelola Soal
-              </Button>
+              </button>
             </div>
           ))}
         </>
@@ -187,31 +178,31 @@ export default function AdminMiniGame() {
       {/* ================= QUESTION ================= */}
       {selectedLevel && (
         <>
-          <h3>Tambah Soal ({currentGameType})</h3>
+          <h3>Tambah Soal ({selectedLevel.gameType})</h3>
 
-          <Textarea
+          <textarea
             placeholder="Pertanyaan"
             onChange={(e) =>
               setQuestionForm({ ...questionForm, content: e.target.value })
             }
           />
 
-          {/* ================= MCQ ================= */}
-          {currentGameType === "mcq" &&
+          {/* MCQ */}
+          {selectedLevel.gameType === "mcq" &&
             questionForm.options.map((opt, i) => (
-              <Input
+              <input
                 key={i}
                 placeholder={`Opsi ${i + 1}`}
                 onChange={(e) => {
-                  const opts = [...questionForm.options];
-                  opts[i] = e.target.value;
-                  setQuestionForm({ ...questionForm, options: opts });
+                  const newOpts = [...questionForm.options];
+                  newOpts[i] = e.target.value;
+                  setQuestionForm({ ...questionForm, options: newOpts });
                 }}
               />
             ))}
 
-          {currentGameType === "mcq" && (
-            <Input
+          {selectedLevel.gameType === "mcq" && (
+            <input
               placeholder="Jawaban Index (0-4)"
               onChange={(e) =>
                 setQuestionForm({
@@ -222,9 +213,9 @@ export default function AdminMiniGame() {
             />
           )}
 
-          {/* ================= TYPING ================= */}
-          {currentGameType === "typing" && (
-            <Input
+          {/* TYPING */}
+          {selectedLevel.gameType === "typing" && (
+            <input
               placeholder="Jawaban"
               onChange={(e) =>
                 setQuestionForm({ ...questionForm, answer: e.target.value })
@@ -232,23 +223,23 @@ export default function AdminMiniGame() {
             />
           )}
 
-          {/* ================= TRUE FALSE ================= */}
-          {currentGameType === "truefalse" && (
-            <Select
+          {/* TRUE FALSE */}
+          {selectedLevel.gameType === "truefalse" && (
+            <select
               onChange={(e) =>
                 setQuestionForm({ ...questionForm, answer: e.target.value })
               }
             >
               <option value="true">Benar</option>
               <option value="false">Salah</option>
-            </Select>
+            </select>
           )}
 
-          {/* ================= DRAG DROP ================= */}
-          {currentGameType === "dragdrop" && (
+          {/* DRAG DROP */}
+          {selectedLevel.gameType === "dragdrop" && (
             <>
-              <Textarea
-                placeholder="Statement (yang akan di-drag)"
+              <textarea
+                placeholder="Statement"
                 onChange={(e) =>
                   setQuestionForm({
                     ...questionForm,
@@ -257,7 +248,7 @@ export default function AdminMiniGame() {
                 }
               />
 
-              <Select
+              <select
                 onChange={(e) =>
                   setQuestionForm({
                     ...questionForm,
@@ -265,17 +256,18 @@ export default function AdminMiniGame() {
                   })
                 }
               >
-                <option value="benar">Masuk ke BENAR</option>
-                <option value="salah">Masuk ke SALAH</option>
-              </Select>
+                <option value="benar">Benar</option>
+                <option value="salah">Salah</option>
+              </select>
             </>
           )}
 
-          <Button onClick={submitQuestion}>Tambah Soal</Button>
+          <button onClick={submitQuestion}>Tambah Soal</button>
 
           <hr />
 
-          {/* ================= LIST SOAL ================= */}
+          {/* LIST SOAL */}
+          <h3>Daftar Soal</h3>
           {questions.map((q) => {
             const meta = JSON.parse(q.meta || "{}");
 
@@ -303,6 +295,6 @@ export default function AdminMiniGame() {
           })}
         </>
       )}
-    </Container>
+    </div>
   );
 }
