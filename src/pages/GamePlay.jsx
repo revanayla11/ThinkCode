@@ -23,6 +23,7 @@ export default function GamePlay() {
   const [timeLeft, setTimeLeft] = useState(40);
   const [loading, setLoading] = useState(true);
   const [isGameFinished, setIsGameFinished] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
 
   const timerRef = useRef(null);
 
@@ -92,11 +93,11 @@ const handleCorrect = () => {
 
   setScore((s) => s + 100);
 
-  // 🔥 LANGSUNG CEK: ini soal terakhir atau bukan
+  // 🔥 TAMBAH INI
+  setCorrectCount((c) => c + 1);
+
   if (index === questions.length - 1) {
-    setTimeout(() => {
-      finishGame();
-    }, 500);
+    finishGame();
     return;
   }
 
@@ -143,8 +144,7 @@ const nextQuestion = () => {
 };
 
 const finishGame = async () => {
-  if (isGameFinished) return; // 🛑 anti double
-
+  if (isGameFinished) return;
   setIsGameFinished(true);
 
   if (timerRef.current) {
@@ -153,11 +153,17 @@ const finishGame = async () => {
   }
 
   const totalQuestions = questions.length;
-  const correctAnswers = Math.round(score / 100);
+
+  // 🔥 PAKAI INI (BUKAN score lagi)
+  const correctAnswers = correctCount;
+
   const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
   const heartsUsed = 5 - lives;
 
-  console.log("🎯 FINAL:", { correctAnswers, scorePercent });
+  console.log("🎯 FINAL:", {
+    correctAnswers,
+    scorePercent
+  });
 
   try {
     const res = await apiPost(`/game/submit/${id}`, {
@@ -177,7 +183,7 @@ const finishGame = async () => {
       });
     }
   } catch (err) {
-    console.error("Submit error:", err);
+    console.error("💥 API ERROR:", err.response?.data);
   }
 };
 
