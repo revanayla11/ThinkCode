@@ -51,7 +51,7 @@ export default function GamePlay() {
     }
   };
 
-uuseEffect(() => {
+useEffect(() => {
   if (timerRef.current) {
     clearInterval(timerRef.current);
   }
