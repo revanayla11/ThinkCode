@@ -55,163 +55,163 @@ export default function GamePlay() {
     }
   };
 
-useEffect(() => {
-  if (timerRef.current) {
-    clearInterval(timerRef.current);
-  }
+  useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
 
-  if (
-    loading ||
-    !questions.length ||
-    feedback ||
-    result ||
-    isGameFinished
-  ) return;
+    if (
+      loading ||
+      !questions.length ||
+      feedback ||
+      result ||
+      isGameFinished
+    ) return;
 
-  setTimeLeft(40);
+    setTimeLeft(40);
 
-  timerRef.current = setInterval(() => {
-    setTimeLeft((prev) => {
-      if (prev <= 1) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
 
-        handleWrong("timeout");
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, 1000);
+          handleWrong("timeout");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  return () => clearInterval(timerRef.current);
-}, [index, feedback, result, loading, questions.length, isGameFinished]);
+    return () => clearInterval(timerRef.current);
+  }, [index, feedback, result, loading, questions.length, isGameFinished]);
 
-useEffect(() => {
-  hasAnsweredRef.current = false;
-}, [index]);
+  useEffect(() => {
+    hasAnsweredRef.current = false;
+  }, [index]);
 
-const handleCorrect = () => {
-  // 🛑 CEGAH DOUBLE CLICK / DOUBLE TRIGGER
-  if (isGameFinished || hasAnsweredRef.current) return;
+  const handleCorrect = () => {
+    // 🛑 CEGAH DOUBLE CLICK / DOUBLE TRIGGER
+    if (isGameFinished || hasAnsweredRef.current) return;
 
-  hasAnsweredRef.current = true;
+    hasAnsweredRef.current = true;
 
-  if (timerRef.current) {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
-  }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
-  correctRef.current += 1;
-  setScore((s) => s + 100);
+    correctRef.current += 1;
+    setScore((s) => s + 100);
 
-  // 🔥 SOAL TERAKHIR
-  if (index === questions.length - 1) {
+    // 🔥 SOAL TERAKHIR
+    if (index === questions.length - 1) {
+      setFeedback("correct");
+
+      setTimeout(() => {
+        finishGame();
+      }, 300); // kasih sedikit delay biar UI smooth
+
+      return;
+    }
+
     setFeedback("correct");
 
     setTimeout(() => {
-      finishGame();
-    }, 300); // kasih sedikit delay biar UI smooth
+      setFeedback(null);
+      setIndex((prev) => prev + 1);
+    }, 500);
+  };
 
-    return;
-  }
+  const handleWrong = (reason = "wrong") => {
+    if (isGameFinished) return;
 
-  setFeedback("correct");
-
-  setTimeout(() => {
-    setFeedback(null);
-    setIndex((prev) => prev + 1);
-  }, 500);
-};
-
-const handleWrong = (reason = "wrong") => {
-  if (isGameFinished) return;
-
-  if (timerRef.current) {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
-  }
-
-  setFeedback(reason);
-
-  setLives((l) => {
-    const newLives = l - 1;
-
-    if (newLives <= 0) {
-      setTimeout(() => finishGame(), 500);
-    } else {
-      setTimeout(() => {
-        setFeedback(null);
-        setIndex((prev) => prev + 1);
-      }, 500);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
-    return newLives;
-  });
-};
+    setFeedback(reason);
 
-const nextQuestion = () => {
-  if (index + 1 < questions.length) {
-    setIndex((prev) => prev + 1);
-  } else {
-    finishGame(); // langsung finish tanpa delay
-  }
-};
+    setLives((l) => {
+      const newLives = l - 1;
 
-const finishGame = async () => {
-  if (isGameFinished) return;
-  setIsGameFinished(true);
+      if (newLives <= 0) {
+        setTimeout(() => finishGame(), 500);
+      } else {
+        setTimeout(() => {
+          setFeedback(null);
+          setIndex((prev) => prev + 1);
+        }, 500);
+      }
 
-  if (timerRef.current) {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
-  }
-
-  const totalQuestions = questions.length;
-  const correctAnswers = correctRef.current;
-  const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
-  const heartsUsed = 5 - lives;
-
-  console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
-
-  try {
-    console.log("📡 SENDING to /game/submit/" + id);
-    
-    const res = await apiPost(`/game/submit/${id}`, {
-      scorePercent,
-      totalQuestions,
-      correctAnswers,
-      heartsUsed
+      return newLives;
     });
+  };
 
-    console.log("✅ BACKEND RESPONSE:", res);  // ← INI HARUS MUNCUL!
-    
-    if (res.status) {
+  const nextQuestion = () => {
+    if (index + 1 < questions.length) {
+      setIndex((prev) => prev + 1);
+    } else {
+      finishGame(); // langsung finish tanpa delay
+    }
+  };
+
+  const finishGame = async () => {
+    if (isGameFinished) return;
+    setIsGameFinished(true);
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const totalQuestions = questions.length;
+    const correctAnswers = correctRef.current;
+    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+    const heartsUsed = 5 - lives;
+
+    console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
+
+    try {
+      console.log("📡 SENDING to /game/submit/" + id);
+      
+      const res = await apiPost(`/game/submit/${id}`, {
+        scorePercent,
+        totalQuestions,
+        correctAnswers,
+        heartsUsed
+      });
+
+      console.log("✅ BACKEND RESPONSE:", res);  // ← INI HARUS MUNCUL!
+      
+      if (res.status) {
+        setResult({
+          scorePercent: res.data.scorePercent,
+          gainedXp: res.data.rewardXp,
+          hearts: res.data.hearts,
+          completed: res.data.completed,
+          isFirstCompletion: res.data.isFirstCompletion
+        });
+      }
+    } catch (err) {
+      console.error("💥 API ERROR DETAIL:", {
+        url: `/game/submit/${id}`,
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message
+      });
+      
+      // Fallback
       setResult({
-        scorePercent: res.data.scorePercent,
-        gainedXp: res.data.rewardXp,
-        hearts: res.data.hearts,
-        completed: res.data.completed,
-        isFirstCompletion: res.data.isFirstCompletion
+        scorePercent,
+        gainedXp: 0,
+        hearts: lives,
+        completed: scorePercent >= 80,
+        isFirstCompletion: true
       });
     }
-  } catch (err) {
-    console.error("💥 API ERROR DETAIL:", {
-      url: `/game/submit/${id}`,
-      status: err.response?.status,
-      data: err.response?.data,
-      message: err.message
-    });
-    
-    // Fallback
-    setResult({
-      scorePercent,
-      gainedXp: 0,
-      hearts: lives,
-      completed: scorePercent >= 80,
-      isFirstCompletion: true
-    });
-  }
-};
+  };
 
   const renderGame = () => {
     if (!questions[index]) return null;
@@ -309,25 +309,45 @@ const finishGame = async () => {
             </div>
           </div>
 
+          {/* MINI FEEDBACK NOTIF - KECIL DI POJOK KANAN ATAS */}
           {feedback && (
             <div style={{
               position: 'fixed',
-              top: '20%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              padding: '2rem 4rem',
-              fontSize: '2.5rem',
+              top: '20px',
+              right: '20px',
+              zIndex: 1000,
+              padding: '1.2rem 2rem',
+              fontSize: '1.3rem',
               fontWeight: '800',
-              borderRadius: '24px',
-              zIndex: 100,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              borderRadius: '16px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              transform: 'scale(1)',
+              animation: 'popIn 0.3s ease-out'
             }}>
               {feedback === "correct" ? (
-                <span style={{ color: '#10b981' }}>✅ BENAR!</span>
+                <span style={{ 
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white', 
+                  padding: '0.8rem 1.5rem',
+                  borderRadius: '12px',
+                  display: 'inline-block'
+                }}>✅ BENAR!</span>
               ) : feedback === "timeout" ? (
-                <span style={{ color: '#f59e0b' }}>⏰ Waktu Habis!</span>
+                <span style={{ 
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: 'white', 
+                  padding: '0.8rem 1.5rem',
+                  borderRadius: '12px',
+                  display: 'inline-block'
+                }}>⏰ Waktu Habis!</span>
               ) : (
-                <span style={{ color: '#ef4444' }}>❌ SALAH!</span>
+                <span style={{ 
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: 'white', 
+                  padding: '0.8rem 1.5rem',
+                  borderRadius: '12px',
+                  display: 'inline-block'
+                }}>❌ SALAH!</span>
               )}
             </div>
           )}
@@ -408,6 +428,23 @@ const finishGame = async () => {
               </div>
             </div>
           )}
+
+          {/* CSS ANIMATION */}
+          <style jsx>{`
+            @keyframes popIn {
+              0% { 
+                transform: scale(0.8) translateX(100%); 
+                opacity: 0; 
+              }
+              50% { 
+                transform: scale(1.05) translateX(0); 
+              }
+              100% { 
+                transform: scale(1) translateX(0); 
+                opacity: 1; 
+              }
+            }
+          `}</style>
         </div>
       </div>
     </Layout>
