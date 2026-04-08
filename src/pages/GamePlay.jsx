@@ -114,29 +114,26 @@ const finishGame = async () => {
     
     console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}) hearts: ${heartsUsed}`);
     
-    const res = await apiPost(`/game/submit/${id}`, {
-      scorePercent,
-      totalQuestions: questions.length,
-      correctAnswers,
-      heartsUsed
-    });
+    // 🔥 FIXED - Handle data wrapper
+const res = await apiPost(`/game/submit/${id}`, {
+  scorePercent,
+  totalQuestions: questions.length,
+  correctAnswers,
+  heartsUsed
+});
 
-    // 🔥 CHECK res.data exists
-    if (!res.data) {
-      throw new Error("No response data");
-    }
+// 🔥 ACCESS res.data.data
+console.log("✅ Submit response:", res.data);
 
-    console.log("✅ Submit response:", res.data);
-    
-    setResult({
-      scorePercent: res.data.scorePercent || scorePercent,
-      gainedXp: res.data.rewardXp || 0,
-      totalXp: res.data.totalXp || 0,
-      hearts: res.data.hearts || 5,
-      completed: res.data.completed || (scorePercent >= 80),
-      isFirstCompletion: res.data.isFirstCompletion || true,
-      perfectReward: res.data.perfectReward || 20
-    });
+setResult({
+  scorePercent: res.data.data?.scorePercent || scorePercent,
+  gainedXp: res.data.data?.rewardXp || 0,
+  totalXp: res.data.data?.totalXp || 0,
+  hearts: res.data.data?.hearts || 5,
+  completed: res.data.data?.completed || (scorePercent >= 80),
+  isFirstCompletion: res.data.data?.isFirstCompletion || true,
+  perfectReward: res.data.data?.perfectReward || 20
+});
   } catch (err) {
     console.error("❌ Submit error:", err.response?.data || err.message);
     
