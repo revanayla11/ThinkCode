@@ -167,19 +167,14 @@ const finishGame = async () => {
   }
 
   const totalQuestions = questions.length;
-
-  // 🔥 AMBIL DARI REF (100% AKURAT)
   const correctAnswers = correctRef.current;
-
   const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
   const heartsUsed = 5 - lives;
 
-  console.log("🎯 FINAL:", {
-    correctAnswers,
-    scorePercent
-  });
+  console.log("🎯 FINAL:", { correctAnswers, scorePercent });
 
   try {
+    // ✅ SESUAI ROUTE: /game/submit/:id
     const res = await apiPost(`/game/submit/${id}`, {
       scorePercent,
       totalQuestions,
@@ -187,6 +182,8 @@ const finishGame = async () => {
       heartsUsed
     });
 
+    console.log("✅ BACKEND RESPONSE:", res.data);
+    
     if (res.status) {
       setResult({
         scorePercent: res.data.scorePercent,
@@ -197,7 +194,16 @@ const finishGame = async () => {
       });
     }
   } catch (err) {
-    console.error("💥 API ERROR:", err.response?.data);
+    console.error("💥 SUBMIT ERROR:", err.response?.data || err.message);
+    
+    // Fallback - show result meski API error
+    setResult({
+      scorePercent,
+      gainedXp: 0,
+      hearts: lives,
+      completed: scorePercent >= 80,
+      isFirstCompletion: true
+    });
   }
 };
 
