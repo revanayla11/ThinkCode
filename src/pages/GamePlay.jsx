@@ -50,50 +50,61 @@ export default function GamePlay() {
     }
   };
 
-  useEffect(() => {
-    if (loading || !questions.length || feedback || result) return;
-
-    setTimeLeft(40);
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          handleWrong("timeout");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerRef.current);
-  }, [index, feedback, result, loading, questions.length]);
-
-  const handleCorrect = () => {
+useEffect(() => {
+  if (timerRef.current) {
     clearInterval(timerRef.current);
-    setFeedback("correct");
-    setScore((s) => s + 100);
-    setTimeout(() => {
-      setFeedback(null);
-      nextQuestion();
-    }, 1500);
-  };
+  }
 
-  const handleWrong = (reason = "wrong") => {
-    clearInterval(timerRef.current);
-    setFeedback(reason);
-    setLives((l) => {
-      const newLives = l - 1;
-      if (newLives <= 0) {
-        setTimeout(finishGame, 1500);
-      } else {
-        setTimeout(() => {
-          setFeedback(null);
-          nextQuestion();
-        }, 1500);
+  if (loading || !questions.length || feedback || result) return;
+
+  setTimeLeft(40);
+
+  timerRef.current = setInterval(() => {
+    setTimeLeft((prev) => {
+      if (prev <= 1) {
+        clearInterval(timerRef.current);
+        handleWrong("timeout");
+        return 0;
       }
-      return newLives;
+      return prev - 1;
     });
-  };
+  }, 1000);
+
+  return () => clearInterval(timerRef.current);
+}, [index, feedback, result, loading, questions.length]);
+
+const handleCorrect = () => {
+  if (timerRef.current) clearInterval(timerRef.current);
+
+  setFeedback("correct");
+  setScore((s) => s + 100);
+
+  setTimeout(() => {
+    setFeedback(null);
+    nextQuestion();
+  }, 800); // lebih cepat biar smooth
+};
+
+const handleWrong = (reason = "wrong") => {
+  if (timerRef.current) clearInterval(timerRef.current);
+
+  setFeedback(reason);
+
+  setLives((l) => {
+    const newLives = l - 1;
+
+    if (newLives <= 0) {
+      setTimeout(() => finishGame(), 800);
+    } else {
+      setTimeout(() => {
+        setFeedback(null);
+        nextQuestion();
+      }, 800);
+    }
+
+    return newLives;
+  });
+};
 
 const nextQuestion = () => {
   if (index + 1 < questions.length) {
