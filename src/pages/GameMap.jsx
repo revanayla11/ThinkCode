@@ -34,47 +34,40 @@ export default function GameMap() {
       .finally(() => setIsLoading(false));
   };
 
-  // ✅ FIXED: isUnlocked dengan multiple field support
+  // 🔥 NEW LOGIC: Completion-Based Unlocking
   const isUnlocked = (mIdx, lIdx) => {
+    // Level pertama selalu kebuka
     if (mIdx === 0 && lIdx === 0) return true;
 
+    // 🔥 DALAM MATERI: level berikutnya buka kalau level sebelumnya COMPLETED
     if (lIdx > 0) {
       const prevLevel = levels[mIdx]?.levels[lIdx - 1];
       if (!prevLevel) return false;
-      
-      return progress.some(p => {
-        const pId = Number(p.levelId || p.id || p.level_id);
-        const lId = Number(prevLevel.id);
-        const completed = p.completed === true || p.completed === "true";
-        const score = Number(p.score || p.scorePercent || 0);
-        
-        console.log(`🔍 Lvl ${lIdx} check prev(${lId}): pId=${pId}, completed=${completed}, score=${score}`);
-        
-        return pId === lId && completed && score >= 80;
-      });
+
+      return progress.some(p => 
+        Number(p.levelId) === Number(prevLevel.id) &&
+        p.completed === true  // ✅ CUMA CEK COMPLETED
+      );
     }
 
-    const prevMateriLastLevel = levels[mIdx - 1]?.levels?.slice(-1)[0];
-    if (!prevMateriLastLevel) return false;
-    
-    return progress.some(p => {
-      const pId = Number(p.levelId || p.id || p.level_id);
-      const lId = Number(prevMateriLastLevel.id);
-      const completed = p.completed === true || p.completed === "true";
-      const score = Number(p.score || p.scorePercent || 0);
-      
-      return pId === lId && completed && score >= 80;
-    });
+    // 🔥 ANTAR MATERI: materi berikutnya buka kalau SEMUA level materi sebelumnya COMPLETED
+    const prevMateri = levels[mIdx - 1];
+    if (!prevMateri) return false;
+
+    return prevMateri.levels.every(lvl =>
+      progress.some(p =>
+        Number(p.levelId) === Number(lvl.id) &&
+        p.completed === true  // ✅ CUMA CEK COMPLETED
+      )
+    );
   };
 
-  // ✅ FIXED: isCompleted
+  // ✅ isCompleted (tetap sama)
   const isCompleted = (levelId) =>
-    progress.some(p => {
-      const pId = Number(p.levelId || p.id || p.level_id);
-      const completed = p.completed === true || p.completed === "true";
-      const score = Number(p.score || p.scorePercent || 0);
-      return pId === Number(levelId) && completed && score >= 80;
-    });
+    progress.some(p =>
+      Number(p.levelId) === Number(levelId) &&
+      p.completed === true
+    );
 
   const getThemeIcon = (mIdx) => {
     const themes = ["✈️", "🚀", "⚡", "🌟", "🔥", "💎"];
@@ -83,14 +76,14 @@ export default function GameMap() {
 
   const getStreakEmoji = (streak) => (streak >= 7 ? "🔥" : streak >= 3 ? "⭐⭐" : "⭐");
 
-  // 🔄 SAFE POLLING (bukan reload!)
+  // 🔄 SAFE POLLING
   useEffect(() => {
     let interval;
     if (progress.length > 0 && levels.length > 0) {
       console.log("🔄 Starting safe polling...");
       interval = setInterval(() => {
         loadMapData();
-      }, 4000); // Poll setiap 4 detik
+      }, 4000);
     }
     
     return () => {
@@ -119,59 +112,57 @@ export default function GameMap() {
   };
 
   const LevelNode = ({ level, unlocked, completed, themeIcon }) => (
-    <>
-      <Link
-        to={unlocked ? `/game/play/${level.id}` : "#"}
-        style={{ textDecoration: "none" }}
-        onClick={(e) => {
-          if (!unlocked) {
-            e.preventDefault();
-            setLockedLevel(level);
-            setShowLockedModal(true);
+    <Link
+      to={unlocked ? `/game/play/${level.id}` : "#"}
+      style={{ textDecoration: "none" }}
+      onClick={(e) => {
+        if (!unlocked) {
+          e.preventDefault();
+          setLockedLevel(level);
+          setShowLockedModal(true);
+        }
+      }}
+    >
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: "50%",
+          background: completed
+            ? "linear-gradient(135deg, #22c55e, #16a34a)"
+            : unlocked
+            ? "linear-gradient(135deg, #f59e0b, #d97706)"
+            : "linear-gradient(135deg, #9ca3af, #6b7280)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          fontWeight: "bold",
+          boxShadow: unlocked
+            ? "0 15px 35px rgba(245, 158, 11, 0.4)"
+            : completed
+            ? "0 15px 35px rgba(34, 197, 94, 0.4)"
+            : "0 5px 15px rgba(0,0,0,0.2)",
+          transform: unlocked ? "scale(1.05)" : "scale(0.95)",
+          transition: "all 0.3s ease",
+          cursor: unlocked ? "pointer" : "not-allowed",
+          opacity: unlocked || completed ? 1 : 0.6,
+          border: unlocked ? "3px solid rgba(255,255,255,0.3)" : "none"
+        }}
+        onMouseEnter={(e) => {
+          if (unlocked || completed) {
+            e.target.style.transform = "scale(1.1)";
           }
         }}
+        onMouseLeave={(e) => {
+          e.target.style.transform = unlocked ? "scale(1.05)" : "scale(0.95)";
+        }}
       >
-        <div
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: "50%",
-            background: completed
-              ? "linear-gradient(135deg, #22c55e, #16a34a)"
-              : unlocked
-              ? "linear-gradient(135deg, #f59e0b, #d97706)"
-              : "linear-gradient(135deg, #9ca3af, #6b7280)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontWeight: "bold",
-            boxShadow: unlocked
-              ? "0 15px 35px rgba(245, 158, 11, 0.4)"
-              : completed
-              ? "0 15px 35px rgba(34, 197, 94, 0.4)"
-              : "0 5px 15px rgba(0,0,0,0.2)",
-            transform: unlocked ? "scale(1.05)" : "scale(0.95)",
-            transition: "all 0.3s ease",
-            cursor: unlocked ? "pointer" : "not-allowed",
-            opacity: unlocked || completed ? 1 : 0.6,
-            border: unlocked ? "3px solid rgba(255,255,255,0.3)" : "none"
-          }}
-          onMouseEnter={(e) => {
-            if (unlocked || completed) {
-              e.target.style.transform = "scale(1.1)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = unlocked ? "scale(1.05)" : "scale(0.95)";
-          }}
-        >
-          <div style={{ fontSize: "1.8rem", marginBottom: 2 }}>{themeIcon}</div>
-          <div style={{ fontSize: "1rem", fontWeight: 800 }}>{level.levelNumber}</div>
-        </div>
-      </Link>
-    </>
+        <div style={{ fontSize: "1.8rem", marginBottom: 2 }}>{themeIcon}</div>
+        <div style={{ fontSize: "1rem", fontWeight: 800 }}>{level.levelNumber}</div>
+      </div>
+    </Link>
   );
 
   if (isLoading) {
@@ -193,181 +184,163 @@ export default function GameMap() {
   }
 
   return (
-    <>
-      <Layout>
-        <div style={{ padding: "20px", minHeight: "100vh", background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
-          {/* 🔥 HEADER */}
-          <div
-            style={{
-              position: "sticky",
-              top: 20,
-              background: "rgba(255,255,255,0.95)",
-              backdropFilter: "blur(20px)",
-              padding: "24px 32px",
-              borderRadius: "24px",
-              marginBottom: "20px",
-              textAlign: "center",
-              zIndex: 100,
-              boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(255,255,255,0.2)"
-            }}
-          >
-            <div style={{ 
-              fontSize: "1.6rem", 
-              fontWeight: "bold", 
-              background: "linear-gradient(135deg, #1e293b, #334155)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              marginBottom: "8px"
-            }}>
-              {getStreakEmoji(userStats.streak)} Streak: {userStats.streak}
-            </div>
-            <div style={{ 
-              color: "#ef4444", 
-              fontSize: "1.3rem", 
-              fontWeight: "600",
-              marginBottom: "12px"
-            }}>
-              ❤️ {userStats.hearts}/5 Hearts
-            </div>
-            <div style={{ 
-              fontSize: "2rem", 
-              fontWeight: "900", 
-              background: "linear-gradient(135deg, #10b981, #059669)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent"
-            }}>
-              {userStats.xp.toLocaleString()} XP
-            </div>
-            
-            {/* 🔥 MANUAL REFRESH & DEBUG INFO */}
-            <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "8px" }}>
-                📊 Progress loaded: {progress.length} items
-              </div>
-              <button 
-                onClick={loadMapData}
-                style={{
-                  padding: "8px 20px",
-                  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "12px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  marginRight: "10px"
-                }}
-              >
-                🔄 Refresh
-              </button>
-              <button 
-                onClick={() => {
-                  console.log("📋 FULL DEBUG:", { levels, progress, flatLevels });
-                  alert(`Levels: ${levels.length}\nProgress: ${progress.length}\nFirst 3 progress:\n${JSON.stringify(progress.slice(0,3), null, 2)}`);
-                }}
-                style={{
-                  padding: "8px 16px",
-                  background: "#6b7280",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "12px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem"
-                }}
-              >
-                Debug
-              </button>
-            </div>
-          </div>
-
-          {/* MAP CONTAINER */}
+    <Layout>
+      <div style={{ padding: "20px", minHeight: "100vh", background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
+        {/* 🔥 HEADER */}
+        <div
+          style={{
+            position: "sticky",
+            top: 20,
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(20px)",
+            padding: "24px 32px",
+            borderRadius: "24px",
+            marginBottom: "20px",
+            textAlign: "center",
+            zIndex: 100,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+            border: "1px solid rgba(255,255,255,0.2)"
+          }}
+        >
           <div style={{ 
-            position: "relative", 
-            height: Math.max(flatLevels.length * 130 + 300, 600),
-            maxWidth: "1000px",
-            margin: "0 auto"
+            fontSize: "1.6rem", 
+            fontWeight: "bold", 
+            background: "linear-gradient(135deg, #1e293b, #334155)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            marginBottom: "8px"
           }}>
-            {/* PATH LINES */}
-            <svg
+            {getStreakEmoji(userStats.streak)} Streak: {userStats.streak}
+          </div>
+          <div style={{ 
+            color: "#ef4444", 
+            fontSize: "1.3rem", 
+            fontWeight: "600",
+            marginBottom: "12px"
+          }}>
+            ❤️ {userStats.hearts}/5 Hearts
+          </div>
+          <div style={{ 
+            fontSize: "2rem", 
+            fontWeight: "900", 
+            background: "linear-gradient(135deg, #10b981, #059669)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent"
+          }}>
+            {userStats.xp.toLocaleString()} XP
+          </div>
+          
+          {/* 🔥 REFRESH & DEBUG */}
+          <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+            <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "8px" }}>
+              📊 Progress: {progress.length} | Completed: {progress.filter(p => p.completed).length}
+            </div>
+            <button 
+              onClick={loadMapData}
               style={{
-                position: "absolute",
-                width: "100%",
-                height: "100%",
-                zIndex: 1,
-                pointerEvents: "none",
+                padding: "8px 20px",
+                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                cursor: "pointer",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                marginRight: "10px"
               }}
             >
-              {flatLevels.map((_, i) => {
-                if (i === flatLevels.length - 1) return null;
-                const curr = getNodePosition(i);
-                const next = getNodePosition(i + 1);
-                return (
-                  <path
-                    key={i}
-                    d={`M ${curr.x} ${curr.y} 
-                        Q ${(curr.x + next.x) / 2} ${(curr.y + next.y) / 2} 
-                        ${next.x} ${next.y}`}
-                    stroke="#60a5fa"
-                    strokeWidth="20"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity="0.6"
-                  />
-                );
-              })}
-            </svg>
-
-            {/* 🔥 LEVEL NODES */}
-            {flatLevels.map((lvl, i) => {
-              const pos = getNodePosition(i);
-              const unlocked = isUnlocked(lvl.materiIndex, lvl.levelIndex);
-              const completed = isCompleted(lvl.id);
-              const themeIcon = getThemeIcon(lvl.materiIndex);
-
-              return (
-                <div
-                  key={lvl.id}
-                  style={{
-                    position: "absolute",
-                    left: pos.x,
-                    top: pos.y,
-                    transform: "translate(-50%, -50%)",
-                    zIndex: 10,
-                  }}
-                  title={`Level ${lvl.levelNumber}: ${unlocked ? '✅ Unlocked' : completed ? '✅ Completed' : '🔒 Locked'}`}
-                >
-                  <LevelNode
-                    level={lvl}
-                    unlocked={unlocked}
-                    completed={completed}
-                    themeIcon={themeIcon}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* DEBUG INFO - HAPUS NANTI */}
-          <div style={{
-            maxWidth: "1000px",
-            margin: "20px auto",
-            padding: "20px",
-            background: "rgba(0,0,0,0.05)",
-            borderRadius: "12px",
-            fontSize: "0.9rem",
-            color: "#374151"
-          }}>
-            <strong>Debug Info:</strong><br/>
-            Total Levels: {flatLevels.length}<br/>
-            Progress Items: {progress.length}<br/>
-            First Progress: {progress[0] ? JSON.stringify(progress[0]) : "None"}
+              🔄 Refresh
+            </button>
+            <button 
+              onClick={() => {
+                console.log("📋 DEBUG:", { levels, progress, flatLevels });
+                alert(`Levels: ${levels.length}\nCompleted: ${progress.filter(p=>p.completed).length}\nTotal Progress: ${progress.length}`);
+              }}
+              style={{
+                padding: "8px 16px",
+                background: "#6b7280",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                cursor: "pointer",
+                fontSize: "0.85rem"
+              }}
+            >
+              Debug
+            </button>
           </div>
         </div>
-      </Layout>
 
-      {/* 🔥 LOCKED MODAL */}
+        {/* MAP CONTAINER */}
+        <div style={{ 
+          position: "relative", 
+          height: Math.max(flatLevels.length * 130 + 300, 600),
+          maxWidth: "1000px",
+          margin: "0 auto"
+        }}>
+          {/* PATH LINES */}
+          <svg
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          >
+            {flatLevels.map((_, i) => {
+              if (i === flatLevels.length - 1) return null;
+              const curr = getNodePosition(i);
+              const next = getNodePosition(i + 1);
+              return (
+                <path
+                  key={i}
+                  d={`M ${curr.x} ${curr.y} 
+                      Q ${(curr.x + next.x) / 2} ${(curr.y + next.y) / 2} 
+                      ${next.x} ${next.y}`}
+                  stroke="#60a5fa"
+                  strokeWidth="20"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.6"
+                />
+              );
+            })}
+          </svg>
+
+          {/* 🔥 LEVEL NODES */}
+          {flatLevels.map((lvl, i) => {
+            const pos = getNodePosition(i);
+            const unlocked = isUnlocked(lvl.materiIndex, lvl.levelIndex);
+            const completed = isCompleted(lvl.id);
+            const themeIcon = getThemeIcon(lvl.materiIndex);
+
+            return (
+              <div
+                key={lvl.id}
+                style={{
+                  position: "absolute",
+                  left: pos.x,
+                  top: pos.y,
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 10,
+                }}
+                title={`Level ${lvl.levelNumber}: ${unlocked ? '✅ Unlocked' : completed ? '✅ Completed' : '🔒 Locked'}`}
+              >
+                <LevelNode
+                  level={lvl}
+                  unlocked={unlocked}
+                  completed={completed}
+                  themeIcon={themeIcon}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 🔥 LOCKED MODAL - UPDATED MESSAGE */}
       {showLockedModal && lockedLevel && (
         <div style={{
           position: 'fixed', 
@@ -405,7 +378,7 @@ export default function GameMap() {
               lineHeight: '1.6',
               marginBottom: '2rem'
             }}>
-              Selesaikan level sebelumnya dengan <strong>skor 80% atau lebih</strong> 
+              Selesaikan <strong>level sebelumnya</strong> terlebih dahulu 
               untuk membuka akses ke level ini!
             </p>
             <button 
@@ -432,6 +405,6 @@ export default function GameMap() {
           </div>
         </div>
       )}
-    </>
+    </Layout>
   );
 }
