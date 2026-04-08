@@ -91,7 +91,7 @@ export default function AdminMiniGame() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Mini Game Admin</h1>
+      <h1>Mini Game Admin reva nih</h1>
 
       {/* ================= MATERI ================= */}
       <h3>Pilih Materi</h3>
