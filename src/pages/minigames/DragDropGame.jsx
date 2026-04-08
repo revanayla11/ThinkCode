@@ -1,38 +1,28 @@
 import React, { useState, useEffect } from 'react';
 
-const DragDropGame = ({ 
-  question, 
-  levelId, 
-  onLevelComplete, 
-  onCorrect, 
-  onWrong, 
-  disabled = false,
-  userStats 
-}) => {
+const DragDropGame = ({ question, onCorrect, onWrong, disabled }) => {
   // 🔥 DATA DARI ADMIN
-  const questionText = question?.content || 'Susun urutan yang benar!';
-  const correctOrder = question?.meta?.answers || ['A', 'B', 'C', 'D'];
-  const rewardXp = question?.reward_xp || 30;
+  const questionText = question.content || 'Susun urutan yang benar!';
+  const correctOrder = question.meta.answers || ['A', 'B', 'C', 'D'];
   
   const [items, setItems] = useState([]);
   const [userMapping, setUserMapping] = useState({});
   const [score, setScore] = useState(0);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScorePopup, setShowScorePopup] = useState(false); // 🔥 NEW: Score popup state
 
   useEffect(() => {
+    // Items = A,B,C,D,E,F berdasarkan correctOrder length
     const newItems = Array.from({length: correctOrder.length}, (_, i) => 
       String.fromCharCode(65 + i)
     );
     setItems(newItems);
     setUserMapping({});
     setScore(0);
-    setIsCompleted(false);
+    setShowScorePopup(false);
   }, [question]);
 
   const handleDragStart = (e, item) => {
-    if (disabled || isCompleted || isSubmitting) return;
+    if (disabled) return;
     e.dataTransfer.setData('item', item);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -43,7 +33,7 @@ const DragDropGame = ({
   };
 
   const handleDrop = (e, targetIndex) => {
-    if (disabled || isCompleted || isSubmitting) return;
+    if (disabled) return;
     e.preventDefault();
     
     const item = e.dataTransfer.getData('item');
@@ -60,8 +50,7 @@ const DragDropGame = ({
     Object.entries(newMapping).forEach(([idx, mappedItem]) => {
       if (mappedItem === correctOrder[idx]) correctCount++;
     });
-    const newScore = Math.round((correctCount / correctOrder.length) * 100);
-    setScore(newScore);
+    setScore(Math.round((correctCount / correctOrder.length) * 100));
     
     // Complete check
     if (Object.keys(newMapping).length === correctOrder.length) {
@@ -70,234 +59,193 @@ const DragDropGame = ({
       );
       
       if (isCompleteCorrect) {
-        setIsCompleted(true);
-        handleCompletion(newScore);
+        // 🔥 SHOW SCORE POPUP SEBELUM onCorrect()
+        setShowScorePopup(true);
+        setTimeout(() => {
+          setShowScorePopup(false);
+          onCorrect();
+        }, 2500); // 2.5 detik untuk lihat popup
       } else {
-        onWrong?.();
+        onWrong();
       }
     }
   };
 
-  // 🔥 HANDLE COMPLETION
-  const handleCompletion = async (finalScore) => {
-    setIsSubmitting(true);
-    
-    try {
-      const submitData = {
-        scorePercent: finalScore,
-        totalQuestions: 1,
-        correctAnswers: 1,
-        heartsUsed: 1
-      };
-
-      if (onLevelComplete) {
-        await onLevelComplete(submitData);
-      }
-
-      setTimeout(() => {
-        setShowCompletionModal(true);
-      }, 800);
-    } catch (error) {
-      console.error('Completion failed:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getBadge = (scorePercent) => {
-    if (scorePercent === 100) return { name: 'Gold', color: '#f59e0b', emoji: '🥇' };
-    if (scorePercent >= 90) return { name: 'Platinum', color: '#a855f7', emoji: '⭐' };
-    if (scorePercent >= 75) return { name: 'Silver', color: '#9ca3af', emoji: '🥈' };
-    return { name: 'Bronze', color: '#b45309', emoji: '🥉' };
-  };
-
-  // 🔥 COMPLETION MODAL
-  if (showCompletionModal) {
-    const badgeInfo = getBadge(score);
+  // 🔥 SCORE POPUP - KONSISTEN DENGAN GAME LAIN
+  if (showScorePopup) {
     return (
       <div style={{
-        height: '100%',
-        minHeight: '650px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(12px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-        padding: '2rem',
-        position: 'relative',
-        overflow: 'hidden'
+        zIndex: 9999,
+        padding: '2rem'
       }}>
         <div style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,251,235,0.4) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 50%)',
-          animation: 'float 5s ease-in-out infinite'
-        }} />
-        
-        <div style={{
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(25px)',
-          padding: '3rem 2.5rem',
-          borderRadius: '24px',
+          background: 'linear-gradient(135deg, #10b981, #059669)',
+          color: 'white',
+          padding: '3.5rem 3rem',
+          borderRadius: '28px',
           textAlign: 'center',
-          boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-          maxWidth: '520px',
+          boxShadow: '0 30px 60px rgba(16,185,129,0.5)',
+          maxWidth: '450px',
           width: '100%',
-          border: '1px solid rgba(255,255,255,0.3)',
           position: 'relative',
-          zIndex: 1,
-          animation: 'slideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+          animation: 'popupSlide 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
         }}>
           {/* Success Icon */}
           <div style={{
-            fontSize: '5rem',
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            width: '140px',
-            height: '140px',
-            margin: '0 auto 2rem',
+            position: 'absolute',
+            top: '-40px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '4.5rem',
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            width: '100px',
+            height: '100px',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 25px 50px rgba(16,185,129,0.4)',
+            boxShadow: '0 20px 40px rgba(245,158,11,0.5)',
             color: 'white',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            zIndex: 2
           }}>
             🧩
           </div>
-          
-          <h2 style={{ 
-            fontSize: '2.2rem', 
-            fontWeight: '800', 
-            color: '#1e293b',
-            marginBottom: '1rem'
-          }}>
-            Urutan Sempurna!
-          </h2>
 
-          {/* Score Card */}
-          <div style={{
-            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-            padding: '2rem 1.5rem',
-            borderRadius: '20px',
-            marginBottom: '2rem',
-            border: '3px solid #f59e0b',
-            boxShadow: '0 15px 35px rgba(245,158,11,0.3)'
-          }}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem' }}>⭐</div>
-            <div style={{ 
-              fontSize: '2.5rem', 
-              fontWeight: '900', 
-              color: '#b45309'
-            }}>
-              {score}%
-            </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#92400e' }}>
-              Perfect Sequence!
-            </div>
-          </div>
-
-          {/* Rewards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2.5rem'
-          }}>
+          <div style={{ marginTop: '2rem' }}>
             <div style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: 'white',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              fontWeight: '700',
-              boxShadow: '0 10px 25px rgba(16,185,129,0.3)'
+              fontSize: '3.5rem',
+              marginBottom: '1rem',
+              filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏆</div>
-              <div style={{ fontSize: '1.3rem' }}>XP</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>+{rewardXp}</div>
+              🎉
             </div>
             
-            <div style={{
-              background: `linear-gradient(135deg, ${badgeInfo.color}, ${badgeInfo.color}cc)`,
-              color: 'white',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              fontWeight: '700',
-              boxShadow: `0 10px 25px ${badgeInfo.color}33`
+            <h2 style={{ 
+              fontSize: '2.8rem', 
+              fontWeight: '900', 
+              marginBottom: '1rem',
+              textShadow: '0 2px 10px rgba(0,0,0,0.3)'
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{badgeInfo.emoji}</div>
-              <div style={{ fontSize: '1.3rem' }}>Badge</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: '800' }}>{badgeInfo.name}</div>
+              Urutan Benar!
+            </h2>
+
+            {/* Score Display */}
+            <div style={{
+              background: 'rgba(255,255,255,0.25)',
+              backdropFilter: 'blur(15px)',
+              padding: '2.5rem 2rem',
+              borderRadius: '24px',
+              marginBottom: '2.5rem',
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 15px 35px rgba(0,0,0,0.2)'
+            }}>
+              <div style={{ 
+                fontSize: '4rem', 
+                fontWeight: '900', 
+                color: '#ecfdf5',
+                marginBottom: '0.5rem',
+                lineHeight: '1'
+              }}>
+                {score}%
+              </div>
+              <div style={{ 
+                fontSize: '1.3rem', 
+                fontWeight: '700', 
+                opacity: 0.95 
+              }}>
+                Perfect Arrangement!
+              </div>
             </div>
-          </div>
 
-          {/* Success Message */}
-          <div style={{
-            padding: '2rem 1.5rem',
-            background: 'rgba(34,197,94,0.15)',
-            borderRadius: '16px',
-            border: '2px solid rgba(34,197,94,0.3)',
-            marginBottom: '2.5rem',
-            fontSize: '1.2rem',
-            color: '#166534',
-            fontWeight: '600'
-          }}>
-            🎉 Kamu berhasil menyusun urutan dengan sempurna!
-          </div>
+            {/* Rewards Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: '1.5rem',
+              marginBottom: '2.5rem',
+              maxWidth: '350px',
+              margin: '0 auto 2.5rem'
+            }}>
+              <div style={{
+                background: 'rgba(255,255,255,0.2)',
+                padding: '1.5rem 1rem',
+                borderRadius: '16px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏆</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>+25</div>
+                <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>XP</div>
+              </div>
+              
+              <div style={{
+                background: 'rgba(255,255,255,0.2)',
+                padding: '1.5rem 1rem',
+                borderRadius: '16px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🥇</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '800' }}>Gold</div>
+                <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Badge</div>
+              </div>
+            </div>
 
-          {/* Next Button */}
-          <button 
-            onClick={() => {
-              setShowCompletionModal(false);
-              onCorrect?.();
-            }}
-            style={{
-              width: '100%',
+            {/* Success Message */}
+            <div style={{
               padding: '1.5rem 2rem',
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '20px',
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              marginBottom: '2.5rem',
               fontSize: '1.2rem',
-              fontWeight: '800',
-              cursor: 'pointer',
-              boxShadow: '0 15px 35px rgba(59,130,246,0.4)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            🚀 Lanjut Level Selanjutnya
-          </button>
-
-          {userStats && (
-            <div style={{
-              padding: '1.5rem',
-              background: 'rgba(255,255,255,0.5)',
-              borderRadius: '12px',
-              marginTop: '2rem',
-              fontSize: '0.95rem',
-              color: '#374151'
+              fontWeight: '600',
+              lineHeight: '1.5'
             }}>
-              <div><strong>Total XP:</strong> {userStats.xp || 0}</div>
-              <div><strong>Hearts:</strong> {userStats.hearts || 5}/5</div>
+              ✅ Semua urutan sudah tepat! Kamu berhasil menyelesaikan tantangan ini!
             </div>
-          )}
-        </div>
 
-        <style jsx>{`
-          @keyframes slideUp {
-            from { opacity: 0; transform: translateY(50px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-          }
-        `}</style>
+            {/* Auto Continue Timer */}
+            <div style={{
+              padding: '1rem 2rem',
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: '12px',
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              border: '1px solid rgba(255,255,255,0.3)'
+            }}>
+              Auto lanjut dalam <span style={{ color: '#ecfdf5', fontSize: '1.3rem' }}>2.5s</span> ⏱️
+            </div>
+          </div>
+
+          <style jsx>{`
+            @keyframes popupSlide {
+              from { 
+                opacity: 0; 
+                transform: translateY(50px) scale(0.9); 
+              }
+              to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+              }
+            }
+          `}</style>
+        </div>
       </div>
     );
   }
 
-  // 🔥 NO QUESTION STATE
-  if (!questionText?.trim() || correctOrder.length === 0) {
+  // JIKA BELUM ADA SOAL
+  if (!questionText.trim() || correctOrder.length === 0) {
     return (
       <div style={{ 
         height: '100%', 
@@ -310,15 +258,14 @@ const DragDropGame = ({
         borderRadius: '20px'
       }}>
         <div style={{ textAlign: 'center', color: '#6b7280' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔗</div>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Tunggu soal dari guru!</h3>
-          <p>Guru perlu tambah soal Drag & Drop di admin panel</p>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔗</div>
+          <h3>Tunggu soal dari guru!</h3>
+          <p>Guru perlu tambah soal Drag & Drop di admin</p>
         </div>
       </div>
     );
   }
 
-  // 🔥 MAIN GAME UI
   return (
     <div style={{
       height: '100%',
@@ -335,24 +282,20 @@ const DragDropGame = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: `linear-gradient(135deg, 
-          ${score === 100 ? '#10b981' : score >= 75 ? '#f59e0b' : '#3b82f6'}, 
-          ${score === 100 ? '#059669' : score >= 75 ? '#d97706' : '#1d4ed8'})`,
+        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
         color: 'white',
         padding: '1rem 1.5rem',
         borderRadius: '16px',
         fontWeight: '700',
         fontSize: '1rem',
-        boxShadow: '0 8px 25px rgba(16,185,129,0.3)',
+        boxShadow: '0 8px 25px rgba(245, 158, 11, 0.3)',
         minHeight: '60px'
       }}>
-        <div>🔗 Drag & Drop {isCompleted && '✅'}</div>
-        <div style={{ fontSize: '1.1rem' }}>
-          Score: <strong>{score}%</strong> {isSubmitting && '⏳'}
-        </div>
+        <div>🔗 Drag & Drop</div>
+        <div>Score: <strong>{score}%</strong></div>
       </div>
 
-      {/* Question */}
+      {/* SOAL ADMIN */}
       <div style={{
         background: 'rgba(255,255,255,0.95)',
         padding: '1.5rem 2rem',
@@ -384,10 +327,10 @@ const DragDropGame = ({
         fontWeight: '600',
         fontSize: '1rem'
       }}>
-        🧩 Seret huruf ke posisi angka yang benar! Lengkapi semua untuk selesai
+        🧩 Seret huruf ke posisi angka yang benar!
       </div>
 
-      {/* Main Game */}
+      {/* Main Game - FIXED LAYOUT */}
       <div style={{ 
         flex: 1, 
         display: 'flex', 
@@ -396,11 +339,9 @@ const DragDropGame = ({
         justifyContent: 'center',
         maxWidth: '1000px',
         margin: '0 auto',
-        minHeight: '400px',
-        opacity: isCompleted || isSubmitting ? 0.7 : 1,
-        pointerEvents: isCompleted || isSubmitting ? 'none' : 'auto'
+        minHeight: '400px'
       }}>
-        {/* Items */}
+        {/* Items (A,B,C,D) */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -420,7 +361,7 @@ const DragDropGame = ({
           {items.map((item, idx) => (
             <div
               key={item}
-              draggable={!disabled && !isCompleted && !isSubmitting}
+              draggable={!disabled}
               onDragStart={(e) => handleDragStart(e, item)}
               style={{
                 height: '85px',
@@ -438,10 +379,11 @@ const DragDropGame = ({
                 fontSize: '2.2rem',
                 fontWeight: '800',
                 color: '#1f2937',
-                cursor: (disabled || isCompleted || isSubmitting) ? 'not-allowed' : 'grab',
+                cursor: disabled ? 'not-allowed' : 'grab',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
                 transition: 'all 0.2s ease',
-                userSelect: 'none'
+                userSelect: 'none',
+                position: 'relative'
               }}
             >
               {item}
@@ -459,7 +401,7 @@ const DragDropGame = ({
           ➡️
         </div>
 
-        {/* Targets */}
+        {/* Targets (1️⃣,2️⃣,3️⃣,4️⃣) */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -478,7 +420,7 @@ const DragDropGame = ({
           </h3>
           {correctOrder.map((_, targetIdx) => (
             <div
-                            onDragOver={handleDragOver}
+              onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, targetIdx)}
               style={{
                 height: '85px',
@@ -499,8 +441,8 @@ const DragDropGame = ({
                 fontSize: '1.8rem',
                 fontWeight: '700',
                 color: userMapping[targetIdx] ? '#1f2937' : '#6b7280',
-                cursor: (disabled || isCompleted || isSubmitting) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s ease',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
                 boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
                 position: 'relative',
                 overflow: 'hidden'
@@ -519,7 +461,7 @@ const DragDropGame = ({
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar - FIXED */}
       <div style={{
         height: '14px',
         background: '#e5e7eb',
@@ -535,33 +477,13 @@ const DragDropGame = ({
           width: `${score}%`,
           borderRadius: '7px',
           transition: 'width 0.4s ease',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-          position: 'relative'
-        }}>
-          <div style={{
-            position: 'absolute',
-            right: '-20px',
-            top: '-8px',
-            width: '16px',
-            height: '16px',
-            background: '#ffffff',
-            borderRadius: '50%',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            display: score > 0 ? 'flex' : 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.7rem',
-            fontWeight: 'bold',
-            color: '#1f2937'
-          }}>
-            {score}%
-          </div>
-        </div>
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+        }} />
       </div>
 
       {/* Instructions */}
       <div style={{
-        background: 'rgba(255,255,255,0.8)',
+                background: 'rgba(255,255,255,0.8)',
         padding: '1rem',
         borderRadius: '12px',
         textAlign: 'center',
@@ -570,8 +492,7 @@ const DragDropGame = ({
         backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255,255,255,0.5)'
       }}>
-        🖱️ Seret huruf ke posisi angka | 
-        {isCompleted ? '✅ Menunggu konfirmasi...' : 'Lengkapi semua untuk selesai'}
+        🖱️ Seret huruf ke posisi angka | Lengkapi semua untuk selesai
       </div>
     </div>
   );
