@@ -158,61 +158,61 @@ export default function GamePlay() {
   };
 
   const finishGame = async () => {
-    if (isGameFinished) return;
-    setIsGameFinished(true);
+  if (isGameFinished) return;
+  setIsGameFinished(true);
 
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
 
-    const totalQuestions = questions.length;
-    const correctAnswers = correctRef.current;
-    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
-    const heartsUsed = 5 - lives;
+  const totalQuestions = questions.length;
+  const correctAnswers = correctRef.current;
+  const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+  const heartsUsed = 5 - lives;
 
-    console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
+  console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
 
-    try {
-      console.log("📡 SENDING to /game/submit/" + id);
-      
-      const res = await apiPost(`/game/submit/${id}`, {
-        scorePercent,
-        totalQuestions,
-        correctAnswers,
-        heartsUsed
-      });
-
-      console.log("✅ BACKEND RESPONSE:", res);  
-      
-      if (res.status) {
-        setResult({
-          scorePercent: res.data.scorePercent,
-          gainedXp: res.data.rewardXp,
-          hearts: res.data.hearts,
-          completed: res.data.completed,
-          isFirstCompletion: res.data.isFirstCompletion
-        });
-      }
-    } catch (err) {
-      console.error("💥 API ERROR DETAIL:", {
-        url: `/game/submit/${id}`,
-        status: err.response?.status,
-        data: err.response?.data,
-        message: err.message
-      });
-      
-      // Fallback
+  try {
+    console.log("📡 SENDING to /game/level/" + id + "/submit"); // ← FIXED LOG
+    
+    // 🔥 FIX ROUTE - INI YANG SALAH!
+    const res = await apiPost(`/game/level/${id}/submit`, {
+      scorePercent,
+      totalQuestions,
+      correctAnswers,
+      heartsUsed
+    });
+    
+    console.log("✅ BACKEND RESPONSE:", res);  
+    
+    if (res.status) {
       setResult({
-        scorePercent,
-        gainedXp: 0,
-        hearts: lives,
-        completed: scorePercent >= 80,
-        isFirstCompletion: true
+        scorePercent: res.data.scorePercent,
+        gainedXp: res.data.rewardXp,
+        hearts: res.data.hearts,
+        completed: res.data.completed,
+        isFirstCompletion: res.data.isFirstCompletion || true
       });
     }
-  };
-
+  } catch (err) {
+    console.error("💥 API ERROR DETAIL:", {
+      url: `/game/level/${id}/submit`, // ← FIXED ERROR LOG
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message
+    });
+    
+    // Fallback
+    setResult({
+      scorePercent,
+      gainedXp: 0,
+      hearts: lives,
+      completed: scorePercent >= 80,
+      isFirstCompletion: true
+    });
+  }
+};
   const renderGame = () => {
     if (!questions[index]) return null;
     const props = {
