@@ -277,57 +277,24 @@ const loadWorkspaceData = useCallback(async () => {
 
   
 
-  const loadTemplateData = useCallback(async () => {
+const loadTemplateData = useCallback(async () => {
   try {
-    console.log("🔄 Loading template...");
-    const res = await api.get(`/discussion/template-dynamic/${materiId}`);
-    console.log("✅ Template loaded:", res.data.data);
+    console.log("🔄 Loading template MATERI:", materiId);
+    const res = await api.get(`/discussion/template-dynamic/${materiId}`); // ✅ DYNAMIC!
     
-    const data = res.data.data || {
-      template: `DEKLARASI 
-___BLANK_0___ : integer
-
-ALGORITMA 
-read(___BLANK_1___)
-IF (___BLANK_2___) THEN 
-write("___BLANK_3___", ___BLANK_4___)
-ENDIF 
-END`,
-      blanks: [
-        { id: 0, hint: "Nama variabel", example: "angka" },
-        { id: 1, hint: "Variabel input", example: "angka" },
-        { id: 2, hint: "Kondisi", example: "angka > 0" },
-        { id: 3, hint: "Pesan", example: "Angka " },
-        { id: 4, hint: "Variabel output", example: "angka" }
-      ]
-    };
+    console.log("✅ Template data:", {
+      materiId: res.data.data.materiId,
+      totalBlanks: res.data.data.totalBlanks,
+      templatePreview: res.data.data.template.substring(0, 100) + "..."
+    });
     
-    setTemplateData(data);
-    // ✅ INIT BLANKS ARRAY
-    setPseudocodeBlanks(Array(data.blanks?.length || 5).fill(""));
+    setTemplateData(res.data.data);
+    // ✅ INIT BLANKS sesuai jumlah dynamic
+    setPseudocodeBlanks(Array(res.data.data.blanks?.length || 5).fill(""));
+    
   } catch (err) {
-    console.error("❌ Template error:", err);
-    // ✅ FAILSAFE TEMPLATE
-    const fallbackData = {
-      template: `DEKLARASI 
-___BLANK_0___ : integer
-
-ALGORITMA 
-read(___BLANK_1___)
-IF (___BLANK_2___) THEN 
-write("___BLANK_3___", ___BLANK_4___)
-ENDIF 
-END`,
-      blanks: [
-        { id: 0, hint: "Nama variabel", example: "angka" },
-        { id: 1, hint: "Variabel input", example: "angka" },
-        { id: 2, hint: "Kondisi", example: "angka > 0" },
-        { id: 3, hint: "Pesan", example: "Angka " },
-        { id: 4, hint: "Variabel output", example: "angka" }
-      ]
-    };
-    setTemplateData(fallbackData);
-    setPseudocodeBlanks(["", "", "", "", ""]);
+    console.error("❌ Template load failed:", err);
+    // Fallback tetap jalan dari API
   }
 }, [materiId]);
 
