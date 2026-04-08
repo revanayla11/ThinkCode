@@ -15,7 +15,15 @@ useEffect(() => {
     .then((res) => {
       if (res.status) {
         console.log("🗺️ FULL RESPONSE:", res);
-        console.log("📊 PROGRESS DETAIL:", res.progress);
+        console.log("📊 PROGRESS:", res.progress);
+        console.log("📚 LEVELS STRUCTURE:", res.levels);
+        
+        // Debug level 1 specifically
+        const level1Progress = res.progress.find(p => 
+          Number(p.levelId || p.id) === Number(res.levels?.[0]?.levels?.[0]?.id)
+        );
+        console.log("🎯 LEVEL 1 PROGRESS:", level1Progress);
+        
         setLevels(res.levels || []);
         setProgress(res.progress || []);
         setUserStats(res.userStats || {});
@@ -29,21 +37,30 @@ const isUnlocked = (mIdx, lIdx) => {
 
   if (lIdx > 0) {
     const prevLevel = levels[mIdx].levels[lIdx - 1];
-
-    return progress.some(p =>
-      Number(p.levelId) === Number(prevLevel.id) &&
-      p.completed === true &&
-      Number(p.score) >= 80
-    );
+    
+    return progress.some(p => {
+      // Coba keduanya: levelId DAN id
+      const progressLevelId = Number(p.levelId || p.id);
+      const levelId = Number(prevLevel.id);
+      
+      console.log(`🔍 Comparing: progress=${progressLevelId}, level=${levelId}, completed=${p.completed}, score=${p.score}`);
+      
+      return progressLevelId === levelId &&
+             p.completed === true &&
+             Number(p.score) >= 80;
+    });
   }
 
   const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
-
-  return progress.some(p =>
-    Number(p.levelId) === Number(prevMateriLastLevel.id) &&
-    p.completed === true &&
-    Number(p.score) >= 80
-  );
+  
+  return progress.some(p => {
+    const progressLevelId = Number(p.levelId || p.id);
+    const levelId = Number(prevMateriLastLevel.id);
+    
+    return progressLevelId === levelId &&
+           p.completed === true &&
+           Number(p.score) >= 80;
+  });
 };
 
 // 🔥 AUTO REFRESH after 2s
@@ -58,7 +75,10 @@ useEffect(() => {
 }, [progress.length]);
 
   const isCompleted = (levelId) =>
-    progress.some(p => p.levelId == levelId && p.completed && p.score >= 80);
+  progress.some(p => {
+    const pId = Number(p.levelId || p.id || p.level_id);
+    return pId === Number(levelId) && p.completed && Number(p.score) >= 80;
+  });
 
   const getThemeIcon = (mIdx) => {
     const themes = ["✈️", "🚀", "⚡", "🌟", "🔥", "💎"];
