@@ -274,7 +274,7 @@ export default function GamePlay() {
 
   return (
     <Layout>
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' }}>
+      <div style={{ display: 'flex',}}>
         <Sidebar />
         <div style={{ flex: 1, marginLeft: '280px', padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
           {/* Header */}
