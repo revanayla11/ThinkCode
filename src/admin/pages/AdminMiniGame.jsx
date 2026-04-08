@@ -264,20 +264,33 @@ export default function AdminMiniGame() {
   };
 
   // 🔥 FIXED: loadQuestions - sesuaikan dengan backend response
-  const loadQuestions = async (slug, levelNumber) => {
-    try {
-      setLoading(true);
-      const res = await apiGet(`/admin/minigame/${slug}/levels/${levelNumber}`);
-      
-      // ✅ Backend return { success: true, data: { level, questions } }
-      setQuestions(res.data.data.questions || []);
-      setSelectedLevel(res.data.data.level || null);
-    } catch (error) {
-      console.error("Error loading questions:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+// 🔥 DEBUG MODE - GANTI loadQuestions
+const loadQuestions = async (slug, levelNumber) => {
+  try {
+    setLoading(true);
+    const res = await apiGet(`/admin/minigame/${slug}/levels/${levelNumber}`);
+    
+    // 🔥 DEBUG - LIHAT STRUCTURE RESPONSE
+    console.log("🔍 FULL RESPONSE:", res);
+    console.log("🔍 res.data:", res.data);
+    console.log("🔍 res.data.data:", res.data.data);
+    
+    // ✅ SAFE ACCESS
+    const questions = res.data?.data?.questions || [];
+    const levelData = res.data?.data?.level || res.data?.data || null;
+    
+    console.log("🔍 EXTRACTED questions:", questions);
+    console.log("🔍 EXTRACTED level:", levelData);
+    
+    setQuestions(questions);
+    setSelectedLevel(levelData);
+  } catch (error) {
+    console.error("❌ FULL ERROR:", error);
+    console.error("❌ Error response:", error.response?.data);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const currentGameType = selectedLevel?.gameType || "mcq";
 
