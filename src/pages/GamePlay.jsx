@@ -103,21 +103,23 @@ export default function GamePlay() {
     }
   };
 
-  // 🔥 FIXED SUBMIT - Kirim data lengkap
-const finishGame = async () => {
+  // 🔥 FIXED SUBMIT - Clamp scorePercent + No userStats dependency
+  const finishGame = async () => {
     try {
-      const scorePercent = Math.round((score / (questions.length * 100)) * 100);
+      // 🔥 CLAMP scorePercent ke 0-100 (FIX 120% error)
+      const rawScorePercent = Math.round((score / (questions.length * 100)) * 100);
+      const scorePercent = Math.min(100, Math.max(0, rawScorePercent));
       const correctAnswers = Math.round(score / 100);
       const heartsUsed = 5 - lives;
       
       console.log(`📤 Submit Level ${id}: ${scorePercent}% (${correctAnswers}/${questions.length}), hearts: ${heartsUsed}`);
       
       const res = await apiPost(`/game/submit/${id}`, {
-        scorePercent,           // ← INI!
+        scorePercent,           // Guaranteed 0-100
         totalQuestions: questions.length,
         correctAnswers,
         heartsUsed,
-        answers: questions.map(q => ({ id: q.id }))  // Optional
+        answers: questions.map(q => ({ id: q.id }))
       });
 
       console.log("✅ Submit response:", res.data);
@@ -134,18 +136,19 @@ const finishGame = async () => {
     } catch (err) {
       console.error("❌ Submit error:", err.response?.data || err.message);
       
-      // Fallback local
-      const scorePercent = Math.round((score / (questions.length * 100)) * 100);
+      // 🔥 FIXED FALLBACK - No userStats dependency
+      const scorePercent = Math.min(100, Math.max(0, Math.round((score / (questions.length * 100)) * 100)));
+      const heartsUsed = 5 - lives;
+      
       setResult({
         scorePercent,
         gainedXp: Math.round(scorePercent / 5),
-        totalXp: userStats.xp + Math.round(scorePercent / 5),
-        hearts: Math.max(0, lives - 1),
+        totalXp: "Error - Coba lagi",  // ← Safe fallback
+        hearts: Math.max(0, 5 - heartsUsed),
         completed: scorePercent >= 80
       });
     }
   };
-
 
   const renderGame = () => {
     if (!questions[index]) return null;
