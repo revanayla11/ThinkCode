@@ -3,10 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiGet } from "../services/api";
 import Sidebar from "../components/Sidebar";
 
-import MultipleChoice from "../components/minigames/MultipleChoice";
-import TypingGame from "../components/minigames/TypingGame";
-import TrueFalse from "../components/minigames/TrueFalse";
-import DragDropGame from "../components/minigames/DragDropGame";
+import MultipleChoice from "./minigames/MultipleChoice";
+import TypingGame from "./minigames/TypingGame";
+import TrueFalse from "./minigames/TrueFalse";
+import DragDropGame from "./minigames/DragDropGame";
 
 export default function GamePlay() {
   const { id } = useParams();
