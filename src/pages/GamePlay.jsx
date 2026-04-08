@@ -95,13 +95,13 @@ export default function GamePlay() {
     });
   };
 
-  const nextQuestion = () => {
-    if (index + 1 < questions.length) {
-      setIndex(index + 1);
-    } else {
-      finishGame();
-    }
-  };
+const nextQuestion = () => {
+  if (index + 1 < questions.length) {
+    setIndex((prev) => prev + 1);
+  } else {
+    finishGame(); // langsung finish tanpa delay
+  }
+};
 
 const finishGame = async () => {
   // 🛑 STOP semua aktivitas
