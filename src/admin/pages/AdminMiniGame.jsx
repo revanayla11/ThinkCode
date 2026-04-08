@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { apiGet, apiPost, apiPut, apiDelete } from "../../services/api";
+import { apiGet, apiPost } from "../../services/api";
 
 // ================= STYLE =================
-const Container = styled.div``;
-const Button = styled.button``;
-const Input = styled.input``;
-const Textarea = styled.textarea``;
-const Select = styled.select``;
+const Container = styled.div`
+  padding: 20px;
+`;
+const Button = styled.button`
+  margin: 5px;
+`;
+const Input = styled.input`
+  display: block;
+  margin: 5px 0;
+`;
+const Textarea = styled.textarea`
+  display: block;
+  margin: 5px 0;
+`;
+const Select = styled.select`
+  display: block;
+  margin: 5px 0;
+`;
 
 // ================= COMPONENT =================
 export default function AdminMiniGame() {
@@ -28,13 +41,13 @@ export default function AdminMiniGame() {
 
   const [questionForm, setQuestionForm] = useState({
     content: "",
-    type: "mcq",
     options: ["", "", "", "", ""],
     answerIndex: 0,
     answer: "",
     statement: "",
   });
 
+  // ================= LOAD =================
   useEffect(() => {
     loadMateri();
   }, []);
@@ -54,6 +67,8 @@ export default function AdminMiniGame() {
     setQuestions(res.data.questions);
   };
 
+  const currentGameType = selectedLevel?.gameType;
+
   // ================= LEVEL =================
   const submitLevel = async () => {
     await apiPost(`/admin/minigame/${selectedMateri.slug}/levels`, levelForm);
@@ -64,22 +79,22 @@ export default function AdminMiniGame() {
   const submitQuestion = async () => {
     let meta = {};
 
-    if (questionForm.type === "mcq") {
+    if (currentGameType === "mcq") {
       meta = {
         options: questionForm.options,
         answerIndex: Number(questionForm.answerIndex),
       };
     }
 
-    if (questionForm.type === "typing") {
+    if (currentGameType === "typing") {
       meta = { answer: questionForm.answer };
     }
 
-    if (questionForm.type === "truefalse") {
+    if (currentGameType === "truefalse") {
       meta = { answer: questionForm.answer === "true" };
     }
 
-    if (questionForm.type === "dragdrop") {
+    if (currentGameType === "dragdrop") {
       meta = {
         statement: questionForm.statement,
         answer: questionForm.answer,
@@ -90,7 +105,7 @@ export default function AdminMiniGame() {
       `/admin/minigame/${selectedMateri.slug}/levels/${selectedLevel.levelNumber}/question`,
       {
         content: questionForm.content,
-        type: questionForm.type,
+        type: currentGameType, // 🔥 FIX UTAMA
         meta,
       }
     );
@@ -152,7 +167,10 @@ export default function AdminMiniGame() {
 
           {levels.map((l) => (
             <div key={l.id}>
-              <b>{l.title}</b>
+              <b>
+                {l.title} ({l.gameType})
+              </b>
+
               <Button
                 onClick={() => {
                   setSelectedLevel(l);
@@ -169,7 +187,7 @@ export default function AdminMiniGame() {
       {/* ================= QUESTION ================= */}
       {selectedLevel && (
         <>
-          <h3>Tambah Soal</h3>
+          <h3>Tambah Soal ({currentGameType})</h3>
 
           <Textarea
             placeholder="Pertanyaan"
@@ -178,19 +196,8 @@ export default function AdminMiniGame() {
             }
           />
 
-          <Select
-            onChange={(e) =>
-              setQuestionForm({ ...questionForm, type: e.target.value })
-            }
-          >
-            <option value="mcq">MCQ</option>
-            <option value="typing">Typing</option>
-            <option value="truefalse">True False</option>
-            <option value="dragdrop">Drag Drop</option>
-          </Select>
-
-          {/* MCQ */}
-          {questionForm.type === "mcq" &&
+          {/* ================= MCQ ================= */}
+          {currentGameType === "mcq" &&
             questionForm.options.map((opt, i) => (
               <Input
                 key={i}
@@ -203,8 +210,20 @@ export default function AdminMiniGame() {
               />
             ))}
 
-          {/* TYPING */}
-          {questionForm.type === "typing" && (
+          {currentGameType === "mcq" && (
+            <Input
+              placeholder="Jawaban Index (0-4)"
+              onChange={(e) =>
+                setQuestionForm({
+                  ...questionForm,
+                  answerIndex: e.target.value,
+                })
+              }
+            />
+          )}
+
+          {/* ================= TYPING ================= */}
+          {currentGameType === "typing" && (
             <Input
               placeholder="Jawaban"
               onChange={(e) =>
@@ -213,8 +232,8 @@ export default function AdminMiniGame() {
             />
           )}
 
-          {/* TRUE FALSE */}
-          {questionForm.type === "truefalse" && (
+          {/* ================= TRUE FALSE ================= */}
+          {currentGameType === "truefalse" && (
             <Select
               onChange={(e) =>
                 setQuestionForm({ ...questionForm, answer: e.target.value })
@@ -225,11 +244,11 @@ export default function AdminMiniGame() {
             </Select>
           )}
 
-          {/* DRAG DROP */}
-          {questionForm.type === "dragdrop" && (
+          {/* ================= DRAG DROP ================= */}
+          {currentGameType === "dragdrop" && (
             <>
               <Textarea
-                placeholder="Statement"
+                placeholder="Statement (yang akan di-drag)"
                 onChange={(e) =>
                   setQuestionForm({
                     ...questionForm,
@@ -246,8 +265,8 @@ export default function AdminMiniGame() {
                   })
                 }
               >
-                <option value="benar">Benar</option>
-                <option value="salah">Salah</option>
+                <option value="benar">Masuk ke BENAR</option>
+                <option value="salah">Masuk ke SALAH</option>
               </Select>
             </>
           )}
@@ -256,6 +275,7 @@ export default function AdminMiniGame() {
 
           <hr />
 
+          {/* ================= LIST SOAL ================= */}
           {questions.map((q) => {
             const meta = JSON.parse(q.meta || "{}");
 
@@ -263,13 +283,20 @@ export default function AdminMiniGame() {
               <div key={q.id}>
                 <p>{q.content}</p>
 
-                {q.type === "mcq" && <p>{meta.options?.[meta.answerIndex]}</p>}
+                {q.type === "mcq" && (
+                  <p>Jawaban: {meta.options?.[meta.answerIndex]}</p>
+                )}
+
                 {q.type === "typing" && <p>{meta.answer}</p>}
+
                 {q.type === "truefalse" && (
                   <p>{meta.answer ? "Benar" : "Salah"}</p>
                 )}
+
                 {q.type === "dragdrop" && (
-                  <p>{meta.statement} → {meta.answer}</p>
+                  <p>
+                    {meta.statement} → {meta.answer}
+                  </p>
                 )}
               </div>
             );
