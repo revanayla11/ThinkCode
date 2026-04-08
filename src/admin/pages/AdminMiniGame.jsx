@@ -263,30 +263,25 @@ export default function AdminMiniGame() {
     }
   };
 
-  // 🔥 FIXED: loadQuestions - sesuaikan dengan backend response
-// 🔥 DEBUG MODE - GANTI loadQuestions
+ // 🔥 FIXED STRUCTURE - GANTI INI SAJA!
 const loadQuestions = async (slug, levelNumber) => {
   try {
     setLoading(true);
     const res = await apiGet(`/admin/minigame/${slug}/levels/${levelNumber}`);
     
-    // 🔥 DEBUG - LIHAT STRUCTURE RESPONSE
-    console.log("🔍 FULL RESPONSE:", res);
     console.log("🔍 res.data:", res.data);
-    console.log("🔍 res.data.data:", res.data.data);
     
-    // ✅ SAFE ACCESS
-    const questions = res.data?.data?.questions || [];
-    const levelData = res.data?.data?.level || res.data?.data || null;
+    // ✅ FIXED: Langsung dari res.data (bukan res.data.data)
+    const questions = res.data.questions || res.data.data?.questions || [];
+    const levelData = res.data.level || res.data.data?.level || null;
     
-    console.log("🔍 EXTRACTED questions:", questions);
-    console.log("🔍 EXTRACTED level:", levelData);
+    console.log("✅ questions:", questions.length);
+    console.log("✅ level:", levelData);
     
     setQuestions(questions);
     setSelectedLevel(levelData);
   } catch (error) {
-    console.error("❌ FULL ERROR:", error);
-    console.error("❌ Error response:", error.response?.data);
+    console.error("❌ Error loading questions:", error);
   } finally {
     setLoading(false);
   }
