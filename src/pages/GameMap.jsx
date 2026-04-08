@@ -23,20 +23,15 @@ export default function GameMap() {
   }, []);
 
 const isUnlocked = (mIdx, lIdx) => {
-  // Level pertama selalu terbuka
   if (mIdx === 0 && lIdx === 0) return true;
 
-  // Ambil level sebelumnya
   if (lIdx > 0) {
     const prevLevel = levels[mIdx].levels[lIdx - 1];
-    const progressItem = progress.find(p => p.levelId == prevLevel.id);
-    return progressItem?.completed && progressItem.score >= 80;
+    return progress.some(p => p.levelId == prevLevel.id);
   }
 
-  // Kalau level pertama di materi baru → cek materi sebelumnya
   const prevMateriLastLevel = levels[mIdx - 1].levels.slice(-1)[0];
-  const progressItem = progress.find(p => p.levelId == prevMateriLastLevel.id);
-  return progressItem?.completed && progressItem.score >= 80;
+  return progress.some(p => p.levelId == prevMateriLastLevel.id);
 };
 
 // 🔥 MANUAL REFRESH BUTTON (temporary)
