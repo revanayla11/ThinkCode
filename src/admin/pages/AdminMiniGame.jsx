@@ -518,57 +518,85 @@ const loadQuestions = async (slug, levelNumber) => {
   };
 
   const renderQuestionPreview = (question) => {
-    const meta = JSON.parse(question.meta || "{}");
-    
-    return (
-      <div>
+  const meta = JSON.parse(question.meta || "{}");
+  
+  return (
+    <div>
+      {/* 🔥 SOAL: Pre-formatted code block */}
+      <div style={{ 
+        fontWeight: '600', 
+        marginBottom: '16px', 
+        color: '#1e293b',
+        whiteSpace: 'pre-wrap',
+        fontSize: '14px',
+        fontFamily: '"JetBrains Mono", "Consolas", "Monaco", monospace',
+        background: '#f8fafc',
+        padding: '20px',
+        borderRadius: '12px',
+        borderLeft: '4px solid #3b82f6',
+        lineHeight: 1.5,
+        overflowX: 'auto',
+        maxHeight: '250px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+      }}>
+        {question.content}
+      </div>
+      
+      {/* 🔥 JAWABAN: Dark code block untuk typing */}
+      <div style={{ 
+        background: '#1e293b', 
+        padding: '16px', 
+        borderRadius: '12px',
+        fontSize: '13px',
+        borderLeft: '4px solid #10b981',
+        fontFamily: '"JetBrains Mono", monospace'
+      }}>
         <div style={{ 
-          fontWeight: 'bold', 
-          marginBottom: '12px', 
-          color: '#2c3e50',
-          whiteSpace: 'pre-wrap',
-          fontSize: '15px'
+          color: '#a5b4fc', 
+          fontWeight: '600', 
+          marginBottom: '8px',
+          fontSize: '14px'
         }}>
-          {question.content}
+          ✅ Jawaban yang diharapkan:
         </div>
         
-        {/* Preview Jawaban */}
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '12px', 
-          borderRadius: '8px',
-          fontSize: '14px',
-          borderLeft: '4px solid #28a745'
-        }}>
-          {question.type === "mcq" && (
-            <div>
-              ✅ Jawaban: <strong style={{color: '#28a745'}}>{meta.options?.[meta.answerIndex]}</strong>
-            </div>
-          )}
-          
-          {question.type === "typing" && (
-            <div>
-              ✅ Jawaban: <code style={{background: '#e9ecef', padding: '2px 6px', borderRadius: '4px'}}>
-                {meta.answer}
-              </code>
-            </div>
-          )}
-          
-          {question.type === "truefalse" && (
-            <div style={{color: meta.answer === "true" ? '#28a745' : '#dc3545'}}>
-              ✅ {meta.answer === "true" ? 'BENAR' : 'SALAH'}
-            </div>
-          )}
-          
-          {question.type === "dragdrop" && (
-            <div style={{color: '#17a2b8'}}>
-              🎯 Jawaban: {meta.answers?.join(' | ')}
-            </div>
-          )}
-        </div>
+        {question.type === "mcq" && (
+          <div style={{color: '#10b981'}}>
+            <strong>{meta.options?.[meta.answerIndex]}</strong>
+          </div>
+        )}
+        
+        {question.type === "typing" && (
+          <pre style={{ 
+            margin: 0, 
+            color: '#e2e8f0', 
+            background: 'transparent',
+            fontSize: '13px',
+            lineHeight: 1.4
+          }}>
+            {meta.answer}
+          </pre>
+        )}
+        
+        {question.type === "truefalse" && (
+          <div style={{ 
+            color: meta.answer === "true" ? '#10b981' : '#f87171',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}>
+            {meta.answer === "true" ? '✅ BENAR' : '❌ SALAH'}
+          </div>
+        )}
+        
+        {question.type === "dragdrop" && (
+          <div style={{color: '#06b6d4', fontWeight: '500'}}>
+            🎯 Urutan: {meta.answers?.join(' → ')}
+          </div>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   return (
     <Container>
