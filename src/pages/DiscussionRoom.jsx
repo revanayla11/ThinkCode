@@ -321,35 +321,40 @@ const loadTemplateData = useCallback(async () => {
 }, [materiId]);
 
   /* ================= SAVE FUNCTIONS ================= */
-// Update savePseudocode
-// ✅ CORRECT - Kirim template + blanks
-// ✅ FULL FIXED savePseudocode
+// Update savePseudocode di React
 const savePseudocode = async () => {
-  if (!pseudocode?.trim()) return Swal.fire("⚠️", "Isi pseudocode!", "warning");
+  if (!templateData.template?.trim()) {
+    return Swal.fire("⚠️", "Template belum load!", "warning");
+  }
   
+  console.log("🚀 SAVING:", {
+    templateLength: templateData.template.length,
+    blanksFilled: pseudocodeBlanks.filter(b => b.trim()).length,
+    totalBlanks: templateData.blanks?.length || 0
+  });
+
   try {
     const res = await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      template: templateData.template,
-      answers: pseudocodeBlanks
+      template: templateData.template,  // ✅ HARUS ADA
+      answers: pseudocodeBlanks        // ✅ ARRAY BLANKS
     });
+    
+    console.log("✅ SAVE SUCCESS:", res.data);
     
     Swal.fire({
-      title: "✅ Saved!",
-      text: res.data.message,
+      title: "💾 Tersimpan!",
+      text: `${res.data.attempts} attempt • ${res.data.length} chars`,
       icon: "success",
-      timer: 2000
+      timer: 1500
     });
     
+    // Refresh data
+    await loadWorkspaceData();
     loadPerformance();
     
-    // 🔥 MARK AS SAVED & FORCE UPDATE
-    setPseudocodeSaved(true);
-    setPseudocode(renderFilledTemplate()); // Pastikan pseudocode fresh
-    
-    console.log("✅ Pseudocode SAVED & MARKED");
-    
   } catch (err) {
-    Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
+    console.error("❌ SAVE ERROR:", err.response?.data);
+    Swal.fire("❌", err.response?.data?.error || "Gagal simpan", "error");
   }
 };
 
