@@ -343,7 +343,7 @@ const savePseudocode = async () => {
     
     Swal.fire({
       title: "💾 Tersimpan!",
-      text: `${res.data.attempts} attempt • ${res.data.length} chars`,
+      text: `${res.data.attempts} attempt •`,
       icon: "success",
       timer: 1500
     });
@@ -393,7 +393,7 @@ const saveFlowchart = async () => {
       html: `
         <div style="text-align: center;">
           <strong>${flowchartData.conditions.length} Kondisi</strong><br>
-          <small>${res.data.data?.preservedPseudocode ? '✅ Pseudocode aman' : '⚠️ Pseudocode hilang'}</small>
+          <small>${res.data.data?.preservedPseudocode}</small>
         </div>
       `,
       icon: "success",
@@ -922,17 +922,6 @@ const validateBeforeUpload = async () => {
               {isValidating ? "🔍 VALIDATING..." : 
                isSubmitted ? "🎉 CERTIFIED!" : "CEK JAWABAN & UPLOAD CODE"}
             </ProveMasteryButton>
-            <DebugButton onClick={debugFlowchart}>
-  🔍 DEBUG VALIDATION
-</DebugButton>
-<DebugButton onClick={async () => {
-  console.log("🔥 MANUAL LOAD!");
-  await loadWorkspaceData();
-  console.log("Conditions state:", conditions);
-  console.log("Else:", elseInstruction, showElse);
-}}>
-  🔍 FORCE LOAD WORKSPACE
-</DebugButton>
           </LeftPanel>
 
           {/* RIGHT PANEL */}
@@ -1122,9 +1111,3 @@ const FlowchartContainer = styled.div`
 `;
 const FlowchartButtons = styled.div`display: flex; gap: 12px; flex-wrap: wrap;`;
 const FlowBtn = styled.button`flex: 1; padding: 14px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; min-width: 140px; &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); } &:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.6; }`;
-const DebugButton = styled.button`
-  background: #ef4444; color: white; border: none;
-  padding: 15px; border-radius: 15px; font-weight: 700;
-  cursor: pointer; margin-top: 10px;
-  &:hover { background: #dc2626; transform: translateY(-2px); }
-`;
