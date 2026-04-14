@@ -359,30 +359,55 @@ const saveFlowchart = async () => {
   if (conditions.length === 0) {
     return Swal.fire("⚠️", "Tambahkan minimal 1 kondisi!", "warning");
   }
-  
+
+  // 🔥 BUILD FULL FLOWCHART DATA
   const flowchartData = {
-    conditions: conditions.map(cond => ({
+    conditions: conditions.map((cond, index) => ({
       condition: cond.condition?.trim() || '',
       yes: cond.yes?.trim() || '',
-      no: cond.no || ''
-    })),
+      no: cond.no?.trim() || ''
+    })).filter(cond => cond.condition.length > 0), // Hapus kosong
     elseInstruction: elseInstruction?.trim() || '',
-    showElse: !!showElse
+    showElse: showElse
   };
-  
-  console.log("💾 Saving flowchart:", flowchartData);
-  
+
+  // 🔥 VALIDASI FINAL
+  if (flowchartData.conditions.length === 0) {
+    return Swal.fire("⚠️", "Semua kondisi kosong!", "warning");
+  }
+
+  console.log("🚀 FLOWCHART TO SAVE:", JSON.stringify(flowchartData, null, 2));
+
   try {
     const res = await api.post(`/discussion/room/${roomId}/flowchart`, {
       flowchart: flowchartData
     });
+
+    console.log("✅ SAVE SUCCESS:", res.data);
     
-    Swal.fire("✅", res.data.message || "Flowchart tersimpan!", "success");
+    Swal.fire({
+      title: "✅ Flowchart Tersimpan!",
+      html: `
+        <div style="text-align: center;">
+          <strong>${flowchartData.conditions.length} Kondisi</strong><br>
+          <small>${res.data.data?.preservedPseudocode ? '✅ Pseudocode aman' : '⚠️ Pseudocode hilang'}</small>
+        </div>
+      `,
+      icon: "success",
+      timer: 2500,
+      showConfirmButton: false
+    });
+
     loadPerformance();
-    
+    loadWorkspaceData(); // Reload untuk sync
+
   } catch (err) {
-    console.error("Save flowchart error:", err.response?.data);
-    Swal.fire("❌", err.response?.data?.message || "Gagal simpan", "error");
+    console.error("❌ SAVE ERROR:", err.response?.data);
+    Swal.fire({
+      title: "❌ Gagal Simpan",
+      text: err.response?.data?.error || "Coba lagi",
+      icon: "error"
+    });
   }
 };
 
