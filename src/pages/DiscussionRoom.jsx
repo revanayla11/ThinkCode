@@ -70,15 +70,23 @@ export default function DiscussionRoom() {
   };
 
   // 🔥 INI YANG HILANG - TAMBAH INI!
-  const renderFilledTemplate = () => {
-    let filled = templateData.template || "";
-    templateData.blanks?.forEach((_, i) => {
-      const placeholder = `___BLANK_${i}___`;
-      const value = pseudocodeBlanks[i] || "";
-      filled = filled.replaceAll(placeholder, value || `[BLANK ${i+1}]`);
-    });
-    return filled;
-  };
+// 🔥 CALLBACK VERSION - SELALU FRESH
+const renderFilledTemplate = useCallback(() => {
+  let filled = templateData.template || "";
+  templateData.blanks?.forEach((_, i) => {
+    const placeholder = `___BLANK_${i}___`;
+    const value = pseudocodeBlanks[i] || "";
+    filled = filled.replaceAll(placeholder, value || `[BLANK ${i+1}]`);
+  });
+  return filled;
+}, [templateData.template, templateData.blanks, pseudocodeBlanks]);
+
+// Update useEffect untuk auto-update pseudocode
+useEffect(() => {
+  if (pseudocodeSaved) {
+    setPseudocode(renderFilledTemplate());
+  }
+}, [pseudocodeBlanks, renderFilledTemplate, pseudocodeSaved]);
 
   /* ================= FLOWCHART FUNCTIONS ================= */
   const addCondition = () => {
@@ -322,6 +330,9 @@ const savePseudocode = async () => {
     });
     
     loadPerformance();
+
+    setPseudocode(renderFilledTemplate());
+    setPseudocodeSaved(true);
   } catch (err) {
     Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
   }
