@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react"; // 🔥 NO useMemo needed
 import { apiGet } from "../services/api";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
@@ -11,12 +11,12 @@ export default function GameMap() {
   const [lockedLevel, setLockedLevel] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔥 LOAD ONCE ONLY
+  // 🔥 LOAD ONCE
   useEffect(() => {
     loadMapData();
-  }, []); // Empty deps = sekali aja!
+  }, []);
 
-  // 🔥 MEMOIZED LOAD FUNCTION
+  // 🔥 OPTIMIZED LOAD
   const loadMapData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -38,24 +38,30 @@ export default function GameMap() {
     }
   }, []);
 
-  // 🔥 MANUAL REFRESH - USER TRIGGER ONLY
-  const handleRefresh = () => {
+  // 🔥 MANUAL REFRESH
+  const handleRefresh = useCallback(() => {
     console.log("🔄 Manual refresh");
     loadMapData();
-  };
+  }, [loadMapData]);
 
-  // 🔥 OPTIMIZED UNLOCK LOGIC
+  // 🔥 SIMPLE FLAT LEVELS (NO useMemo)
+  const flatLevels = levels.flatMap((materi, mIdx) =>
+    materi.levels.map((lvl, lIdx) => ({
+      ...lvl,
+      materiIndex: mIdx,
+      levelIndex: lIdx,
+    }))
+  );
+
+  // 🔥 OPTIMIZED UNLOCK
   const isUnlocked = useCallback((mIdx, lIdx) => {
-    // Level 1 selalu buka
-    if (mIdx === 0 && lIdx === 0) return true;
+    if (mIdx === 0 && lIdx === 0) return true; // Level 1 selalu buka
 
-    // Dalam materi: cek level sebelumnya
     if (lIdx > 0) {
       const prevLevel = levels[mIdx]?.levels?.[lIdx - 1];
       return prevLevel && progress.some(p => String(p.levelId) === String(prevLevel.id));
     }
 
-    // Antar materi: semua level materi sebelumnya
     const prevMateri = levels[mIdx - 1];
     return prevMateri?.levels?.every(lvl =>
       progress.some(p => String(p.levelId) === String(lvl.id))
@@ -66,19 +72,7 @@ export default function GameMap() {
     progress.some(p => String(p.levelId) === String(levelId) && p.completed === true),
   [progress]);
 
-  // 🔥 MEMOIZED FLAT LEVELS
-  const flatLevels = useMemo(() => 
-    levels.flatMap((materi, mIdx) =>
-      materi.levels.map((lvl, lIdx) => ({
-        ...lvl,
-        materiIndex: mIdx,
-        levelIndex: lIdx,
-      }))
-    ),
-  [levels]
-  );
-
-  // 🔥 UTILITY FUNCTIONS
+  // 🔥 UTILS
   const getThemeIcon = (mIdx) => {
     const themes = ["✈️", "🚀", "⚡", "🌟", "🔥", "💎"];
     return themes[mIdx % themes.length];
@@ -94,8 +88,8 @@ export default function GameMap() {
     return { x: p.x, y: baseY + p.offsetY };
   };
 
-  // 🔥 OPTIMIZED LevelNode
-  const LevelNode = useCallback(({ level, unlocked, completed, themeIcon }) => (
+  // 🔥 LevelNode Component
+  const LevelNode = ({ level, unlocked, completed, themeIcon }) => (
     <Link
       to={unlocked ? `/game/play/${level.id}` : "#"}
       style={{ textDecoration: "none" }}
@@ -138,7 +132,7 @@ export default function GameMap() {
         <div style={{ fontSize: "1rem", fontWeight: 800 }}>{level.levelNumber}</div>
       </div>
     </Link>
-  ), []);
+  );
 
   if (isLoading) {
     return (
@@ -156,7 +150,7 @@ export default function GameMap() {
   return (
     <Layout>
       <div style={{ padding: "20px" }}>
-        {/* 🔥 HEADER - WITH REFRESH BUTTON */}
+        {/* HEADER */}
         <div style={{
           position: "sticky", top: 20, background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(20px)", padding: "24px 32px", borderRadius: "24px",
@@ -175,21 +169,20 @@ export default function GameMap() {
             XP: {userStats.xp} | ❤️ {userStats.hearts} | {getStreakEmoji(userStats.streak)}
           </div>
           
-          {/* 🔥 MANUAL REFRESH BUTTON */}
+          {/* MANUAL REFRESH */}
           <button 
             onClick={handleRefresh}
             style={{
               marginTop: "12px", padding: "8px 20px", background: "#3b82f6",
               color: "white", border: "none", borderRadius: "20px",
-              fontSize: "0.9rem", fontWeight: "600", cursor: "pointer",
-              transition: "all 0.2s"
+              fontSize: "0.9rem", fontWeight: "600", cursor: "pointer"
             }}
           >
             🔄 Refresh ({flatLevels.length} levels)
           </button>
         </div>
 
-        {/* 🔥 MAP CANVAS */}
+        {/* MAP */}
         <div style={{ 
           position: "relative", 
           height: Math.max(flatLevels.length * 130 + 300, 600),
@@ -215,7 +208,7 @@ export default function GameMap() {
             })}
           </svg>
 
-          {/* 🔥 LEVEL NODES */}
+          {/* LEVEL NODES */}
           {flatLevels.map((lvl, i) => {
             const pos = getNodePosition(i);
             const unlocked = isUnlocked(lvl.materiIndex, lvl.levelIndex);
@@ -239,7 +232,7 @@ export default function GameMap() {
         </div>
       </div>
 
-      {/* 🔥 LOCKED MODAL */}
+      {/* LOCKED MODAL */}
       {showLockedModal && lockedLevel && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
