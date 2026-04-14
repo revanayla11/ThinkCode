@@ -62,6 +62,8 @@ if (!data || !data.progress) {
       setCompletedSteps(res.data.completedSteps || []);
       setXp(res.data.totalXP);
 
+      window.location.href = `/materi/${id}`;
+
       const icon = stepKey === "watch_video" ? "🎥" : "📘";
       Swal.fire({
         icon: "success",

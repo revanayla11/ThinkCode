@@ -43,6 +43,7 @@ export default function DiscussionRooms() {
         .then(() => console.log('Step "join_discussion" completed'))
         .catch(err => console.error('Error completing "join_discussion":', err));
       window.location.href = `/materi/${id}/room/${roomId}`;
+      window.location.href = `/materi/${id}`;
     } catch (err) {
       alert(err.response?.data?.message || "Gagal join room");
     }
