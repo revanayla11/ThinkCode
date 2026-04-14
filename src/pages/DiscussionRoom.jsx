@@ -300,12 +300,14 @@ const loadTemplateData = useCallback(async () => {
 
   /* ================= SAVE FUNCTIONS ================= */
 // Update savePseudocode
+// ✅ CORRECT - Kirim template + blanks
 const savePseudocode = async () => {
   if (!pseudocode?.trim()) return Swal.fire("⚠️", "Isi pseudocode!", "warning");
   
   try {
     const res = await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      pseudocode: pseudocode.trim() 
+      template: templateData.template,  // ✅ Template asli
+      answers: pseudocodeBlanks        // ✅ Array jawaban blanks
     });
     
     Swal.fire({
