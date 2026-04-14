@@ -709,164 +709,77 @@ const renderFlowchart = () => {
 };
 
   /* ================= VALIDATE ================= */
-  /* ================= VALIDATE BEFORE UPLOAD - FULL VERSION ================= */
+// Update validateBeforeUpload function
 const validateBeforeUpload = async () => {
-  if (isValidating) return; // Prevent double click
+  if (isValidating || isSubmitted) return;
   
   setIsValidating(true);
+  
   try {
-    console.log("🔍 Starting validation...");
-    
     const res = await api.post(`/discussion/room/${roomId}/validate`);
     setValidationResult(res.data);
     
-    console.log("✅ VALIDATION RESULT:", res.data);
-    
     const { valid, score, details } = res.data;
     
-    // 🔥 SUCCESS (75%+) - DIRECT UPLOAD
-    if (valid && score >= 75) {
+    if (valid && score >= 85) {
+      // ✅ PASS - BISA UPLOAD
       Swal.fire({
-        title: "🎉 JAWABAN BENAR!",
+        title: "🎉 JAWABAN BENAR 100% MATCH GURU!",
         html: `
           <div style="text-align: center;">
-            <div style="font-size: 24px; margin-bottom: 15px;">🥇 ${score}%</div>
-            <div style="color: #059669; font-size: 16px; font-weight: 700;">
-              ✅ Pseudocode: ${details.pseudocode.match ? 'BENAR' : '⚠️'}
+            <div style="font-size: 32px; margin-bottom: 20px;">🥇 ${score}%</div>
+            <div style="color: #10b981; font-size: 18px;">
+              ✅ Pseudocode IDENTIK dengan guru<br/>
+              ✅ Flowchart IDENTIK dengan guru
             </div>
-            <div style="color: #059669; font-size: 16px; font-weight: 700;">
-              ✅ Flowchart: ${details.flowchart.match ? 'BENAR' : '⚠️'}
-            </div>
-            <hr style="margin: 20px 0;"/>
-            <div style="background: #d1fae5; padding: 15px; border-radius: 12px; border-left: 5px solid #10b981;">
-              <strong>🚀 Siap Upload C Code!</strong>
+            <div style="margin-top: 20px; padding: 20px; background: #d1fae5; border-radius: 15px; border-left: 5px solid #10b981;">
+              <strong>🚀 Langsung ke Upload C Code!</strong>
             </div>
           </div>
         `,
         icon: "success",
-        confirmButtonText: "🚀 UPLOAD C CODE SEKARANG",
-        confirmButtonColor: "#10b981",
-        allowOutsideClick: false,
-        allowEscapeKey: false
+        confirmButtonText: "🎮 UPLOAD C CODE",
+        confirmButtonColor: "#10b981"
       }).then((result) => {
         if (result.isConfirmed) {
+          // Update semua tasks otomatis
+          tasks.forEach(async (task) => {
+            if (!task.done) {
+              await api.post(`/discussion/room/${roomId}/task/${task.id}/toggle`, { done: true });
+            }
+          });
           navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
         }
       });
-    }
-    
-    // 🔥 WARNING (50-74%) - BERI SARAN
-    else if (score >= 50) {
+    } else {
+      // ❌ FAIL - SHOW DETAILED FEEDBACK
       Swal.fire({
-        title: "⚠️ Hampir Jadi!",
+        title: `📊 Score: ${score}% (Target 85%+)`,
         html: `
-          <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <span style="font-size: 28px; font-weight: 800; color: #f59e0b;">
-                ${score}%
+          <div style="text-align: left;">
+            <div style="margin-bottom: 15px;">
+              <strong>Pseudocode:</strong> 
+              <span style="color: ${details.pseudocode.match ? '#10b981' : '#ef4444'}">
+                ${details.pseudocode.match ? '✅ IDENTIK' : `❌ ${details.pseudocode.feedback}`}
               </span>
-              <div style="font-size: 14px; color: #6b7280;">Target: 75%+</div>
             </div>
-
-            <hr/>
-
-            <div style="margin-bottom: 15px;">
-              <strong>📝 Pseudocode:</strong> 
-              <span style="color: ${details.pseudocode.match ? '#10b981' : '#f59e0b'}; font-weight: 700;">
-                ${details.pseudocode.match ? '✅ BENAR' : '⚠️ Perbaiki'}
-              </span><br/>
-              <small style="color: ${details.pseudocode.match ? '#059669' : '#d97706'}">
-                ${details.pseudocode.feedback}
-              </small>
+            <div>
+              <strong>Flowchart:</strong> 
+              <span style="color: ${details.flowchart.match ? '#10b981' : '#ef4444'}">
+                ${details.flowchart.match ? '✅ IDENTIK' : `❌ ${details.flowchart.feedback}`}
+              </span>
             </div>
-
-            <div style="margin-bottom: 15px;">
-              <strong>🔄 Flowchart:</strong> 
-              <span style="color: ${details.flowchart.match ? '#10b981' : '#f59e0b'}; font-weight: 700;">
-                ${details.flowchart.match ? '✅ BENAR' : '⚠️ Perbaiki'}
-              </span><br/>
-              <small style="color: ${details.flowchart.match ? '#059669' : '#d97706'}">
-                ${details.flowchart.feedback}
-              </small>
-            </div>
-
-            <hr/>
-
-            <div style="padding: 15px; background: #fef3c7; border-radius: 10px; border-left: 5px solid #f59e0b; margin-top: 10px;">
-              <strong>💡 Tips Cepat:</strong><br/>
-              - Cek <strong>keyword</strong>: deklarasi, read, IF, write, ENDIF<br/>
-              - Kondisi: <code>> 0</code> atau <code>>= 70</code><br/>
-              - Flowchart minimal <strong>1 kondisi</strong>
-            </div>
+            ${!details.guruAnswer.hasPseudo || !details.guruAnswer.hasFlow ? 
+              '<div style="color: #f59e0b; margin-top: 15px;">⚠️ Jawaban guru belum tersedia</div>' : ''}
           </div>
         `,
         icon: "warning",
-        confirmButtonText: "🔄 Perbaiki Lagi",
-        confirmButtonColor: "#3b82f6",
-        width: "650px"
-      });
-    }
-    
-    // 🔥 LOW SCORE (<50%) - MOTIVASI + BASIC GUIDE
-    else {
-      Swal.fire({
-        title: "📚 Mulai dari Dasar",
-        html: `
-          <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <span style="font-size: 28px; font-weight: 800; color: #ef4444;">
-                ${score}%
-              </span>
-              <div style="font-size: 14px; color: #6b7280;">Target: 75%+</div>
-            </div>
-
-            <div style="padding: 15px; background: #fef2f2; border-radius: 10px; border-left: 5px solid #f87171; margin-bottom: 15px;">
-              <strong>🚨 Struktur Belum Lengkap</strong><br/>
-              Pastikan ada:
-              <ul style="margin: 8px 0; padding-left: 20px;">
-                <li>DEKLARASI + nama variabel</li>
-                <li>ALGORITMA</li>
-                <li>read(variabel)</li>
-                <li>IF (kondisi) THEN</li>
-                <li>write("pesan")</li>
-                <li>ENDIF</li>
-              </ul>
-            </div>
-
-            <div style="padding: 15px; background: #ecfdf5; border-radius: 10px; border-left: 5px solid #10b981;">
-              <strong>✅ Contoh Sederhana (Materi 1):</strong>
-              <pre style="margin: 8px 0; font-size: 12px; background: #f0fdf4; padding: 10px; border-radius: 6px;">
-DEKLARASI
-    angka : integer
-
-ALGORITMA
-    read(angka)
-    IF (angka > 0) THEN
-        write("Angka ", angka, " adalah Positif")
-    ENDIF
-END
-              </pre>
-            </div>
-
-            <div style="margin-top: 15px; text-align: center;">
-              <strong>💪 Satu per satu ya! Kamu bisa! 🔥</strong>
-            </div>
-          </div>
-        `,
-        icon: "info",
-        confirmButtonText: "✅ Paham, Mulai Lagi",
-        confirmButtonColor: "#10b981",
-        width: "700px"
+        confirmButtonText: "🔄 Perbaiki"
       });
     }
     
   } catch (err) {
-    console.error("❌ Validation error:", err);
-    Swal.fire({
-      title: "❌ Error",
-      text: "Validasi gagal, coba lagi ya!",
-      icon: "error"
-    });
+    Swal.fire("❌", "Validasi gagal, coba lagi", "error");
   } finally {
     setIsValidating(false);
   }
