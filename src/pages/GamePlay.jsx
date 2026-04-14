@@ -24,9 +24,10 @@ export default function GamePlay() {
   const [loading, setLoading] = useState(true);
   const [isGameFinished, setIsGameFinished] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false); // 🔥 NEW: Fix blocking issue
+  
   const correctRef = useRef(0);
   const hasAnsweredRef = useRef(false);
-
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function GamePlay() {
   const loadLevel = async () => {
     try {
       setLoading(true);
+      setIsProcessing(false); // 🔥 Reset processing
       const res = await apiGet(`/game/level/${id}`);
       if (res.status) {
         setLevel(res.level);
@@ -65,7 +67,8 @@ export default function GamePlay() {
       !questions.length ||
       feedback ||
       result ||
-      isGameFinished
+      isGameFinished ||
+      isProcessing // 🔥 Prevent timer saat processing
     ) return;
 
     setTimeLeft(40);
@@ -75,7 +78,6 @@ export default function GamePlay() {
         if (prev <= 1) {
           clearInterval(timerRef.current);
           timerRef.current = null;
-
           handleWrong("timeout");
           return 0;
         }
@@ -84,17 +86,24 @@ export default function GamePlay() {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [index, feedback, result, loading, questions.length, isGameFinished]);
+  }, [index, feedback, result, loading, questions.length, isGameFinished, isProcessing]);
 
   useEffect(() => {
     hasAnsweredRef.current = false;
   }, [index]);
 
-  const handleCorrect = () => {
-    // 🛑 CEGAH DOUBLE CLICK / DOUBLE TRIGGER
-    if (isGameFinished || hasAnsweredRef.current) return;
+  // 🔥 FIXED: handleCorrect dengan processing state
+  const handleCorrect = async () => {
+    // 🛑 CEGAH DOUBLE TRIGGER
+    if (isGameFinished || hasAnsweredRef.current || isProcessing) {
+      console.log('Correct blocked:', { isGameFinished, hasAnsweredRef: hasAnsweredRef.current, isProcessing });
+      return;
+    }
 
+    console.log('✅ Correct triggered');
+    
     hasAnsweredRef.current = true;
+    setIsProcessing(true); // 🔥 BLOCK ALL INPUTS
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -104,31 +113,65 @@ export default function GamePlay() {
     correctRef.current += 1;
     setScore((s) => s + 100);
 
+    try {
+      // 🔥 SAVE JAWABAN KE SERVER (non-blocking)
+      await apiPost(`/game/answer/${id}`, {
+        questionId: questions[index]?._id,
+        isCorrect: true,
+        timeUsed: 40 - timeLeft,
+        score: 100
+      });
+      console.log('✅ Answer saved');
+    } catch (err) {
+      console.error('Save correct error:', err);
+    }
+
     // 🔥 SOAL TERAKHIR
     if (index === questions.length - 1) {
       setFeedback("correct");
-
       setTimeout(() => {
         finishGame();
-      }, 300); // kasih sedikit delay biar UI smooth
-
+        setIsProcessing(false);
+      }, 800);
       return;
     }
 
+    // 🔥 NORMAL FLOW
     setFeedback("correct");
-
     setTimeout(() => {
       setFeedback(null);
       setIndex((prev) => prev + 1);
-    }, 1500); // Extended biar notif keliatan lebih lama
+      setIsProcessing(false); // 🔥 UNBLOCK
+    }, 1500);
   };
 
-  const handleWrong = (reason = "wrong") => {
-    if (isGameFinished) return;
+  // 🔥 FIXED: handleWrong dengan processing state
+  const handleWrong = async (reason = "wrong") => {
+    if (isGameFinished || isProcessing) {
+      console.log('Wrong blocked:', { isGameFinished, isProcessing });
+      return;
+    }
+
+    console.log('❌ Wrong triggered:', reason);
+    
+    setIsProcessing(true); // 🔥 BLOCK ALL INPUTS
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+
+    try {
+      // 🔥 SAVE JAWABAN KE SERVER
+      await apiPost(`/game/answer/${id}`, {
+        questionId: questions[index]?._id,
+        isCorrect: false,
+        timeUsed: 40 - timeLeft,
+        reason: reason
+      });
+      console.log('❌ Wrong answer saved');
+    } catch (err) {
+      console.error('Save wrong error:', err);
     }
 
     setFeedback(reason);
@@ -137,11 +180,15 @@ export default function GamePlay() {
       const newLives = l - 1;
 
       if (newLives <= 0) {
-        setTimeout(() => finishGame(), 1500);
+        setTimeout(() => {
+          finishGame();
+          setIsProcessing(false);
+        }, 1500);
       } else {
         setTimeout(() => {
           setFeedback(null);
           setIndex((prev) => prev + 1);
+          setIsProcessing(false); // 🔥 UNBLOCK
         }, 1500);
       }
 
@@ -149,72 +196,79 @@ export default function GamePlay() {
     });
   };
 
-  const nextQuestion = () => {
-    if (index + 1 < questions.length) {
-      setIndex((prev) => prev + 1);
-    } else {
-      finishGame(); // langsung finish tanpa delay
+  const finishGame = async () => {
+    if (isGameFinished) return;
+    setIsGameFinished(true);
+    setIsProcessing(true); // 🔥 FINAL BLOCK
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const totalQuestions = questions.length;
+    const correctAnswers = correctRef.current;
+    const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+    const heartsUsed = 5 - lives;
+
+    console.log("🚀 FINISH GAME...", { id, scorePercent, correctAnswers });
+
+    try {
+      const res = await apiPost(`/game/level/${id}/submit`, {
+        scorePercent,
+        totalQuestions,
+        correctAnswers,
+        heartsUsed
+      });
+      
+      console.log("✅ GAME SUBMIT RESPONSE:", res);  
+      
+      if (res.status) {
+        setResult({
+          scorePercent: res.data.scorePercent,
+          gainedXp: res.data.rewardXp,
+          hearts: res.data.hearts,
+          completed: res.data.completed,
+          isFirstCompletion: true
+        });
+      }
+    } catch (err) {
+      console.error("💥 GAME SUBMIT ERROR:", err);
+      // Fallback UI
+      setResult({
+        scorePercent,
+        gainedXp: 0,
+        hearts: lives,
+        completed: scorePercent >= 70,
+        isFirstCompletion: true
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const finishGame = async () => {
-  if (isGameFinished) return;
-  setIsGameFinished(true);
-
-  if (timerRef.current) {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
-  }
-
-  const totalQuestions = questions.length;
-  const correctAnswers = correctRef.current;
-  const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
-  const heartsUsed = 5 - lives;
-
-  console.log("🚀 STARTING SUBMIT...", { id, scorePercent, correctAnswers });
-
-  try {
-    // 🔥 FIXED ROUTE!
-    console.log("📡 SENDING to /game/level/" + id + "/submit");
-    
-    const res = await apiPost(`/game/level/${id}/submit`, {
-      scorePercent,
-      totalQuestions,
-      correctAnswers,
-      heartsUsed
-    });
-    
-    console.log("✅ BACKEND RESPONSE:", res);  
-    
-    if (res.status) {
-      setResult({
-        scorePercent: res.data.scorePercent,
-        gainedXp: res.data.rewardXp,
-        hearts: res.data.hearts,
-        completed: res.data.completed,
-        isFirstCompletion: true
-      });
-    }
-  } catch (err) {
-    console.error("💥 API ERROR:", err);
-  }
-};
-
   const renderGame = () => {
     if (!questions[index]) return null;
+    
     const props = {
       question: questions[index],
       onCorrect: handleCorrect,
       onWrong: handleWrong,
-      disabled: !!result // HANYA disable saat result, bukan feedback
+      disabled: isProcessing || !!result, // 🔥 Proper disable logic
+      isProcessing // 🔥 PASS TO ALL GAMES
     };
 
     switch (level?.gameType) {
-      case "mcq": return <MultipleChoice {...props} />;
-      case "typing": return <TypingGame {...props} />;
-      case "truefalse": return <TrueFalse {...props} />;
-      case "dragdrop": return <DragDropGame {...props} />;
-      default: return <MultipleChoice {...props} />;
+      case "mcq": 
+        return <MultipleChoice {...props} />;
+      case "typing": 
+        return <TypingGame {...props} />;
+      case "truefalse": 
+        return <TrueFalse {...props} />;
+      case "dragdrop": 
+        return <DragDropGame {...props} />;
+      default: 
+        return <MultipleChoice {...props} />;
     }
   };
 
@@ -225,6 +279,7 @@ export default function GamePlay() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minHeight: '80vh'
         }}>
           <div style={{ textAlign: 'center', color: 'black', fontSize: '2rem' }}>
             🎮 Loading Level...
@@ -261,7 +316,7 @@ export default function GamePlay() {
 
   return (
     <Layout>
-      <div style={{ display: 'flex',}}>
+      <div style={{ display: 'flex' }}>
         <Sidebar />
         <div style={{ flex: 1, marginLeft: '280px', padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
           {/* Header */}
@@ -293,10 +348,11 @@ export default function GamePlay() {
               <span>❤️ {lives}/5</span>
               <span>📊 {score} pts</span>
               <span>❓ {index + 1}/{questions.length}</span>
+              {isProcessing && <span style={{ color: '#f59e0b' }}>⏳ Saving...</span>} {/* 🔥 Visual feedback */}
             </div>
           </div>
 
-          {/* MINI FEEDBACK NOTIF - SELALU TERLIHAT DI POJOK */}
+          {/* MINI FEEDBACK NOTIF */}
           {feedback && (
             <div style={{
               position: 'fixed',
@@ -339,11 +395,12 @@ export default function GamePlay() {
             </div>
           )}
 
-          {/* GAME SELALU TERLIHAT - TIDAK DIHIDE SAAT FEEDBACK */}
+          {/* GAME AREA - SELALU VISIBLE */}
           <div style={{ height: '600px' }}>
             {renderGame()}
           </div>
 
+          {/* RESULT MODAL */}
           {result && (
             <div style={{
               position: 'fixed',

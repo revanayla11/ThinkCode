@@ -91,6 +91,29 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
     return "#e5e7eb";
   };
 
+  // 🔥 FORMAT SOAL DENGAN LEBIH RAPI
+  const renderQuestion = (text) => {
+    return (
+      <pre
+        style={{
+          margin: 0,
+          fontSize: "0.95rem",
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          fontFamily: '"JetBrains Mono", "Consolas", monospace',
+          background: "#f8fafc",
+          padding: "1rem",
+          borderRadius: "8px",
+          borderLeft: "4px solid #0ea5e9",
+          overflowX: "auto",
+          maxHeight: "200px",
+        }}
+      >
+        {text}
+      </pre>
+    );
+  };
+
   if (!questionText.trim()) {
     return (
       <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -125,17 +148,34 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
         ⌨️ Ketik jawaban dengan benar
       </div>
 
-      {/* SOAL */}
+      {/* SOAL - DITAMBAH PRE DAN STYLING */}
       <div
         style={{
           background: "white",
           padding: "1.5rem",
           borderRadius: "16px",
           border: "2px solid #e5e7eb",
+          boxShadow: "0 4px 6px -1px rgba(0, 0,0, 0.1)",
         }}
       >
-        <strong>📝 Soal:</strong>
-        <div style={{ marginTop: "0.5rem" }}>{questionText}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+          <div style={{
+            width: "32px",
+            height: "32px",
+            background: "#10b981",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "bold",
+            fontSize: "1rem"
+          }}>
+            📝
+          </div>
+          <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>Soal:</strong>
+        </div>
+        {renderQuestion(questionText)}
       </div>
 
       {/* GRID */}
@@ -181,6 +221,7 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
                     fontSize: "0.85rem",
                     borderRadius: "4px",
                     cursor: disabled ? "not-allowed" : "pointer",
+                    transition: "all 0.1s ease",
                   }}
                 >
                   {cell}
@@ -197,6 +238,9 @@ const TypingGame = ({ question, onCorrect, onWrong, disabled }) => {
           textAlign: "center",
           fontSize: "0.85rem",
           color: "#6b7280",
+          padding: "0.75rem",
+          background: "#f8fafc",
+          borderRadius: "12px",
         }}
       >
         ⌨️ Klik kotak lalu ketik jawaban

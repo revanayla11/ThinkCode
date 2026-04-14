@@ -1,40 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const MultipleChoice = ({ 
   question, 
   onCorrect, 
   onWrong, 
-  disabled = false
+  disabled = false,
+  isProcessing = false // 🔥 Tambah prop ini dari parent
 }) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [localProcessing, setLocalProcessing] = useState(false);
 
   // 🔥 DATA DARI ADMIN
   const questionText = question?.content || 'Pilih jawaban yang benar';
   const options = question?.meta?.options || ['Belum ada pilihan jawaban'];
   const correctIndex = parseInt(question?.meta?.answerIndex) || 0;
 
-  const handleAnswer = (index) => {
-    if (disabled || isAnswered) return;
+  // 🔥 RESET STATE KETIKA QUESTION BARU
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setIsAnswered(false);
+    setLocalProcessing(false);
+  }, [question]);
+
+  // 🔥 HANDLER YANG IMMEDIATE & ATOMIC
+  const handleAnswer = useCallback((index) => {
+    // Cek semua kondisi disable SEBELUM apa pun
+    if (disabled || isAnswered || localProcessing || isProcessing) {
+      console.log('Blocked:', { disabled, isAnswered, localProcessing, isProcessing });
+      return;
+    }
+
+    console.log('Answer clicked:', index);
     
+    // 🔥 IMMEDIATE STATE UPDATE
     setSelectedAnswer(index);
     setIsAnswered(true);
-    
+    setLocalProcessing(true);
+
+    // 🔥 VALIDASI & CALLBACK KE PARENT (INSTANT, NO DELAY)
     const isCorrect = index === correctIndex;
     
-    setTimeout(() => {
-      if (isCorrect) {
-        onCorrect(); // 🔥 Langsung ke parent → feedback pojok + next soal
-      } else {
-        onWrong();  // 🔥 Langsung ke parent → feedback pojok + next soal
-        setTimeout(() => {
-          // Reset untuk soal berikutnya
-          setSelectedAnswer(null);
-          setIsAnswered(false);
-        }, 1500);
-      }
-    }, 800);
-  };
+    // 🔥 CALL PARENT IMMEDIATELY (tanpa timeout)
+    if (isCorrect) {
+      onCorrect();
+    } else {
+      onWrong();
+    }
+
+    // 🔥 LOCAL FEEDBACK (tidak bergantung parent)
+    if (!isCorrect) {
+      // Reset LOCAL state setelah 1.5s untuk wrong answer
+      setTimeout(() => {
+        setSelectedAnswer(null);
+        setIsAnswered(false);
+        setLocalProcessing(false);
+      }, 1500);
+    }
+  }, [disabled, isAnswered, localProcessing, isProcessing, correctIndex, onCorrect, onWrong]);
 
   // 🔥 NO QUESTION STATE
   if (!questionText?.trim() || options.length === 0) {
@@ -58,7 +81,7 @@ const MultipleChoice = ({
     );
   }
 
-  // 🔥 MAIN UI - TETEP SAMA, TAPI SIMPLER
+  // 🔥 MAIN UI
   return (
     <div style={{ 
       height: '100%',
@@ -86,7 +109,7 @@ const MultipleChoice = ({
       }}>
         <div>❓ Multiple Choice {isAnswered && '✅'}</div>
         <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-          Pilih 1 jawaban benar
+          {(localProcessing || isProcessing) ? '⏳ Memproses...' : 'Pilih 1 jawaban benar'}
         </div>
       </div>
 
@@ -133,22 +156,22 @@ const MultipleChoice = ({
             <button
               key={index}
               onClick={() => handleAnswer(index)}
-              disabled={disabled || isAnswered}
+              disabled={disabled || isAnswered || localProcessing || isProcessing}
               style={{
                 width: '100%',
                 padding: '1.3rem 1.8rem',
-                background: disabled || isAnswered ? '#f8fafc' : 
+                background: (disabled || isAnswered || localProcessing || isProcessing) ? '#f8fafc' : 
                            isSelected ? '#dbeafe' : '#ffffff',
-                color: disabled || isAnswered ? '#9ca3af' : '#1f2937',
+                color: (disabled || isAnswered || localProcessing || isProcessing) ? '#9ca3af' : '#1f2937',
                 border: '3px solid',
-                borderColor: disabled || isAnswered ? '#e5e7eb' : 
+                borderColor: (disabled || isAnswered || localProcessing || isProcessing) ? '#e5e7eb' : 
                             isSelected ? '#3b82f6' : '#e5e7eb',
                 borderRadius: '16px',
                 fontSize: '1.1rem',
                 fontWeight: '600',
-                cursor: (disabled || isAnswered) ? 'not-allowed' : 'pointer',
+                cursor: (disabled || isAnswered || localProcessing || isProcessing) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: (disabled || isAnswered) ? '0 2px 8px rgba(0,0,0,0.05)' :
+                boxShadow: (disabled || isAnswered || localProcessing || isProcessing) ? '0 2px 8px rgba(0,0,0,0.05)' :
                           isSelected ? '0 8px 20px rgba(59,130,246,0.2)' :
                           '0 4px 15px rgba(0,0,0,0.08)',
                 position: 'relative',
@@ -158,7 +181,7 @@ const MultipleChoice = ({
                 alignItems: 'center',
                 justifyContent: 'flex-start',
                 minHeight: '70px',
-                opacity: disabled || isAnswered ? 0.6 : 1
+                opacity: (disabled || isAnswered || localProcessing || isProcessing) ? 0.6 : 1
               }}
             >
               {/* Number Badge */}
@@ -166,7 +189,7 @@ const MultipleChoice = ({
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: disabled || isAnswered ? '#e5e7eb' :
+                background: (disabled || isAnswered || localProcessing || isProcessing) ? '#e5e7eb' :
                            isSelected ? '#3b82f6' : '#6b7280',
                 color: 'white',
                 display: 'flex',
@@ -205,7 +228,12 @@ const MultipleChoice = ({
         backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255,255,255,0.5)'
       }}>
-        🖱️ {isAnswered ? '✅ Jawaban diproses...' : 'Klik pilihan jawaban yang menurutmu benar'}
+        🖱️ {(localProcessing || isProcessing) 
+          ? '⏳ Jawaban sedang diproses...' 
+          : isAnswered 
+          ? '✅ Jawaban sudah dipilih' 
+          : 'Klik pilihan jawaban yang menurutmu benar'
+        }
       </div>
     </div>
   );
