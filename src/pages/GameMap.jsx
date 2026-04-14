@@ -179,27 +179,6 @@ export default function GameMap() {
             borderTop: "1px solid #e5e7eb",
             display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap"
           }}>
-            <button onClick={loadMapData} style={{
-              padding: "8px 20px", background: "#3b82f6", color: "white",
-              border: "none", borderRadius: "12px", cursor: "pointer",
-              fontWeight: "600"
-            }}>
-              🔄 Refresh
-            </button>
-            <button onClick={() => {
-              console.log("🔍 DEBUG FULL DATA:", { levels, progress, flatLevels });
-              console.log("📊 Unlock status:", flatLevels.map(lvl => ({
-                id: lvl.id,
-                unlocked: isUnlocked(lvl.materiIndex, lvl.levelIndex),
-                completed: isCompleted(lvl.id)
-              })));
-            }} style={{
-              padding: "8px 20px", background: "#8b5cf6", color: "white",
-              border: "none", borderRadius: "12px", cursor: "pointer",
-              fontWeight: "600", fontSize: "0.9rem"
-            }}>
-              Debug Log
-            </button>
           </div>
           
           <div style={{ marginTop: "10px", fontSize: "0.9rem", color: "#6b7280" }}>
