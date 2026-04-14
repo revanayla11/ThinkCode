@@ -163,22 +163,15 @@ useEffect(() => {
     }
   };
 
-// Update loadPerformance - CALL SETIAP SAVE
-const loadPerformance = useCallback(async () => {
-  try {
-    const res = await api.get(`/discussion/room/${roomId}/performance`);
-    console.log("📊 PERFORMANCE:", res.data);
-    setPerformanceScore(res.data.score);
-    
-    // 🔥 AUTO CHECK ALL DONE
-    setAllTasksDone(res.data.allDone);
-    
-  } catch (err) {
-    console.error("Performance error:", err);
-    setPerformanceScore(100);
-  }
-}, [roomId]);
-
+  const loadPerformance = async () => {
+    try {
+      const res = await api.get(`/discussion/room/${roomId}/performance`);
+      setPerformanceScore(res.data.score || 100); // ✅ START 100%
+    } catch (err) {
+      console.error("Load performance error:", err);
+      setPerformanceScore(100); // ✅ DEFAULT 100%
+    }
+  };
 
     /* ================= CLUE FUNCTIONS ================= */
   const requestClue = async () => {
@@ -224,32 +217,41 @@ const loadWorkspaceData = useCallback(async () => {
     const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
     const data = res.data.data || {};
 
-    console.log("🔥 FULL WORKSPACE:", {
-      pseudocode: data.pseudocode?.substring(0, 50) + "...",
-      flowchartConditions: data.flowchart?.conditions?.length || 0,
-      flowchartRaw: data.flowchart ? "OK" : "NULL",
-      debug: data.debug
+    console.log("🔥 WORKSPACE LOADED:", {
+      pseudocode: data.pseudocode ? `${data.pseudocode.substring(0, 50)}...` : 'empty',
+      conditionsCount: data.flowchart?.conditions?.length || 0,
+      showElse: data.flowchart?.showElse || false
     });
 
-    // 🔥 FORCE LOAD PSEUDOCODE (IGNORE BLANKS LOGIC)
+    // PSEUDOCODE
     if (data.pseudocode) {
       setPseudocode(data.pseudocode);
-      console.log("✅ PSEUDO LOADED");
     }
 
-    // 🔥 FORCE LOAD FLOWCHART - SELALU!
-    if (data.flowchart) {
-      console.log("🔥 LOADING FLOWCHART:", data.flowchart);
-      setConditions(Array.isArray(data.flowchart.conditions) ? data.flowchart.conditions : []);
+    // FLOWCHART - FORCE ARRAY CHECK
+    if (data.flowchart && Array.isArray(data.flowchart.conditions)) {
+      setConditions(data.flowchart.conditions);
       setElseInstruction(data.flowchart.elseInstruction || "");
-      setShowElse(!!data.flowchart.showElse);
-      console.log(`✅ FLOWCHART LOADED: ${data.flowchart.conditions?.length || 0} conditions`);
+      setShowElse(data.flowchart.showElse || false);
+      console.log(`✅ FLOWCHART: ${data.flowchart.conditions.length} conditions LOADED`);
+    } else {
+      console.warn("⚠️ Invalid flowchart structure:", data.flowchart);
+      setConditions([]);
+    }
+
+    // TASKS
+    if (data.tasks) {
+      const taskList = tasks.map(task => ({
+        ...task,
+        done: !!data.tasks[task.id]
+      }));
+      setTasks(taskList);
     }
 
   } catch (err) {
-    console.error("❌ LOAD WORKSPACE ERROR:", err);
+    console.error("❌ loadWorkspaceData ERROR:", err);
   }
-}, [roomId]);
+}, [roomId, tasks]);
 
 // ✅ FIXED loadTasks
 const loadTasks = async () => {
