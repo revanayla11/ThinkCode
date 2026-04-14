@@ -217,34 +217,32 @@ const loadWorkspaceData = useCallback(async () => {
     const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
     const data = res.data.data || {};
 
-    console.log("🔄 Load workspace:", {
-      pseudocodeHasContent: !!data.pseudocode?.trim(),
-      hasBlanks: data.pseudocode?.includes('[BLANK') || data.pseudocode?.includes('___BLANK'),
-      localPseudocode: !!pseudocode.trim(),
-      localSaved: pseudocodeSaved
+    console.log("🔥 FULL WORKSPACE:", {
+      pseudocode: data.pseudocode?.substring(0, 50) + "...",
+      flowchartConditions: data.flowchart?.conditions?.length || 0,
+      flowchartRaw: data.flowchart ? "OK" : "NULL",
+      debug: data.debug
     });
 
-    // 🔥 PSEUDOCODE - HANYA LOAD KALAU BELUM ISI & TIDAK ADA BLANKS
-    const hasBlanks = data.pseudocode?.includes('[BLANK') || data.pseudocode?.includes('___BLANK');
-    if (!pseudocode.trim() && !pseudocodeSaved && !hasBlanks) {
-      setPseudocode(data.pseudocode || "");
-      console.log("✅ Pseudocode loaded from DB");
-    } else {
-      console.log("⏭️ Skip pseudocode load - sudah saved / ada blanks / local ada");
+    // 🔥 FORCE LOAD PSEUDOCODE (IGNORE BLANKS LOGIC)
+    if (data.pseudocode) {
+      setPseudocode(data.pseudocode);
+      console.log("✅ PSEUDO LOADED");
     }
 
-    // Flowchart logic sama...
-    const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
-    if (flowchart.conditions?.length === 0 && conditions.length === 0) {
-      setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
-      setElseInstruction(flowchart.elseInstruction || "");
-      setShowElse(!!flowchart.showElse);
+    // 🔥 FORCE LOAD FLOWCHART - SELALU!
+    if (data.flowchart) {
+      console.log("🔥 LOADING FLOWCHART:", data.flowchart);
+      setConditions(Array.isArray(data.flowchart.conditions) ? data.flowchart.conditions : []);
+      setElseInstruction(data.flowchart.elseInstruction || "");
+      setShowElse(!!data.flowchart.showElse);
+      console.log(`✅ FLOWCHART LOADED: ${data.flowchart.conditions?.length || 0} conditions`);
     }
 
   } catch (err) {
-    console.error("Load workspace error:", err);
+    console.error("❌ LOAD WORKSPACE ERROR:", err);
   }
-}, [roomId, pseudocode, pseudocodeSaved]); // ✅ Dependencies lengkap
+}, [roomId]);
 
 // ✅ FIXED loadTasks
 const loadTasks = async () => {
@@ -1008,6 +1006,14 @@ END
             </ProveMasteryButton>
             <DebugButton onClick={debugFlowchart}>
   🔍 DEBUG VALIDATION
+</DebugButton>
+<DebugButton onClick={async () => {
+  console.log("🔥 MANUAL LOAD!");
+  await loadWorkspaceData();
+  console.log("Conditions state:", conditions);
+  console.log("Else:", elseInstruction, showElse);
+}}>
+  🔍 FORCE LOAD WORKSPACE
 </DebugButton>
           </LeftPanel>
 
