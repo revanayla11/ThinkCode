@@ -163,15 +163,22 @@ useEffect(() => {
     }
   };
 
-  const loadPerformance = async () => {
-    try {
-      const res = await api.get(`/discussion/room/${roomId}/performance`);
-      setPerformanceScore(res.data.score || 100); // ✅ START 100%
-    } catch (err) {
-      console.error("Load performance error:", err);
-      setPerformanceScore(100); // ✅ DEFAULT 100%
-    }
-  };
+// Update loadPerformance - CALL SETIAP SAVE
+const loadPerformance = useCallback(async () => {
+  try {
+    const res = await api.get(`/discussion/room/${roomId}/performance`);
+    console.log("📊 PERFORMANCE:", res.data);
+    setPerformanceScore(res.data.score);
+    
+    // 🔥 AUTO CHECK ALL DONE
+    setAllTasksDone(res.data.allDone);
+    
+  } catch (err) {
+    console.error("Performance error:", err);
+    setPerformanceScore(100);
+  }
+}, [roomId]);
+
 
     /* ================= CLUE FUNCTIONS ================= */
   const requestClue = async () => {
