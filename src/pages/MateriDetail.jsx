@@ -86,11 +86,16 @@ if (!data || !data.progress) {
     }
   };
 
-  const handleVideoEnd = () => completeStep("watch_video");
-  const handleOpenMini = () => {
-    setShowMini(true);
-    completeStep("open_mini_lesson");
-  };
+  const handleVideoEnd = () => {
+  console.log('🎥 VIDEO ENDED - calling completeStep("watch_video")');
+  completeStep("watch_video");
+};
+
+const handleOpenMini = () => {
+  console.log('📖 MINI LESSON OPENED - calling completeStep("open_mini_lesson")');
+  setShowMini(true);
+  completeStep("open_mini_lesson");
+};
 
   const allStepsDone =
   safeCompletedSteps.includes("watch_video") &&
