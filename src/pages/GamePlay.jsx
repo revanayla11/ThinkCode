@@ -13,6 +13,7 @@ export default function GamePlay() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // 🔥 ALL STATES
   const [level, setLevel] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
@@ -24,12 +25,14 @@ export default function GamePlay() {
   const [loading, setLoading] = useState(true);
   const [isGameFinished, setIsGameFinished] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false); // 🔥 NEW: Fix blocking issue
+  const [isProcessing, setIsProcessing] = useState(false); // UI blocking only
   
+  // 🔥 REFS
   const correctRef = useRef(0);
   const hasAnsweredRef = useRef(false);
   const timerRef = useRef(null);
 
+  // 🔥 LOAD LEVEL
   useEffect(() => {
     loadLevel();
   }, [id]);
@@ -37,7 +40,7 @@ export default function GamePlay() {
   const loadLevel = async () => {
     try {
       setLoading(true);
-      setIsProcessing(false); // 🔥 Reset processing
+      setIsProcessing(false);
       const res = await apiGet(`/game/level/${id}`);
       if (res.status) {
         setLevel(res.level);
@@ -48,6 +51,7 @@ export default function GamePlay() {
         correctRef.current = 0;
         setFeedback(null);
         setResult(null);
+        setIsGameFinished(false);
       }
     } catch (error) {
       console.error("Load level error:", error);
@@ -57,6 +61,7 @@ export default function GamePlay() {
     }
   };
 
+  // 🔥 TIMER LOGIC
   useEffect(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -68,7 +73,7 @@ export default function GamePlay() {
       feedback ||
       result ||
       isGameFinished ||
-      isProcessing // 🔥 Prevent timer saat processing
+      isProcessing
     ) return;
 
     setTimeLeft(40);
@@ -88,22 +93,22 @@ export default function GamePlay() {
     return () => clearInterval(timerRef.current);
   }, [index, feedback, result, loading, questions.length, isGameFinished, isProcessing]);
 
+  // 🔥 RESET ANSWER STATE
   useEffect(() => {
     hasAnsweredRef.current = false;
   }, [index]);
 
-  // 🔥 FIXED: handleCorrect dengan processing state
-  const handleCorrect = async () => {
-    // 🛑 CEGAH DOUBLE TRIGGER
+  // 🔥 SMOOTH CORRECT - NO BLOCKING API
+  const handleCorrect = () => {
     if (isGameFinished || hasAnsweredRef.current || isProcessing) {
       console.log('Correct blocked:', { isGameFinished, hasAnsweredRef: hasAnsweredRef.current, isProcessing });
       return;
     }
 
-    console.log('✅ Correct triggered');
-    
+    console.log('✅ Correct!');
+
     hasAnsweredRef.current = true;
-    setIsProcessing(true); // 🔥 BLOCK ALL INPUTS
+    setIsProcessing(true); // UI feedback only
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -112,66 +117,44 @@ export default function GamePlay() {
 
     correctRef.current += 1;
     setScore((s) => s + 100);
+    setCorrectCount(correctRef.current);
 
-    try {
-      // 🔥 SAVE JAWABAN KE SERVER (non-blocking)
-      await apiPost(`/game/answer/${id}`, {
-        questionId: questions[index]?._id,
-        isCorrect: true,
-        timeUsed: 40 - timeLeft,
-        score: 100
-      });
-      console.log('✅ Answer saved');
-    } catch (err) {
-      console.error('Save correct error:', err);
-    }
+    // 🔥 NO API CALL - INSTANT!
+    console.log(`Score: ${score + 100} | Correct: ${correctRef.current}/${questions.length}`);
 
-    // 🔥 SOAL TERAKHIR
+    // SOAL TERAKHIR?
     if (index === questions.length - 1) {
       setFeedback("correct");
       setTimeout(() => {
         finishGame();
         setIsProcessing(false);
-      }, 800);
+      }, 1000);
       return;
     }
 
-    // 🔥 NORMAL FLOW
+    // NORMAL FLOW
     setFeedback("correct");
     setTimeout(() => {
       setFeedback(null);
       setIndex((prev) => prev + 1);
-      setIsProcessing(false); // 🔥 UNBLOCK
-    }, 1500);
+      setIsProcessing(false);
+    }, 1200);
   };
 
-  // 🔥 FIXED: handleWrong dengan processing state
-  const handleWrong = async (reason = "wrong") => {
+  // 🔥 SMOOTH WRONG - NO BLOCKING API  
+  const handleWrong = (reason = "wrong") => {
     if (isGameFinished || isProcessing) {
-      console.log('Wrong blocked:', { isGameFinished, isProcessing });
+      console.log('Wrong blocked');
       return;
     }
 
-    console.log('❌ Wrong triggered:', reason);
-    
-    setIsProcessing(true); // 🔥 BLOCK ALL INPUTS
+    console.log(`❌ ${reason}! Lives: ${lives - 1}`);
+
+    setIsProcessing(true);
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-
-    try {
-      // 🔥 SAVE JAWABAN KE SERVER
-      await apiPost(`/game/answer/${id}`, {
-        questionId: questions[index]?._id,
-        isCorrect: false,
-        timeUsed: 40 - timeLeft,
-        reason: reason
-      });
-      console.log('❌ Wrong answer saved');
-    } catch (err) {
-      console.error('Save wrong error:', err);
     }
 
     setFeedback(reason);
@@ -188,7 +171,7 @@ export default function GamePlay() {
         setTimeout(() => {
           setFeedback(null);
           setIndex((prev) => prev + 1);
-          setIsProcessing(false); // 🔥 UNBLOCK
+          setIsProcessing(false);
         }, 1500);
       }
 
@@ -196,10 +179,11 @@ export default function GamePlay() {
     });
   };
 
+  // 🔥 FINAL SUBMIT (satu-satunya API call)
   const finishGame = async () => {
     if (isGameFinished) return;
     setIsGameFinished(true);
-    setIsProcessing(true); // 🔥 FINAL BLOCK
+    setIsProcessing(true);
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -211,7 +195,7 @@ export default function GamePlay() {
     const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
     const heartsUsed = 5 - lives;
 
-    console.log("🚀 FINISH GAME...", { id, scorePercent, correctAnswers });
+    console.log("🚀 FINISH GAME:", { id, scorePercent, correctAnswers, heartsUsed });
 
     try {
       const res = await apiPost(`/game/level/${id}/submit`, {
@@ -221,23 +205,23 @@ export default function GamePlay() {
         heartsUsed
       });
       
-      console.log("✅ GAME SUBMIT RESPONSE:", res);  
+      console.log("✅ SUBMIT SUCCESS:", res);
       
       if (res.status) {
         setResult({
-          scorePercent: res.data.scorePercent,
-          gainedXp: res.data.rewardXp,
-          hearts: res.data.hearts,
-          completed: res.data.completed,
-          isFirstCompletion: true
+          scorePercent: res.data.scorePercent || scorePercent,
+          gainedXp: res.data.rewardXp || 0,
+          hearts: res.data.hearts || lives,
+          completed: res.data.completed || (scorePercent >= 70),
+          isFirstCompletion: res.data.isFirstCompletion || true
         });
       }
     } catch (err) {
-      console.error("💥 GAME SUBMIT ERROR:", err);
-      // Fallback UI
+      console.error("💥 SUBMIT ERROR:", err);
+      // FALLBACK UI - game tetep jalan!
       setResult({
         scorePercent,
-        gainedXp: 0,
+        gainedXp: Math.floor(scorePercent / 10),
         hearts: lives,
         completed: scorePercent >= 70,
         isFirstCompletion: true
@@ -247,6 +231,7 @@ export default function GamePlay() {
     }
   };
 
+  // 🔥 RENDER GAME
   const renderGame = () => {
     if (!questions[index]) return null;
     
@@ -254,57 +239,45 @@ export default function GamePlay() {
       question: questions[index],
       onCorrect: handleCorrect,
       onWrong: handleWrong,
-      disabled: isProcessing || !!result, // 🔥 Proper disable logic
-      isProcessing // 🔥 PASS TO ALL GAMES
+      disabled: isProcessing || !!result,
+      isProcessing // Pass ke semua games
     };
 
     switch (level?.gameType) {
-      case "mcq": 
-        return <MultipleChoice {...props} />;
-      case "typing": 
-        return <TypingGame {...props} />;
-      case "truefalse": 
-        return <TrueFalse {...props} />;
-      case "dragdrop": 
-        return <DragDropGame {...props} />;
-      default: 
-        return <MultipleChoice {...props} />;
+      case "mcq": return <MultipleChoice {...props} />;
+      case "typing": return <TypingGame {...props} />;
+      case "truefalse": return <TrueFalse {...props} />;
+      case "dragdrop": return <DragDropGame {...props} />;
+      default: return <MultipleChoice {...props} />;
     }
   };
 
+  // 🔥 LOADING SCREEN
   if (loading) {
     return (
       <Layout>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '80vh'
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minHeight: '80vh', fontSize: '2rem', color: '#374151'
         }}>
-          <div style={{ textAlign: 'center', color: 'black', fontSize: '2rem' }}>
-            🎮 Loading Level...
-          </div>
+          🎮 Loading Level...
         </div>
       </Layout>
     );
   }
 
+  // 🔥 ERROR SCREEN
   if (!level || !questions.length) {
     return (
       <Layout>
         <div style={{ padding: '100px 20px', textAlign: 'center' }}>
-          <h2>Level tidak ditemukan 😔</h2>
+          <h2 style={{ color: '#6b7280' }}>Level tidak ditemukan 😔</h2>
           <button 
             onClick={() => navigate("/game")}
             style={{
-              padding: '12px 24px',
-              background: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '1.1rem',
-              cursor: 'pointer',
-              marginTop: '1rem'
+              padding: '12px 24px', background: '#10b981', color: 'white',
+              border: 'none', borderRadius: '12px', fontSize: '1.1rem',
+              cursor: 'pointer', marginTop: '1rem'
             }}
           >
             ← Kembali ke Map
@@ -314,114 +287,98 @@ export default function GamePlay() {
     );
   }
 
+  // 🔥 MAIN UI
   return (
     <Layout>
       <div style={{ display: 'flex' }}>
         <Sidebar />
-        <div style={{ flex: 1, marginLeft: '280px', padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-          {/* Header */}
+        <div style={{ 
+          flex: 1, marginLeft: '280px', 
+          padding: '2rem', maxWidth: '1000px', margin: '0 auto' 
+        }}>
+          
+          {/* 🔥 HEADER */}
           <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ 
+              display: 'flex', alignItems: 'center', gap: '1rem', 
+              marginBottom: '1rem' 
+            }}>
               <h1 style={{ 
                 margin: 0, fontSize: '2.5rem', 
                 background: 'linear-gradient(135deg, #1e293b, #334155)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 fontWeight: '800'
               }}>
                 Level {level.levelNumber}
               </h1>
               <span style={{
-                padding: '0.5rem 1rem',
-                background: `var(--game-${level.gameType})`,
-                color: 'black',
-                borderRadius: '20px',
-                fontSize: '0.9rem',
-                fontWeight: '700',
-                textTransform: 'uppercase'
+                padding: '0.5rem 1rem', background: `var(--game-${level.gameType})`,
+                color: 'black', borderRadius: '20px', fontSize: '0.9rem',
+                fontWeight: '700', textTransform: 'uppercase'
               }}>
-                {level.gameType}
+                {level.gameType?.toUpperCase()}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: '2rem', fontSize: '1.3rem', color: '#6b7280', fontWeight: '600' }}>
+            <div style={{ 
+              display: 'flex', gap: '2rem', fontSize: '1.3rem', 
+              color: '#6b7280', fontWeight: '600' 
+            }}>
               <span>⏱️ {timeLeft}s</span>
               <span>❤️ {lives}/5</span>
               <span>📊 {score} pts</span>
               <span>❓ {index + 1}/{questions.length}</span>
-              {isProcessing && <span style={{ color: '#f59e0b' }}>⏳ Saving...</span>} {/* 🔥 Visual feedback */}
+              {isProcessing && <span style={{ color: '#f59e0b', fontSize: '1.1rem' }}>⏳ Processing...</span>}
             </div>
           </div>
 
-          {/* MINI FEEDBACK NOTIF */}
+          {/* 🔥 FEEDBACK NOTIF - SELALU VISIBLE */}
           {feedback && (
             <div style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              zIndex: 1000,
-              padding: '1.2rem 2rem',
-              fontSize: '1.3rem',
-              fontWeight: '800',
-              borderRadius: '16px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-              transform: 'scale(1)',
-              animation: 'popIn 0.3s ease-out'
+              position: 'fixed', top: '20px', right: '20px', zIndex: 1000,
+              padding: '1.2rem 2rem', fontSize: '1.3rem', fontWeight: '800',
+              borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              animation: 'popIn 0.4s ease-out'
             }}>
               {feedback === "correct" ? (
                 <span style={{ 
                   background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: 'white', 
-                  padding: '0.8rem 1.5rem',
-                  borderRadius: '12px',
+                  color: 'white', padding: '0.8rem 1.5rem', borderRadius: '12px',
                   display: 'inline-block'
-                }}>✅ BENAR!</span>
+                }}>✅ BENAR +100!</span>
               ) : feedback === "timeout" ? (
                 <span style={{ 
                   background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  color: 'white', 
-                  padding: '0.8rem 1.5rem',
-                  borderRadius: '12px',
+                  color: 'white', padding: '0.8rem 1.5rem', borderRadius: '12px',
                   display: 'inline-block'
                 }}>⏰ Waktu Habis!</span>
               ) : (
                 <span style={{ 
                   background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  color: 'white', 
-                  padding: '0.8rem 1.5rem',
-                  borderRadius: '12px',
+                  color: 'white', padding: '0.8rem 1.5rem', borderRadius: '12px',
                   display: 'inline-block'
-                }}>❌ SALAH!</span>
+                }}>❌ SALAH -1❤️</span>
               )}
             </div>
           )}
 
-          {/* GAME AREA - SELALU VISIBLE */}
-          <div style={{ height: '600px' }}>
+          {/* 🔥 GAME CANVAS - SELALU VISIBLE */}
+          <div style={{ height: '600px', position: 'relative' }}>
             {renderGame()}
           </div>
 
-          {/* RESULT MODAL */}
+          {/* 🔥 RESULT MODAL */}
           {result && (
             <div style={{
-              position: 'fixed',
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: '2rem'
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', zIndex: 2000, padding: '2rem'
             }}>
               <div style={{
                 background: result.completed 
                   ? 'linear-gradient(135deg, #10b981, #059669)'
                   : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                padding: '4rem 3rem',
-                borderRadius: '32px',
-                textAlign: 'center',
-                color: 'white',
-                maxWidth: '500px',
-                width: '90%',
+                padding: '4rem 3rem', borderRadius: '32px', textAlign: 'center',
+                color: 'white', maxWidth: '500px', width: '90%',
                 boxShadow: '0 40px 80px rgba(0,0,0,0.5)'
               }}>
                 <div style={{ fontSize: '6rem', marginBottom: '1rem' }}>
@@ -438,15 +395,10 @@ export default function GamePlay() {
                   <button 
                     onClick={() => navigate("/game")}
                     style={{
-                      padding: '1.2rem 2.5rem',
-                      background: 'white',
-                      color: result.completed ? '#10b981' : '#f59e0b',
-                      border: 'none',
-                      borderRadius: '50px',
-                      fontSize: '1.1rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      boxShadow: '0 15px 30px rgba(0,0,0,0.3)',
+                      padding: '1.2rem 2.5rem', background: 'white',
+                      color: result.completed ? '#10b981' : '#f59e0b', border: 'none',
+                      borderRadius: '50px', fontSize: '1.1rem', fontWeight: '700',
+                      cursor: 'pointer', boxShadow: '0 15px 30px rgba(0,0,0,0.3)',
                       minWidth: '140px'
                     }}
                   >
@@ -455,41 +407,28 @@ export default function GamePlay() {
                   <button 
                     onClick={loadLevel}
                     style={{
-                      padding: '1.2rem 2.5rem',
-                      background: 'rgba(255,255,255,0.2)',
-                      color: 'white',
-                      border: '2px solid white',
-                      borderRadius: '50px',
-                      fontSize: '1.1rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      backdropFilter: 'blur(10px)',
-                      minWidth: '140px'
+                      padding: '1.2rem 2.5rem', background: 'rgba(255,255,255,0.2)',
+                      color: 'white', border: '2px solid white', borderRadius: '50px',
+                      fontSize: '1.1rem', fontWeight: '700', cursor: 'pointer',
+                      backdropFilter: 'blur(10px)', minWidth: '140px'
                     }}
                   >
-                    🔄 Ulangi
+                    🔄 Main Lagi
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* CSS ANIMATION */}
+          {/* 🔥 ANIMATIONS */}
           <style jsx>{`
             @keyframes popIn {
-              0% { 
-                transform: scale(0.8) translateX(100%); 
-                opacity: 0; 
-              }
-              50% { 
-                transform: scale(1.05) translateX(0); 
-              }
-              100% { 
-                transform: scale(1) translateX(0); 
-                opacity: 1; 
-              }
+              0% { transform: scale(0.7) translateX(100%); opacity: 0; }
+              50% { transform: scale(1.05) translateX(-5%); }
+              100% { transform: scale(1) translateX(0); opacity: 1; }
             }
           `}</style>
+
         </div>
       </div>
     </Layout>
