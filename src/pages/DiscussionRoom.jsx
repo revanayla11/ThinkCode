@@ -330,9 +330,6 @@ const savePseudocode = async () => {
     });
     
     loadPerformance();
-
-    setPseudocode(renderFilledTemplate());
-    setPseudocodeSaved(true);
   } catch (err) {
     Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
   }
