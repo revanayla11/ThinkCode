@@ -23,6 +23,7 @@ export default function DiscussionRoom() {
   const [templateData, setTemplateData] = useState({ template: "", blanks: [] });
   const [pseudocodeBlanks, setPseudocodeBlanks] = useState([]);
   const [pseudocode, setPseudocode] = useState("");
+  const [pseudocodeSaved, setPseudocodeSaved] = useState(false);
   
   // Flowchart
   const [conditions, setConditions] = useState([]);
@@ -83,10 +84,9 @@ const renderFilledTemplate = useCallback(() => {
 
 // Update useEffect untuk auto-update pseudocode
 useEffect(() => {
-  if (pseudocodeSaved) {
-    setPseudocode(renderFilledTemplate());
-  }
-}, [pseudocodeBlanks, renderFilledTemplate, pseudocodeSaved]);
+  const filled = renderFilledTemplate();
+  setPseudocode(filled);
+}, [pseudocodeBlanks, renderFilledTemplate]);
 
   /* ================= FLOWCHART FUNCTIONS ================= */
   const addCondition = () => {
@@ -217,18 +217,23 @@ const loadWorkspaceData = useCallback(async () => {
     const res = await api.get(`/discussion/room/${roomId}/workspace-data`);
     const data = res.data.data || {};
 
-    console.log("🔄 Load workspace:", data);
+    console.log("🔄 Load workspace:", {
+      pseudocodeHasContent: !!data.pseudocode?.trim(),
+      hasBlanks: data.pseudocode?.includes('[BLANK') || data.pseudocode?.includes('___BLANK'),
+      localPseudocode: !!pseudocode.trim(),
+      localSaved: pseudocodeSaved
+    });
 
-    // 🔥 PSEUDOCODE - HANYA LOAD KALAU KOSONG & TIDAK ADA BLANKS
+    // 🔥 PSEUDOCODE - HANYA LOAD KALAU BELUM ISI & TIDAK ADA BLANKS
     const hasBlanks = data.pseudocode?.includes('[BLANK') || data.pseudocode?.includes('___BLANK');
-    if (!pseudocode.trim() && !hasBlanks) {
+    if (!pseudocode.trim() && !pseudocodeSaved && !hasBlanks) {
       setPseudocode(data.pseudocode || "");
       console.log("✅ Pseudocode loaded from DB");
     } else {
-      console.log("⏭️ Skip pseudocode load - user sudah isi / ada blanks");
+      console.log("⏭️ Skip pseudocode load - sudah saved / ada blanks / local ada");
     }
 
-    // 🔥 FLOWCHART - JANGAN OVERWRITE kalau user lagi edit
+    // Flowchart logic sama...
     const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
     if (flowchart.conditions?.length === 0 && conditions.length === 0) {
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
@@ -239,7 +244,7 @@ const loadWorkspaceData = useCallback(async () => {
   } catch (err) {
     console.error("Load workspace error:", err);
   }
-}, [roomId, pseudocode]); // ✅ Tambah pseudocode di dependency
+}, [roomId, pseudocode, pseudocodeSaved]); // ✅ Dependencies lengkap
 
   const loadTasks = async () => {
     try {
@@ -313,13 +318,14 @@ const loadTemplateData = useCallback(async () => {
   /* ================= SAVE FUNCTIONS ================= */
 // Update savePseudocode
 // ✅ CORRECT - Kirim template + blanks
+// ✅ FULL FIXED savePseudocode
 const savePseudocode = async () => {
   if (!pseudocode?.trim()) return Swal.fire("⚠️", "Isi pseudocode!", "warning");
   
   try {
     const res = await api.post(`/discussion/room/${roomId}/pseudocode`, { 
-      template: templateData.template,  // ✅ Template asli
-      answers: pseudocodeBlanks        // ✅ Array jawaban blanks
+      template: templateData.template,
+      answers: pseudocodeBlanks
     });
     
     Swal.fire({
@@ -330,6 +336,13 @@ const savePseudocode = async () => {
     });
     
     loadPerformance();
+    
+    // 🔥 MARK AS SAVED & FORCE UPDATE
+    setPseudocodeSaved(true);
+    setPseudocode(renderFilledTemplate()); // Pastikan pseudocode fresh
+    
+    console.log("✅ Pseudocode SAVED & MARKED");
+    
   } catch (err) {
     Swal.fire("❌", err.response?.data?.message || "Gagal", "error");
   }
