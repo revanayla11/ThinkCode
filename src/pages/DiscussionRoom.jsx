@@ -211,12 +211,16 @@ const loadWorkspaceData = useCallback(async () => {
 
     console.log("🔄 Load workspace:", data);
 
-    // 🔥 PSEUDOCODE - Load kalau kosong
-    if (!pseudocode.trim()) {
+    // 🔥 PSEUDOCODE - HANYA LOAD KALAU KOSONG & TIDAK ADA BLANKS
+    const hasBlanks = data.pseudocode?.includes('[BLANK') || data.pseudocode?.includes('___BLANK');
+    if (!pseudocode.trim() && !hasBlanks) {
       setPseudocode(data.pseudocode || "");
+      console.log("✅ Pseudocode loaded from DB");
+    } else {
+      console.log("⏭️ Skip pseudocode load - user sudah isi / ada blanks");
     }
 
-    // 🔥 FLOWCHART - JANGAN OVERWRITE kalau user lagi edit!
+    // 🔥 FLOWCHART - JANGAN OVERWRITE kalau user lagi edit
     const flowchart = data.flowchart || { conditions: [], elseInstruction: "" };
     if (flowchart.conditions?.length === 0 && conditions.length === 0) {
       setConditions(Array.isArray(flowchart.conditions) ? flowchart.conditions : []);
@@ -227,7 +231,7 @@ const loadWorkspaceData = useCallback(async () => {
   } catch (err) {
     console.error("Load workspace error:", err);
   }
-}, [roomId, pseudocode, conditions.length]); // Tambah dependencies
+}, [roomId, pseudocode]); // ✅ Tambah pseudocode di dependency
 
   const loadTasks = async () => {
     try {
@@ -347,7 +351,6 @@ const saveFlowchart = async () => {
     
     Swal.fire("✅", res.data.message || "Flowchart tersimpan!", "success");
     loadPerformance();
-    loadWorkspaceData(); // Reload tampilan
     
   } catch (err) {
     console.error("Save flowchart error:", err.response?.data);
@@ -395,12 +398,10 @@ useEffect(() => {
   const initData = async () => {
     console.log("🚀 Loading all data...");
     
-    // 1. TEMPLATE PERTAMA (KRITIS!)
-    await loadTemplateData();
+    await loadTemplateData(); // Template dulu
     
-    // 2. Lainnya PARALEL
+    // Parallel load lainnya
     await Promise.all([
-      loadWorkspaceData(),
       loadTasks(),
       loadClues(),
       loadMiniLesson(),
@@ -409,11 +410,15 @@ useEffect(() => {
       loadTimerStatus()
     ]);
     
+    // Workspace TERAKHIR & SELECTIVE
+    await loadWorkspaceData();
+    
     console.log("✅ All data loaded!");
   };
   
   initData();
-}, [roomId, materiId, loadTemplateData]); // ✅ DEPENDENCIES
+}, [roomId, materiId, loadTemplateData]); // ✅ Clean dependencies
+  
 
 
 
