@@ -169,12 +169,6 @@ const loadPerformance = async () => {
     const res = await api.get(`/discussion/room/${roomId}/performance`);
     console.log("📊 PERFORMANCE:", res.data);
     setPerformanceScore(res.data.score || 100);
-    
-    // 🔥 FIX: Gunakan setTasks bukan setAllTasksDone
-    if (res.data.allTasksDone !== undefined) {
-      setTasks(tasks.map(task => ({ ...task, done: res.data.allTasksDone })));
-    }
-    
   } catch (err) {
     console.error("Load performance error:", err);
     setPerformanceScore(100);
@@ -265,23 +259,22 @@ const loadWorkspaceData = useCallback(async () => {
 const loadTasks = async () => {
   try {
     const res = await api.get(`/discussion/room/${roomId}/tasks`);
+    console.log("📋 TASKS LOADED:", res.data.data);
+    
     const taskMap = res.data.data || {};
     
-    // ✅ INIT TASKMAP DULU
-    const initMap = {1: false, 2: false, 3: false, 4: false, 5: false};
-    Object.assign(initMap, taskMap);
-    
     const dynamicTasks = [
-      { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!initMap[1] },
-      { id: 2, text: "Lengkapi LKPD", done: !!initMap[2] },
-      { id: 3, text: "Lengkapi Pseudocode", done: !!initMap[3] },
-      { id: 4, text: "Buat Flowchart", done: !!initMap[4] },
-      { id: 5, text: "Buat kode c", done: !!initMap[5] }
+      { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: !!taskMap[1] },
+      { id: 2, text: "Lengkapi LKPD", done: !!taskMap[2] },
+      { id: 3, text: "Lengkapi Pseudocode", done: !!taskMap[3] },
+      { id: 4, text: "Buat Flowchart", done: !!taskMap[4] },
+      { id: 5, text: "Buat kode c", done: !!taskMap[5] }
     ];
+    
     setTasks(dynamicTasks);
   } catch (err) {
-    console.error("loadTasks error:", err);
-    // ✅ FALLBACK EMPTY
+    console.error("❌ loadTasks ERROR:", err);
+    // FALLBACK
     setTasks([
       { id: 1, text: "Diskusikan permasalahan yang ada pada video sebelumnya", done: false },
       { id: 2, text: "Lengkapi LKPD", done: false },
