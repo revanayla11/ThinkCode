@@ -723,7 +723,6 @@ const renderFlowchart = () => {
 };
 
   /* ================= VALIDATE ================= */
-// Update validateBeforeUpload function
 const validateBeforeUpload = async () => {
   if (isValidating || isSubmitted) return;
   
@@ -737,84 +736,62 @@ const validateBeforeUpload = async () => {
     const { valid, score, details } = res.data;
     
     if (valid && score >= 80) {
-      // ✅ SUKSES - NEXT PAGE
       Swal.fire({
-        title: "🎉 SELAMAT! JAWABAN BENAR!",
+        title: "🎉 JAWABAN BENAR 100%! 🥇",
         html: `
           <div style="text-align: center;">
             <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-bottom: 15px;">
-              🥇 SCORE: ${score}%
+              SCORE: ${score}% ✅
             </div>
             <div style="font-size: 16px; color: #374151;">
               <strong>Pseudocode:</strong> ${details.pseudocodeSimilarity}%<br>
               <strong>Flowchart:</strong> ${details.flowchartScore}%<br><br>
               <div style="background: #ecfdf5; padding: 15px; border-radius: 12px; border: 2px solid #10b981;">
-                ✅ Siap upload kode C dan lanjut ke materi berikutnya!
+                🎯 Quest selesai! Sekarang upload kode C!
               </div>
             </div>
           </div>
         `,
         icon: "success",
-        confirmButtonText: "🚀 LANJUT KE UPLOAD & NEXT MATERI",
+        confirmButtonText: "🚀 UPLOAD KODE C",
         confirmButtonColor: "#10b981",
         width: "600px"
       }).then((result) => {
         if (result.isConfirmed) {
-          // 🔥 UPLOAD JAWABAN
-          uploadJawaban();
+          setIsSubmitted(true);
+          // 🔥 ROUTE KAMU
+          navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
         }
       });
       
     } else {
-      // ❌ GAGAL
       Swal.fire({
-        title: "📈 Belum Sempurna!",
+        title: "📈 Perbaiki Jawaban!",
         html: `
           <div style="text-align: center;">
             <div style="font-size: 24px; font-weight: 800; color: #f59e0b;">
               SCORE: ${score}%
             </div>
             <div style="margin: 20px 0;">
-              <strong>Yang perlu diperbaiki:</strong><br>
               Pseudocode: ${details.pseudocodeSimilarity}% ${details.pseudocodeMatch ? '✅' : '❌'}<br>
               Flowchart: ${details.flowchartScore}% (${details.conditionsCount} kondisi)
             </div>
-            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; font-size: 14px;">
-              🎯 Target minimal 80% untuk lulus!
+            <div style="background: #fef3c7; padding: 12px; border-radius: 8px;">
+              🎯 Target: <strong>80%+</strong>
             </div>
           </div>
         `,
         icon: "warning",
-        confirmButtonText: "🔄 Perbaiki Jawaban",
-        confirmButtonColor: "#f59e0b",
-        width: "550px"
+        confirmButtonText: "🔄 Edit Lagi",
+        confirmButtonColor: "#f59e0b"
       });
     }
     
   } catch (err) {
-    console.error("VALIDATION ERROR:", err.response?.data || err);
+    console.error("VALIDATION ERROR:", err);
     Swal.fire("❌", "Validasi gagal, coba lagi!", "error");
   } finally {
     setIsValidating(false);
-  }
-};
-
-// 🔥 TAMBAH FUNGSI UPLOAD
-const uploadJawaban = async () => {
-  try {
-    const res = await api.post(`/discussion/room/${roomId}/upload`);
-    Swal.fire({
-      title: "✅ JAWABAN DIUPLOAD!",
-      text: res.data.message,
-      icon: "success",
-      timer: 2000
-    }).then(() => {
-      // 🔥 LANJUT KE MATERI BERIKUTNYA
-      navigate(`/materi/${parseInt(materiId) + 1}`);
-    });
-    setIsSubmitted(true);
-  } catch (err) {
-    Swal.fire("❌", err.response?.data?.message || "Upload gagal", "error");
   }
 };
 
@@ -946,14 +923,10 @@ const uploadJawaban = async () => {
           <ProveMasteryButton 
             onClick={validateBeforeUpload} 
             disabled={isValidating || isSubmitted}
-            style={{ 
-              background: isSubmitted ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-            }}
           >
-            {isValidating ? "🔍 VALIDATING..." : 
-            isSubmitted ? "🎉 CERTIFIED! ✓" : 
-            validationResult?.valid ? "🚀 UPLOAD & NEXT MATERI" : 
-            "🔍 CEK JAWABAN"}
+            {isValidating ? "🔍 VALIDASI..." : 
+            isSubmitted ? "✅ QUEST SELESAI!" : 
+            "🔍 VALIDASI & UPLOAD"}
           </ProveMasteryButton>
           </LeftPanel>
 
