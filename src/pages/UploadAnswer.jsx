@@ -44,20 +44,25 @@ export default function UploadAnswer() {
   }
 
   // BARU: Fungsi check rooms completion
-  const checkAllRoomsCompletion = async () => {
-    if (!userId || !materiId) return;
+const checkAllRoomsCompletion = async () => {
+  if (!userId || !materiId) return;
+  
+  try {
+    setLoadingRooms(true);
+    const res = await api.get(`/upload/${materiId}/rooms-completion/${userId}`);
     
-    try {
-      setLoadingRooms(true);
-      const res = await api.get(`/upload/${materiId}/rooms-completion/${userId}`);
-      setIsAllRoomsCompleted(res.data.allCompleted);
-      setRandomPresenter(res.data.randomPresenter);
-    } catch (err) {
-      console.error('Error checking rooms:', err);
-    } finally {
-      setLoadingRooms(false);
-    }
-  };
+    setIsAllRoomsCompleted(res.data.allCompleted); // Semua room selesai
+    setRandomPresenter(res.data.randomPresenter);
+    
+    console.log("Rooms status:", res.data);
+  } catch (err) {
+    console.warn("Rooms check failed:", err);
+    setIsAllRoomsCompleted(false);
+    setRandomPresenter(null);
+  } finally {
+    setLoadingRooms(false);
+  }
+};
 
   useEffect(() => {
     if (!userId || !materiId) return;
