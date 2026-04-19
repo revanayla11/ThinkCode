@@ -7,7 +7,7 @@ export default function TabOrientasi({ materiId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:5000";
+  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '');
 
   // Load data
   const loadData = async () => {

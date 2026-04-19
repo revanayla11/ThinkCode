@@ -127,7 +127,7 @@ export default function AdminSubmission() {
 const openFileModal = (sub) => {
   if (!sub.filePath) return;
 
-  const baseURL = import.meta.env.VITE_API_URL.replace("/api", "")|| "http://localhost:5000";
+  const baseURL = import.meta.env.VITE_API_URL.replace("/api", "");
 
   setCurrentFile({
     name: sub.filePath.split("/").pop(),
