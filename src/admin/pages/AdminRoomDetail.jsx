@@ -419,25 +419,31 @@ return (
         </WorkspaceSection>
 
         {/* ADMIN RESMI */}
-        <WorkspaceSection isOfficial>
-          <SectionLabel isOfficial>✅ Kunci Jawaban</SectionLabel>
-          {materiAnswer ? (
-            <>
-              <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
-              <FlowchartBox isOfficial>
-                {renderFlowchartPreview(materiAnswer.flowchart)}
-              </FlowchartBox>
-            </>
-          ) : (
-            <div style={{ 
-              padding: '60px 20px', 
-              textAlign: 'center', 
-              color: '#ef4444'
-            }}>
-              ⚠️ Guru belum set kunci jawaban
-            </div>
-          )}
-        </WorkspaceSection>
+        // AdminRoomDetail.jsx - GANTI KUNCI JAWABAN SECTION:
+<WorkspaceSection isOfficial>
+  <SectionLabel isOfficial>✅ Kunci Jawaban</SectionLabel>
+  {materiAnswer ? (
+    <>
+      <PseudocodeBox isOfficial>{materiAnswer.pseudocode || "Belum diset"}</PseudocodeBox>
+      <FlowchartBox isOfficial>
+        {/* 🔥 SAFETY PARSE */}
+        {(() => {
+          try {
+            const flowchartData = materiAnswer.flowchart;
+            if (typeof flowchartData === 'string') {
+              return renderFlowchartPreview(JSON.parse(flowchartData));
+            }
+            return renderFlowchartPreview(flowchartData);
+          } catch (e) {
+            return <div style={{padding:'20px', color:'#ef4444'}}>Parse error: {e.message}</div>;
+          }
+        })()}
+      </FlowchartBox>
+    </>
+  ) : (
+    <div>⚠️ Belum ada kunci jawaban</div>
+  )}
+</WorkspaceSection>
       </WorkspaceCompare>
     </Card>
 
