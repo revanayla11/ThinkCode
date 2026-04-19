@@ -14,7 +14,7 @@ export default function Dashboard() {
 
   // Circle Badge Component for Achievements
 const CircleBadge = ({ title, image }) => {
-  const baseURL = import.meta.env.VITE_API_URL.replace("/api", "") || "http://localhost:5000/api";
+  const baseURL = import.meta.env.VITE_API_URL.replace("/api", "") || "http://localhost:5000";
 
   return (
     <CircleBox>

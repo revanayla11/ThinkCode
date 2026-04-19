@@ -1,9 +1,9 @@
 // GameModal.jsx - Self-contained
 import React, { useState } from 'react';
-import QuizGame from './QuizGame';
-import FlashcardGame from './FlashcardGame';
-import SheriffGame from './SheriffGame';
-import TTSGame from './TTSGame';
+import QuizGame from './minigames/MultipleChoice';
+import FlashcardGame from './minigames/DragDropGame';
+import SheriffGame from './minigames/TypingGame';
+import TTSGame from './minigames/TrueFalse';
 
 const GameModal = ({ game, onClose, onClaimReward }) => {
   const [gameCompleted, setGameCompleted] = useState(false);
