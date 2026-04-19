@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || "https://powderblue-squirrel-795269.hostingersite.com/api" || "http://localhost:5000/api"; // Default dengan /api untuk API calls
+const API_BASE = import.meta.env.VITE_API_URL || "https://powderblue-squirrel-795269.hostingersite.com/api"; // Default dengan /api untuk API calls
 const BASE_URL = API_BASE.replace('/api', '');
 
 function getHeaders(isForm = false) {
