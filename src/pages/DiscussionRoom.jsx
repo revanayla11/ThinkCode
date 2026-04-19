@@ -735,6 +735,10 @@ const validateBeforeUpload = async () => {
     
     const { valid, score, details } = res.data;
     
+    // 🔥 FIX: SAFE ACCESS details
+    const pseudoScore = details?.pseudocodeSimilarity || 0;
+    const flowchartScore = details?.flowchartScore || 0;
+    
     if (valid && score >= 80) {
       Swal.fire({
         title: "🎉 JAWABAN BENAR 100%! 🥇",
@@ -744,8 +748,8 @@ const validateBeforeUpload = async () => {
               SCORE: ${score}% ✅
             </div>
             <div style="font-size: 16px; color: #374151;">
-              <strong>Pseudocode:</strong> ${details.pseudocodeSimilarity}%<br>
-              <strong>Flowchart:</strong> ${details.flowchartScore}%<br><br>
+              <strong>Pseudocode:</strong> ${pseudoScore}%<br>
+              <strong>Flowchart:</strong> ${flowchartScore}%<br><br>
               <div style="background: #ecfdf5; padding: 15px; border-radius: 12px; border: 2px solid #10b981;">
                 🎯 Quest selesai! Sekarang upload kode C!
               </div>
@@ -759,11 +763,9 @@ const validateBeforeUpload = async () => {
       }).then((result) => {
         if (result.isConfirmed) {
           setIsSubmitted(true);
-          // 🔥 ROUTE KAMU
           navigate(`/materi/${materiId}/room/${roomId}/upload-jawaban`);
         }
       });
-      
     } else {
       Swal.fire({
         title: "📈 Perbaiki Jawaban!",
@@ -773,8 +775,8 @@ const validateBeforeUpload = async () => {
               SCORE: ${score}%
             </div>
             <div style="margin: 20px 0;">
-              Pseudocode: ${details.pseudocodeSimilarity}% ${details.pseudocodeMatch ? '✅' : '❌'}<br>
-              Flowchart: ${details.flowchartScore}% (${details.conditionsCount} kondisi)
+              Pseudocode: ${pseudoScore}% ${pseudoScore >= 80 ? '✅' : '❌'}<br>
+              Flowchart: ${flowchartScore}% (${details?.conditionsCount || 0} kondisi)
             </div>
             <div style="background: #fef3c7; padding: 12px; border-radius: 8px;">
               🎯 Target: <strong>80%+</strong>
@@ -786,7 +788,6 @@ const validateBeforeUpload = async () => {
         confirmButtonColor: "#f59e0b"
       });
     }
-    
   } catch (err) {
     console.error("VALIDATION ERROR:", err);
     Swal.fire("❌", "Validasi gagal, coba lagi!", "error");
