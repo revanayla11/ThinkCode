@@ -37,40 +37,29 @@ export default function GamePlay() {
     loadLevel();
   }, [id]);
 
- const loadLevel = async () => {
-  try {
-    setLoading(true);
-    const res = await apiGet(`/game/level/${id}`);
-    
-    if (!res.status || !res.hasQuestions || res.questions?.length === 0) {
-      // 🔥 STOP GAME - SOAL HABIS!
-      setResult({
-        scorePercent: 0,
-        gainedXp: 0,
-        hearts: lives,
-        completed: false,
-        message: "Tidak ada soal di level ini 😔"
-      });
-      setIsGameFinished(true);
+  const loadLevel = async () => {
+    try {
+      setLoading(true);
+      setIsProcessing(false);
+      const res = await apiGet(`/game/level/${id}`);
+      if (res.status) {
+        setLevel(res.level);
+        setQuestions(res.questions || []);
+        setIndex(0);
+        setLives(5);
+        setScore(0);
+        correctRef.current = 0;
+        setFeedback(null);
+        setResult(null);
+        setIsGameFinished(false);
+      }
+    } catch (error) {
+      console.error("Load level error:", error);
+      navigate("/game");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Normal flow
-    setLevel(res.level);
-    setQuestions(res.questions);
-    setIndex(0);
-    setLives(5);
-    setScore(0);
-    correctRef.current = 0;
-    setIsGameFinished(false);
-  } catch (error) {
-    console.error("Load error:", error);
-    navigate("/game");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // 🔥 TIMER LOGIC
   useEffect(() => {
@@ -80,7 +69,6 @@ export default function GamePlay() {
 
     if (
       loading ||
-      index >= questions.length ||
       !questions.length ||
       feedback ||
       result ||
@@ -155,44 +143,41 @@ export default function GamePlay() {
 
   // 🔥 SMOOTH WRONG - NO BLOCKING API  
   const handleWrong = (reason = "wrong") => {
-  if (isGameFinished || isProcessing) return;
+    if (isGameFinished || isProcessing) {
+      console.log('Wrong blocked');
+      return;
+    }
 
-  setIsProcessing(true);
-  clearInterval(timerRef.current);
+    console.log(`❌ ${reason}! Lives: ${lives - 1}`);
 
-  setFeedback(reason);
+    setIsProcessing(true);
 
-  setLives((prevLives) => {
-    const newLives = prevLives - 1;
-    
-    setTimeout(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setFeedback(reason);
+
+    setLives((l) => {
+      const newLives = l - 1;
+
       if (newLives <= 0) {
-        // 🔥 GAME OVER - STOP!
-        setFeedback(null);
-        setIsGameFinished(true);
-        setResult({
-          scorePercent: Math.round((correctRef.current / questions.length) * 100),
-          gainedXp: 0,
-          hearts: 0,
-          completed: false,
-          gameOver: true
-        });
-      } else {
-        // Lanjut soal (cek ada soal ga!)
-        if (index + 1 < questions.length) {
-          setFeedback(null);
-          setIndex(prev => prev + 1);
-        } else {
-          // 🔥 SOAL HABIS!
+        setTimeout(() => {
           finishGame();
-        }
+          setIsProcessing(false);
+        }, 1500);
+      } else {
+        setTimeout(() => {
+          setFeedback(null);
+          setIndex((prev) => prev + 1);
+          setIsProcessing(false);
+        }, 1500);
       }
-      setIsProcessing(false);
-    }, 1500);
 
-    return newLives;
-  });
-};
+      return newLives;
+    });
+  };
 
   // 🔥 FINAL SUBMIT (satu-satunya API call)
   const finishGame = async () => {
@@ -248,13 +233,7 @@ export default function GamePlay() {
 
   // 🔥 RENDER GAME
   const renderGame = () => {
-    if (!questions[index] || index >= questions.length) {
-    console.log("📭 No question at index:", index, "Total:", questions.length);
-    finishGame(); // Auto finish
-    return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <h3>📭 Soal habis!</h3>
-    </div>;
-  }
+    if (!questions[index]) return null;
     
     const props = {
       question: questions[index],
